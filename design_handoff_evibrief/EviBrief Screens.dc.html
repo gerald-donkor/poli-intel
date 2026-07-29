@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:#EAE7E0; color:#2C2C2A; font-family:Inter, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+a { color:#0F6E56; text-decoration:none; }
+a:hover { color:#0B5644; text-decoration:underline; }
+[data-page="screens"] { padding:56px 56px 140px; }
+@keyframes riseIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@keyframes growIn { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes drawPath { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes flagPulse { 0% { background-color:rgba(73,99,117,0.32); } 100% { background-color:#E7EDF2; } }
+@keyframes breathe { 0%, 100% { opacity:1; } 50% { opacity:0.85; } }
+@keyframes slideDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+[data-grid="board"] > div > *:nth-child(n+2) { animation:riseIn 240ms ease-out both; }
+[data-grid="board"] > div > *:nth-child(2) { animation-delay:60ms; }
+[data-grid="board"] > div > *:nth-child(3) { animation-delay:130ms; }
+[data-grid="board"] > div > *:nth-child(4) { animation-delay:200ms; }
+[data-grid="board"] > div > *:nth-child(5) { animation-delay:270ms; }
+[data-row="ev"]:nth-child(n+2) { animation:riseIn 220ms ease-out both; }
+[data-row="ev"]:nth-child(3) { animation-delay:70ms; }
+[data-row="ev"]:nth-child(4) { animation-delay:140ms; }
+[data-row="ev"]:nth-child(5) { animation-delay:210ms; }
+[data-row="ev"]:nth-child(6) { animation-delay:280ms; }
+[data-row="ev"]:nth-child(7) { animation-delay:350ms; }
+[data-fill] { transform-origin:left center; animation:growIn 900ms cubic-bezier(0.2,0.7,0.3,1) both; }
+[data-map] svg path:not([data-dash]) { stroke-dasharray:1; animation:drawPath 1.6s ease-out both; }
+[data-map] svg path:nth-of-type(2) { animation-delay:120ms; }
+[data-map] svg path:nth-of-type(3) { animation-delay:240ms; }
+[data-map] svg path:nth-of-type(4) { animation-delay:360ms; }
+[data-map] svg path:nth-of-type(5) { animation-delay:480ms; }
+[data-map] svg path:nth-of-type(6) { animation-delay:600ms; }
+[data-map] svg path:nth-of-type(7) { animation-delay:720ms; }
+[data-map] svg path:nth-of-type(8) { animation-delay:840ms; }
+[data-map] svg path[data-dash] { animation:fadeIn 400ms ease-out 1.5s both; }
+[data-flag] { animation:flagPulse 900ms ease-out both; }
+[data-breath] { animation:breathe 2s ease-in-out infinite; }
+[data-slide] { animation:slideDown 200ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+[data-frame] { height:900px; }
+[data-pane] { overflow:hidden; }
+[data-pane="evidence-list"], [data-pane="editor-side"], [data-pane="evidence-detail"], [data-pane="impact-side"] { overflow-y:auto; }
+[data-pane="editor-nav"], [data-pane="evidence-filters"] { display:flex; }
+[data-pane="editor-side"], [data-pane="evidence-detail"], [data-pane="impact-side"] { border-left:1px solid #E4E1D8; }
+[data-nav="main"] { display:flex; }
+[data-grid="board"] { grid-template-columns:repeat(4, 1fr); overflow:hidden; }
+[data-grid="editor"] { grid-template-columns:236px 1fr 372px; overflow:hidden; }
+[data-grid="evidence"] { grid-template-columns:216px 1fr 340px; overflow:hidden; }
+[data-grid="impact"] { grid-template-columns:1fr 356px; overflow:hidden; }
+[data-row="ev"] { grid-template-columns:1fr 108px 96px 84px; }
+@media (max-width:1300px) {
+  [data-grid="editor"] { grid-template-columns:1fr 340px; }
+  [data-grid="evidence"] { grid-template-columns:1fr 320px; }
+  [data-pane="editor-nav"], [data-pane="evidence-filters"] { display:none; }
+}
+@media (max-width:1150px) {
+  [data-grid="board"] { grid-template-columns:repeat(2, 1fr); overflow-y:auto; }
+}
+@media (max-width:1000px) {
+  [data-page="screens"] { padding:32px 24px 96px; }
+  [data-frame] { height:auto; }
+  [data-pane] { overflow:visible; }
+  [data-grid="editor"], [data-grid="evidence"], [data-grid="impact"] { grid-template-columns:1fr; }
+  [data-pane="editor-side"], [data-pane="evidence-detail"], [data-pane="impact-side"] { border-left:none; border-top:1px solid #E4E1D8; }
+  [data-pane="impact-main"] { overflow-x:auto; }
+  [data-map] { min-width:860px; min-height:480px; }
+}
+@media (max-width:760px) {
+  [data-page="screens"] { padding:24px 16px 72px; }
+  [data-grid="board"] { grid-template-columns:1fr; }
+  [data-nav="main"] { display:none; }
+  [data-row="ev"] { grid-template-columns:1fr 84px; }
+  [data-row="ev"] > :nth-child(2), [data-row="ev"] > :nth-child(3) { display:none; }
+}
+</style>
+</helmet>
+<section data-page="screens" style="display:flex; flex-direction:column; gap:72px; width:100%; max-width:1552px; box-sizing:border-box">
+
+  <div style="display:flex; flex-direction:column; gap:10px; max-width:760px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#0F6E56; padding:3px 8px; border-radius:4px">Turn 1</span>
+      <span style="font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">EviBrief · priority screens &amp; core states</span>
+    </div>
+    <h1 style="margin:0; font-size:30px; font-weight:600; letter-spacing:-0.02em">Five screens, five states</h1>
+    <p style="margin:0; font-size:14.5px; line-height:1.65; color:#444441; text-wrap:pretty">Built on the design system in <a href="./EviBrief%20Design%20System.dc.html">EviBrief Design System</a>. Frames <a href="#1a">1a</a>–<a href="#1e">1e</a> are the priority screens; <a href="#1f">1f</a>–<a href="#1j">1j</a> are the UX states from Section 5.2. Motion behaviour is annotated in slate captions beneath each frame.</p>
+  </div>
+
+  <div id="1a" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 8px; border-radius:4px">1a</span>
+      <h2 style="margin:0; font-size:20px; font-weight:600">Signal Dashboard</h2>
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#6B6B66">/signals · 1440×900 · Policy &amp; Advocacy Officer</span>
+    </div>
+    <div data-frame="true" style="width:100%; max-width:1440px; min-width:0; box-sizing:border-box; background:#F7F5F0; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 32px -12px rgba(44,44,42,0.18)">
+      <div style="height:56px; flex:none; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:28px; padding:0 24px">
+        <div style="display:flex; align-items:center; gap:9px">
+          <div style="width:18px; height:18px; border-radius:3px; border:1.5px solid #0F6E56; display:flex; align-items:center; justify-content:center"><div style="width:6px; height:6px; background:#0F6E56; border-radius:1px"></div></div>
+          <span style="font-size:13px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#0F6E56">EviBrief</span>
+        </div>
+        <div data-nav="main" style="gap:4px">
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Dashboard</span>
+          <span style="font-size:13px; font-weight:600; color:#0F6E56; padding:6px 10px; border-radius:4px; background:#E1F5EE">Signals</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Briefs</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Evidence</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Stakeholders</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Impact</span>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <div style="display:flex; align-items:center; gap:8px; flex:0 1 230px; min-width:0; padding:7px 10px; border:1px solid #E4E1D8; border-radius:6px; background:#F7F5F0">
+            <div style="width:12px; height:12px; border:1.5px solid #8E8B84; border-radius:50%"></div>
+            <span style="font-size:12.5px; color:#8E8B84">Search signals &amp; evidence</span>
+            <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#8E8B84; border:1px solid #E4E1D8; border-radius:3px; padding:1px 5px">⌘K</span>
+          </div>
+          <div style="width:30px; height:30px; border-radius:50%; background:#0F6E56; color:#FDFCF9; font-size:11.5px; font-weight:600; display:flex; align-items:center; justify-content:center">AO</div>
+        </div>
+      </div>
+
+      <div style="flex:none; padding:22px 24px 16px; display:flex; flex-direction:column; gap:16px; background:#FDFCF9; border-bottom:1px solid #E4E1D8">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <h1 style="margin:0; font-size:24px; font-weight:600; letter-spacing:-0.015em">Policy signals</h1>
+            <div style="font-size:13px; color:#6B6B66">Morning digest 06:00 GMT · <span style="color:#0F6E56; font-weight:600">4 new since yesterday</span> · 18 open signals</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px">
+            <div style="display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; padding:6px 11px; border-radius:999px; background:#F3EBE0; color:#5E4020; border:1px solid #E0D2BE; cursor:pointer"><span style="width:6px; height:6px; border-radius:1px; border:1.5px solid #8A6032"></span>6 evidence items awaiting classification</div>
+            <button style="font-family:inherit; font-size:13.5px; font-weight:600; color:#0F6E56; background:#FDFCF9; border:1px solid #C3D2C8; border-radius:6px; padding:8px 14px; cursor:pointer" style-hover="background:#E1F5EE; border-color:#1D9E75">Log a signal</button>
+            <button style="font-family:inherit; font-size:13.5px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:8px 14px; cursor:pointer" style-hover="background:#0B5644">Generate brief</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px">
+          <div style="display:flex; gap:2px; padding:3px; background:#EFECE4; border:1px solid #E4E1D8; border-radius:6px">
+            <span style="font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:4px; background:#FDFCF9; color:#0F6E56">Board</span>
+            <span style="font-size:12.5px; font-weight:500; padding:5px 12px; border-radius:4px; color:#6B6B66; cursor:pointer">Table</span>
+            <span style="font-size:12.5px; font-weight:500; padding:5px 12px; border-radius:4px; color:#6B6B66; cursor:pointer">Calendar</span>
+          </div>
+          <div style="width:1px; height:24px; background:#E4E1D8; margin:0 4px"></div>
+          <span style="font-size:12.5px; font-weight:500; color:#444441; padding:6px 11px; border:1px solid #E4E1D8; border-radius:999px; background:#FDFCF9; cursor:pointer" style-hover="border-color:#C3D2C8">Relevance: Core, Adjacent</span>
+          <span style="font-size:12.5px; font-weight:500; color:#444441; padding:6px 11px; border:1px solid #E4E1D8; border-radius:999px; background:#FDFCF9; cursor:pointer" style-hover="border-color:#C3D2C8">Impact area: all</span>
+          <span style="font-size:12.5px; font-weight:500; color:#444441; padding:6px 11px; border:1px solid #E4E1D8; border-radius:999px; background:#FDFCF9; cursor:pointer" style-hover="border-color:#C3D2C8">Geography: all</span>
+          <span style="font-size:12.5px; font-weight:600; color:#0B5644; padding:6px 11px; border:1px solid #BFDFD3; border-radius:999px; background:#E1F5EE; cursor:pointer">Assigned to me · 5</span>
+          <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">live · polled 40s ago</span>
+        </div>
+      </div>
+
+      <div data-grid="board" style="flex:1; display:grid; gap:16px; padding:20px 24px">
+
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+          <div style="display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:2px solid #8A6032">
+            <span style="font-size:13px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#5E4020">Immediate</span>
+            <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#8A6032">3</span>
+            <span style="margin-left:auto; font-size:11.5px; color:#6B5236">&lt; 4 weeks</span>
+          </div>
+          <div style="border:1px solid #E0D2BE; border-left:3px solid #8A6032; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; box-shadow:0 1px 2px rgba(44,44,42,0.05); cursor:pointer" style-hover="box-shadow:0 6px 16px -6px rgba(44,44,42,0.18)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#8A6032">Closes in 23 days</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#0F6E56; color:#FDFCF9">Core</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">EUDR implementing act — smallholder due-diligence annex opens for comment</div>
+            <div style="font-family:'Source Serif 4', Georgia, serif; font-size:12.5px; line-height:1.5; color:#444441">DG ENV published the draft annex; written consultation closes 21 Aug.</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>EU institutions</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace; color:#0F6E56">8 matches</span><span style="margin-left:auto; font-size:10.5px; font-weight:600; color:#0B5644">Draft ready</span>
+            </div>
+          </div>
+          <div style="border:1px solid #E0D2BE; border-left:3px solid #8A6032; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; box-shadow:0 1px 2px rgba(44,44,42,0.05); cursor:pointer" style-hover="box-shadow:0 6px 16px -6px rgba(44,44,42,0.18)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#8A6032">Closes in 18 days</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#0F6E56; color:#FDFCF9">Core</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">Cocobod announces review of the shade-tree registration scheme</div>
+            <div style="font-family:'Source Serif 4', Georgia, serif; font-size:12.5px; line-height:1.5; color:#444441">Deputy CEO statement, 16 Jul — technical committee forming.</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>Cocobod</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace; color:#0F6E56">6 matches</span><span style="margin-left:auto; font-size:10.5px; font-weight:600; color:#6B6B66">Unassigned</span>
+            </div>
+          </div>
+          <div style="border:1px solid #E4E1D8; border-left:3px solid #8A6032; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; opacity:0.92; cursor:pointer">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#8A6032">Closes in 24 days</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Adjacent</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">Parliamentary committee hearing on the Wildlife Resources Bill</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>Ministry</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace">3 matches</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+          <div style="display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:2px solid #67743C">
+            <span style="font-size:13px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#454E24">Near-term</span>
+            <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#67743C">5</span>
+            <span style="margin-left:auto; font-size:11.5px; color:#54602F">1–3 months</span>
+          </div>
+          <div style="border:1px solid #D6DBC2; border-left:3px solid #67743C; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; box-shadow:0 1px 2px rgba(44,44,42,0.05); cursor:pointer" style-hover="box-shadow:0 6px 16px -6px rgba(44,44,42,0.18)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#67743C">Window ~6 weeks</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#0F6E56; color:#FDFCF9">Core</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">Ghana NDC 3.0 revision — forestry sector consultation drafting</div>
+            <div style="font-family:'Source Serif 4', Georgia, serif; font-size:12.5px; line-height:1.5; color:#444441">MESTI circulated the sector outline to accredited stakeholders.</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>Ministry</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace; color:#0F6E56">11 matches</span><span style="margin-left:auto; font-size:10.5px; font-weight:600; color:#33495A">In review · 1 flag</span>
+            </div>
+          </div>
+          <div style="border:1px solid #D6DBC2; border-left:3px solid #67743C; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; cursor:pointer">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#67743C">Window ~8 weeks</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Adjacent</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">FLEGT-VPA joint monitoring meeting agenda circulated</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>EU institutions</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace">5 matches</span>
+            </div>
+          </div>
+          <div style="border:1px dashed #C3D2C8; border-radius:6px; background:#E1F5EE; padding:12px 14px; display:flex; align-items:center; gap:10px">
+            <div style="width:14px; height:14px; border-radius:3px; border:1.5px dashed #1D9E75; flex:none"></div>
+            <div style="font-size:12px; line-height:1.45; color:#0B5644">Drop zone — reclassifying a signal logs who changed it and when</div>
+          </div>
+          <div style="border:1px solid #D6DBC2; border-left:3px solid #67743C; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; opacity:0.92; cursor:pointer">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#67743C">Window ~10 weeks</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#EFECE4; color:#444441; border:1px solid #E4E1D8">Background</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">ITTO trade legality working group publishes draft indicators</div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+          <div style="display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:2px solid #0F6E56">
+            <span style="font-size:13px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#0B5644">Horizon</span>
+            <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#0F6E56">4</span>
+            <span style="margin-left:auto; font-size:11.5px; color:#1A5A49">3–6 months</span>
+          </div>
+          <div style="border:1px solid #BFDFD3; border-left:3px solid #0F6E56; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; box-shadow:0 1px 2px rgba(44,44,42,0.05); cursor:pointer" style-hover="box-shadow:0 6px 16px -6px rgba(44,44,42,0.18)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#0F6E56">Q3 window</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#0F6E56; color:#FDFCF9">Core</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">Tree tenure regulations — Lands Commission implementation guidance</div>
+            <div style="font-family:'Source Serif 4', Georgia, serif; font-size:12.5px; line-height:1.5; color:#444441">Guidance drafting expected after the Cocobod review concludes.</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>Ministry</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace; color:#0F6E56">9 matches</span>
+            </div>
+          </div>
+          <div style="border:1px solid #BFDFD3; border-left:3px solid #0F6E56; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; cursor:pointer">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#0F6E56">Q3 window</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Adjacent</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">CBD national reporting cycle — biodiversity target alignment</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>International</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace">4 matches</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px; min-width:0">
+          <div style="display:flex; align-items:center; gap:8px; padding-bottom:10px; border-bottom:2px solid #496375">
+            <span style="font-size:13px; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:#33495A">Watch</span>
+            <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#496375">6</span>
+            <span style="margin-left:auto; font-size:11.5px; color:#3E5566">&gt; 6 months</span>
+          </div>
+          <div style="border:1px solid #C6D4DF; border-left:3px solid #496375; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; cursor:pointer" style-hover="box-shadow:0 6px 16px -6px rgba(44,44,42,0.18)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#496375">Monitoring</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Adjacent</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">EU deforestation platform — country benchmarking review</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #EFECE4; font-size:11px; color:#6B6B66">
+              <span>EU institutions</span><span style="color:#C3D2C8">·</span><span style="font-family:'IBM Plex Mono', monospace">2 matches</span>
+            </div>
+          </div>
+          <div style="border:1px solid #C6D4DF; border-left:3px solid #496375; border-radius:6px; background:#FDFCF9; padding:14px; display:flex; flex-direction:column; gap:9px; opacity:0.9; cursor:pointer">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+              <span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#496375">Monitoring</span>
+              <span style="font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#EFECE4; color:#444441; border:1px solid #E4E1D8">Background</span>
+            </div>
+            <div style="font-size:14px; font-weight:600; line-height:1.4">Voluntary carbon market standards revision (ICVCM)</div>
+          </div>
+          <div style="margin-top:4px; padding:12px 14px; background:#EFECE4; border:1px solid #E4E1D8; border-radius:6px; font-size:11.5px; line-height:1.5; color:#6B6B66">4 more watch signals · signals with no activity for 90 days archive automatically</div>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1440px; box-sizing:border-box; padding:14px 18px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:13px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> Drag uses spring physics (Motion layout animations, ~380/30) so cards settle rather than snap; the destination column's tint crossfades over 240ms and its count ticks. New signals arriving from the Policy Radar fade in at the column top with a 1px accent rule for 3s — they never re-sort a column the officer is reading.</div>
+  </div>
+  <div id="1b" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 8px; border-radius:4px">1b</span>
+      <h2 style="margin:0; font-size:20px; font-weight:600">Brief Editor · audience switcher</h2>
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#6B6B66">/briefs/[id]/edit · 1440×900 · Officer + Research Officer</span>
+    </div>
+    <div data-frame="true" style="width:100%; max-width:1440px; min-width:0; box-sizing:border-box; background:#F7F5F0; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 32px -12px rgba(44,44,42,0.18)">
+      <div style="height:56px; flex:none; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:28px; padding:0 24px">
+        <div style="display:flex; align-items:center; gap:9px">
+          <div style="width:18px; height:18px; border-radius:3px; border:1.5px solid #0F6E56; display:flex; align-items:center; justify-content:center"><div style="width:6px; height:6px; background:#0F6E56; border-radius:1px"></div></div>
+          <span style="font-size:13px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#0F6E56">EviBrief</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:#6B6B66">
+          <span style="cursor:pointer" style-hover="color:#0F6E56">Signals</span><span style="color:#C3D2C8">/</span><span style="cursor:pointer" style-hover="color:#0F6E56">EUDR smallholder annex</span><span style="color:#C3D2C8">/</span><span style="font-weight:600; color:#2C2C2A">Policy brief · v3</span>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">autosaved 14:32</span>
+          <span style="font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">In review</span>
+          <button style="font-family:inherit; font-size:13px; font-weight:600; color:#444441; background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; padding:7px 13px; cursor:pointer" style-hover="border-color:#C3D2C8">Export ·  DOCX</button>
+          <button style="font-family:inherit; font-size:13px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:7px 13px; cursor:pointer" style-hover="background:#0B5644">Send for approval</button>
+        </div>
+      </div>
+
+      <div data-grid="editor" style="flex:1; display:grid">
+
+        <div data-pane="editor-nav" style="border-right:1px solid #E4E1D8; background:#FDFCF9; padding:20px 18px; flex-direction:column; gap:22px">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Brief</div>
+            <div style="display:flex; flex-direction:column; gap:7px; font-size:12.5px; color:#444441">
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#6B6B66">Type</span><span style="font-weight:600; color:#2C2C2A">Policy brief</span></div>
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#6B6B66">Length</span><span style="font-weight:600; color:#2C2C2A">5 pages</span></div>
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#6B6B66">Signal</span><span style="font-weight:600; color:#8A6032">Immediate</span></div>
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#6B6B66">Deadline</span><span style="font-weight:600; color:#2C2C2A">21 Aug</span></div>
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#6B6B66">Drafted</span><span style="font-weight:600; color:#2C2C2A">Gemini · 14:09</span></div>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66; margin-bottom:4px">Sections</div>
+            <div style="font-size:12.5px; font-weight:600; color:#0F6E56; padding:6px 10px; border-left:2px solid #0F6E56; background:#E1F5EE; border-radius:0 4px 4px 0">Executive summary</div>
+            <div style="font-size:12.5px; color:#444441; padding:6px 10px; border-left:2px solid transparent; cursor:pointer" style-hover="background:#EFECE4">Context</div>
+            <div style="font-size:12.5px; color:#444441; padding:6px 10px; border-left:2px solid transparent; cursor:pointer" style-hover="background:#EFECE4">Evidence</div>
+            <div style="display:flex; align-items:center; gap:7px; font-size:12.5px; color:#444441; padding:6px 10px; border-left:2px solid transparent; cursor:pointer" style-hover="background:#EFECE4">Recommendations <span style="width:6px; height:6px; border-radius:50%; border:1.5px solid #496375"></span></div>
+            <div style="font-size:12.5px; color:#444441; padding:6px 10px; border-left:2px solid transparent; cursor:pointer" style-hover="background:#EFECE4">Implementation pathway</div>
+            <div style="font-size:12.5px; color:#444441; padding:6px 10px; border-left:2px solid transparent; cursor:pointer" style-hover="background:#EFECE4">About Tropenbos Ghana</div>
+          </div>
+          <div style="margin-top:auto; padding:13px; border:1px solid #E4E1D8; border-radius:6px; background:#F7F5F0; display:flex; flex-direction:column; gap:8px">
+            <div style="font-size:11.5px; font-weight:600; color:#2C2C2A">Version history</div>
+            <div style="font-size:11.5px; line-height:1.6; color:#6B6B66">v3 · audience switched to Ministry<br>v2 · 2 citations replaced<br>v1 · generated from 8 evidence items</div>
+          </div>
+        </div>
+
+        <div data-pane="editor-main" style="display:flex; flex-direction:column; background:#F7F5F0">
+          <div style="flex:none; padding:16px 32px; border-bottom:1px solid #E4E1D8; background:#FDFCF9; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:center; gap:12px">
+              <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Audience</div>
+              <div style="display:flex; gap:2px; padding:3px; background:#EFECE4; border:1px solid #E4E1D8; border-radius:6px">
+                <span style="font-size:12.5px; font-weight:600; padding:6px 14px; border-radius:4px; background:#FDFCF9; color:#0F6E56; box-shadow:0 1px 2px rgba(44,44,42,0.06)">Ghana ministry</span>
+                <span style="font-size:12.5px; font-weight:500; padding:6px 14px; border-radius:4px; color:#6B6B66; cursor:pointer" style-hover="background:#E5E1D7">Cocoa company</span>
+                <span style="font-size:12.5px; font-weight:500; padding:6px 14px; border-radius:4px; color:#6B6B66; cursor:pointer" style-hover="background:#E5E1D7">EU / DG ENV</span>
+                <span style="font-size:12.5px; font-weight:500; padding:6px 14px; border-radius:4px; color:#6B6B66; cursor:pointer" style-hover="background:#E5E1D7">Donor</span>
+                <span style="font-size:12.5px; font-weight:500; padding:6px 14px; border-radius:4px; color:#6B6B66; cursor:pointer" style-hover="background:#E5E1D7">CREMA</span>
+              </div>
+              <div style="margin-left:auto; display:flex; align-items:center; gap:8px; font-size:11.5px; color:#6B6B66"><span style="width:6px; height:6px; border-radius:50%; background:#1D9E75"></span>Same 8 evidence items · framing regenerated</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:12px; color:#6B6B66">
+              <span style="font-weight:600; color:#444441">Formal, deferential, concise</span><span style="color:#C3D2C8">·</span><span>Bullet recommendations</span><span style="color:#C3D2C8">·</span><span>Ghana NDC framing</span><span style="color:#C3D2C8">·</span><span style="color:#0F6E56; font-weight:600; cursor:pointer">Twi rendering available</span>
+            </div>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding:26px 32px; display:flex; justify-content:center">
+            <div style="width:100%; max-width:700px; height:fit-content; background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; padding:36px 44px; display:flex; flex-direction:column; gap:20px; box-shadow:0 1px 2px rgba(44,44,42,0.05)">
+              <div style="display:flex; flex-direction:column; gap:10px; padding-bottom:18px; border-bottom:1px solid #EFECE4">
+                <div style="display:flex; gap:14px; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">
+                  <span>Policy brief</span><span style="color:#C3D2C8">|</span><span>Ministry of Lands &amp; Natural Resources</span><span style="color:#C3D2C8">|</span><span>Public</span><span style="margin-left:auto; color:#8A6032">29 Jul 2026</span>
+                </div>
+                <h1 style="margin:0; font-size:25px; line-height:1.25; font-weight:600; letter-spacing:-0.02em; text-wrap:pretty">Registering shade-tree tenure before the EUDR annex closes: Ghana's fastest route to compliant cocoa</h1>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:9px">
+                <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#0F6E56">Executive summary</div>
+                <p style="margin:0; font-size:14.5px; line-height:1.7; color:#2C2C2A; text-wrap:pretty">Ghana's cocoa sector cannot demonstrate deforestation-free production while on-farm tree tenure remains unregistered. Tropenbos Ghana field data from four Cocoa Belt landscapes shows shade-tree retention rises with documented tenure<span style="display:inline-flex; align-items:center; gap:5px; margin:0 3px; padding:2px 8px; border-radius:999px; background:#E1F5EE; border:1px solid #BFDFD3; font-size:11px; font-weight:600; color:#0B5644; cursor:pointer" style-hover="background:#CFEDE2; border-color:#1D9E75"><span style="width:5px; height:5px; border-radius:50%; background:#1D9E75"></span>TBG-24-017</span>. We recommend the Ministry lay a fast-track registration instrument before the EUDR implementing annex closes on 21 August.</p>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:9px">
+                <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#0F6E56">Evidence</div>
+                <p style="margin:0; font-size:14.5px; line-height:1.7; color:#2C2C2A; text-wrap:pretty">Across 612 surveyed farms in Ahafo Ano and Asunafo, registered tenure correlated with a 2.4× higher rate of shade-tree retention over five years<span style="display:inline-flex; align-items:center; gap:5px; margin:0 3px; padding:2px 8px; border-radius:999px; background:#E1F5EE; border:1px solid #BFDFD3; font-size:11px; font-weight:600; color:#0B5644; cursor:pointer" style-hover="background:#CFEDE2; border-color:#1D9E75"><span style="width:5px; height:5px; border-radius:50%; background:#1D9E75"></span>TBG-24-017</span>. Comparable community-forestry registers in DR Congo produced measurable gains within two seasons<span style="display:inline-flex; align-items:center; gap:5px; margin:0 3px; padding:2px 8px; border-radius:999px; background:#E1F5EE; border:1px solid #BFDFD3; font-size:11px; font-weight:600; color:#0B5644; cursor:pointer" style-hover="background:#CFEDE2; border-color:#1D9E75"><span style="width:5px; height:5px; border-radius:50%; background:#1D9E75"></span>TBI-DRC-22</span>.</p>
+                <div style="margin-top:4px; padding:14px 18px; background:#F7F5F0; border-left:2px solid #1D9E75; border-radius:0 4px 4px 0">
+                  <p style="margin:0; font-family:'Source Serif 4', Georgia, serif; font-size:15px; line-height:1.6; color:#2C2C2A; text-wrap:pretty">Only 12% of surveyed farmers could name the legal owner of the shade trees standing on their own plots.</p>
+                  <div style="margin-top:9px; font-size:11.5px; color:#6B6B66">Tropenbos Ghana, <span style="font-family:'Source Serif 4', Georgia, serif; font-style:italic">Tree Tenure &amp; Shade Retention in the Cocoa Belt</span>, 2024 · p.31</div>
+                </div>
+                <p style="margin:6px 0 0; font-size:14.5px; line-height:1.7; color:#2C2C2A; text-wrap:pretty">Farmer-reported uptake of on-farm planting reached <span data-flag="pulse" style="background:#E7EDF2; border-bottom:2px solid #496375; padding:1px 3px; border-radius:2px">38% of cocoa plots in the Western North region</span><span style="display:inline-flex; align-items:center; gap:5px; margin:0 3px; padding:2px 8px; border-radius:999px; background:#E7EDF2; border:1px solid #C6D4DF; font-size:11px; font-weight:600; color:#33495A; cursor:pointer"><span style="width:5px; height:5px; border-radius:50%; border:1.5px solid #496375"></span>unverified</span> following the 2023 seedling programme.</p>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:9px">
+                <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#0F6E56">Recommendations</div>
+                <div style="display:flex; flex-direction:column; gap:10px">
+                  <div style="display:flex; gap:12px"><span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#0F6E56; padding-top:3px">01</span><div style="font-size:14.5px; line-height:1.65; color:#2C2C2A; text-wrap:pretty">Lay a fast-track shade-tree registration instrument before 26 February, using the existing Lands Commission farm register as the base layer.</div></div>
+                  <div style="display:flex; gap:12px"><span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#0F6E56; padding-top:3px">02</span><div style="font-size:14.5px; line-height:1.65; color:#2C2C2A; text-wrap:pretty">Direct Cocobod's technical committee to align its scheme review with the registration instrument rather than run a parallel process.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div data-pane="editor-side" style="background:#FDFCF9; display:flex; flex-direction:column">
+          <div style="flex:none; padding:14px 18px; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:10px">
+            <div style="font-size:12.5px; font-weight:600">Evidence &amp; verification</div>
+            <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">8 items</span>
+          </div>
+          <div style="flex:none; padding:16px 18px; border-bottom:1px solid #E4E1D8; display:flex; flex-direction:column; gap:12px">
+            <div style="border:1px solid #C6D4DF; background:#E7EDF2; border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:9px">
+              <div style="display:flex; align-items:center; gap:9px">
+                <div style="width:15px; height:15px; border-radius:50%; border:2px solid #496375; flex:none; display:flex; align-items:center; justify-content:center"><div style="width:3.5px; height:3.5px; border-radius:50%; background:#496375"></div></div>
+                <div style="font-size:13px; font-weight:600; color:#33495A">Hallucination guard · 1 claim flagged</div>
+              </div>
+              <div style="font-size:12px; line-height:1.55; color:#3E5566; text-wrap:pretty">“38% of cocoa plots in the Western North region” is not traceable to any of the 8 evidence items. Confirm the figure against a source, replace it, or cut the sentence.</div>
+              <div style="display:flex; gap:8px; padding-top:4px">
+                <button style="font-family:inherit; font-size:12px; font-weight:600; color:#FDFCF9; background:#33495A; border:1px solid #33495A; border-radius:6px; padding:7px 12px; cursor:pointer" style-hover="background:#243745">Review claim</button>
+                <button style="font-family:inherit; font-size:12px; font-weight:600; color:#33495A; background:transparent; border:1px solid #C6D4DF; border-radius:6px; padding:7px 12px; cursor:pointer" style-hover="background:#DCE6EE">Find a source</button>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12px; color:#6B6B66"><span style="width:14px; height:14px; border-radius:50%; background:#E1F5EE; border:1px solid #1D9E75; flex:none; display:flex; align-items:center; justify-content:center"><span style="width:4px; height:4px; border-radius:50%; background:#1D9E75"></span></span>7 of 8 cited statistics verified against source text</div>
+            <div style="padding:11px 13px; background:#EFECE4; border:1px solid #E4E1D8; border-radius:6px; font-size:11.5px; line-height:1.55; color:#444441">Approval is blocked while a flag is open. Only the Research Officer or Programme Director can clear one.</div>
+          </div>
+          <div style="flex:1; overflow:hidden; padding:14px 18px; display:flex; flex-direction:column; gap:10px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Cited in this draft</div>
+            <div style="border:1px solid #BFDFD3; background:#E1F5EE; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:500; color:#0B5644">TBG-24-017</span><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#0B5644">0.91</span></div>
+              <div style="font-size:12.5px; font-weight:600; line-height:1.4">Tree Tenure &amp; Shade Retention in the Cocoa Belt</div>
+              <div style="font-size:11px; color:#1A5A49">Field data · Tropenbos Ghana · 2024 · used 2×</div>
+            </div>
+            <div style="border:1px solid #E4E1D8; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:500; color:#444441">TBI-DRC-22</span><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#6B6B66">0.74</span></div>
+              <div style="font-size:12.5px; font-weight:600; line-height:1.4">Community forestry &amp; benefit sharing</div>
+              <div style="font-size:11px; color:#6B6B66">Research · TBI DR Congo · 2022 · used 1×</div>
+            </div>
+            <div style="border:1px solid #E4E1D8; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; justify-content:space-between; gap:8px"><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:500; color:#444441">TBG-23-104</span><span style="font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#6B6B66">0.69</span></div>
+              <div style="font-size:12.5px; font-weight:600; line-height:1.4">Cocoa agroforestry baseline survey</div>
+              <div style="font-size:11px; color:#6B6B66">Field data · Tropenbos Ghana · 2023 · not yet cited</div>
+            </div>
+            <div style="margin-top:2px; font-size:11.5px; color:#0F6E56; font-weight:600; cursor:pointer">Show all 8 matched items</div>
+            <div style="margin-top:auto; padding:12px 13px; background:#F3EBE0; border:1px solid #E0D2BE; border-radius:6px; font-size:11.5px; line-height:1.55; color:#5E4020">Evidence gap noted: no Ghana-specific data on smallholder cost of registration. Flagged to the research queue.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1440px; box-sizing:border-box; padding:14px 18px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:13px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> Switching audience crossfades body prose over 260ms while shared citation chips animate their new position and stay visually anchored — “same evidence, reframed”, not “new document loaded”. The flagged sentence pulses its slate underline once over 900ms on arrival, then holds a steady 2px line; resolving it fades the underline out over 200ms and re-enables approval.</div>
+  </div>
+  <div id="1c" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 8px; border-radius:4px">1c</span>
+      <h2 style="margin:0; font-size:20px; font-weight:600">Evidence Library</h2>
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#6B6B66">/evidence · 1440×900 · Research Officer</span>
+    </div>
+    <div data-frame="true" style="width:100%; max-width:1440px; min-width:0; box-sizing:border-box; background:#F7F5F0; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 32px -12px rgba(44,44,42,0.18)">
+      <div style="height:56px; flex:none; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:28px; padding:0 24px">
+        <div style="display:flex; align-items:center; gap:9px">
+          <div style="width:18px; height:18px; border-radius:3px; border:1.5px solid #0F6E56; display:flex; align-items:center; justify-content:center"><div style="width:6px; height:6px; background:#0F6E56; border-radius:1px"></div></div>
+          <span style="font-size:13px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#0F6E56">EviBrief</span>
+        </div>
+        <div data-nav="main" style="gap:4px">
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Dashboard</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Signals</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Briefs</span>
+          <span style="font-size:13px; font-weight:600; color:#0F6E56; padding:6px 10px; border-radius:4px; background:#E1F5EE">Evidence</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Stakeholders</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Impact</span>
+        </div>
+        <div style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#EFECE4; border:1px solid #E4E1D8; color:#444441; font-size:11.5px; font-weight:600; display:flex; align-items:center; justify-content:center">RO</div>
+      </div>
+
+      <div style="flex:none; padding:24px 32px 18px; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:flex-end; justify-content:space-between; gap:32px">
+        <div style="display:flex; flex-direction:column; gap:14px; flex:1; max-width:760px">
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <h1 style="margin:0; font-size:24px; font-weight:600; letter-spacing:-0.015em">Evidence library</h1>
+            <div style="font-size:13px; color:#6B6B66">1,284 items · 9 partner countries · last ingest 28 Jul, 09:41</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:11px 14px; background:#F7F5F0; border:1px solid #C3D2C8; border-radius:6px">
+            <div style="width:13px; height:13px; border:1.5px solid #0F6E56; border-radius:50%; flex:none"></div>
+            <span style="font-size:14px; color:#2C2C2A">tree tenure and shade retention in cocoa</span>
+            <span style="margin-left:auto; font-size:11.5px; color:#6B6B66">keyword + semantic</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button style="font-family:inherit; font-size:13.5px; font-weight:600; color:#0F6E56; background:#FDFCF9; border:1px solid #C3D2C8; border-radius:6px; padding:8px 14px; cursor:pointer" style-hover="background:#E1F5EE; border-color:#1D9E75">Ingest document</button>
+          <button style="font-family:inherit; font-size:13.5px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:8px 14px; cursor:pointer" style-hover="background:#0B5644">Review queue · 6</button>
+        </div>
+      </div>
+
+      <div data-grid="evidence" style="flex:1; display:grid">
+        <div data-pane="evidence-filters" style="border-right:1px solid #E4E1D8; background:#FDFCF9; padding:20px 18px; flex-direction:column; gap:20px">
+          <div style="display:flex; flex-direction:column; gap:9px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Source type</div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#2C2C2A"><span style="width:14px; height:14px; border-radius:3px; background:#0F6E56; border:1px solid #0F6E56; flex:none; display:flex; align-items:center; justify-content:center"><span style="width:6px; height:2px; background:#FDFCF9"></span></span>Field data <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">318</span></div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#2C2C2A"><span style="width:14px; height:14px; border-radius:3px; background:#0F6E56; border:1px solid #0F6E56; flex:none; display:flex; align-items:center; justify-content:center"><span style="width:6px; height:2px; background:#FDFCF9"></span></span>Research <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">602</span></div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#444441"><span style="width:14px; height:14px; border-radius:3px; background:#FDFCF9; border:1px solid #C3D2C8; flex:none"></span>Literature <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">364</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:9px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Country</div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#2C2C2A"><span style="width:14px; height:14px; border-radius:3px; background:#0F6E56; border:1px solid #0F6E56; flex:none; display:flex; align-items:center; justify-content:center"><span style="width:6px; height:2px; background:#FDFCF9"></span></span>Ghana <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">741</span></div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#444441"><span style="width:14px; height:14px; border-radius:3px; background:#FDFCF9; border:1px solid #C3D2C8; flex:none"></span>DR Congo <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">128</span></div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#444441"><span style="width:14px; height:14px; border-radius:3px; background:#FDFCF9; border:1px solid #C3D2C8; flex:none"></span>Colombia <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">96</span></div>
+            <div style="display:flex; align-items:center; gap:9px; font-size:12.5px; color:#444441"><span style="width:14px; height:14px; border-radius:3px; background:#FDFCF9; border:1px solid #C3D2C8; flex:none"></span>Viet Nam <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66">74</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:9px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Impact area</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px">
+              <span style="font-size:11.5px; font-weight:600; padding:4px 9px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Community forestry</span>
+              <span style="font-size:11.5px; padding:4px 9px; border-radius:999px; background:#FDFCF9; color:#444441; border:1px solid #E4E1D8; cursor:pointer">Restoration</span>
+              <span style="font-size:11.5px; padding:4px 9px; border-radius:999px; background:#FDFCF9; color:#444441; border:1px solid #E4E1D8; cursor:pointer">Diversified production</span>
+              <span style="font-size:11.5px; padding:4px 9px; border-radius:999px; background:#FDFCF9; color:#444441; border:1px solid #E4E1D8; cursor:pointer">Cross-cutting</span>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:9px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Year</div>
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#444441">2015</span><div style="flex:1; height:3px; background:#E4E1D8; border-radius:2px; position:relative"><div style="position:absolute; left:35%; right:0; height:3px; background:#0F6E56; border-radius:2px"></div><div style="position:absolute; left:35%; top:-4px; width:11px; height:11px; border-radius:50%; background:#FDFCF9; border:2px solid #0F6E56"></div></div><span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#444441">2026</span></div>
+          </div>
+          <div style="margin-top:auto; padding:12px 13px; background:#F3EBE0; border:1px solid #E0D2BE; border-radius:6px; display:flex; flex-direction:column; gap:6px">
+            <div style="display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:600; color:#5E4020"><span style="width:7px; height:7px; border-radius:1px; border:1.5px solid #8A6032"></span>6 awaiting classification</div>
+            <div style="font-size:11px; line-height:1.5; color:#6B5236">Held out of the AI pipeline until tagged public, community-sourced, or internal.</div>
+          </div>
+        </div>
+
+        <div data-pane="evidence-list" style="display:flex; flex-direction:column">
+          <div data-row="ev" style="display:grid; gap:14px; padding:11px 24px; background:#EFECE4; border-bottom:1px solid #E4E1D8; font-size:10.5px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:#6B6B66">
+            <div>Source</div><div>Type</div><div>Classification</div><div>Relevance</div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; background:#E1F5EE; border-bottom:1px solid #BFDFD3; border-left:2px solid #0F6E56; cursor:pointer">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="font-size:14px; font-weight:600">Tree Tenure &amp; Shade Retention in the Cocoa Belt</div><div style="font-size:11.5px; color:#1A5A49">Tropenbos Ghana · 2024 · Ahafo Ano, Asunafo · 612 farms · cited in 4 briefs</div></div>
+            <div style="font-size:12px; color:#1A5A49">Field data</div>
+            <div style="font-size:11px; font-weight:600; color:#0B5644">Public</div>
+            <div style="display:flex; flex-direction:column; gap:5px"><div style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#0B5644">0.91</div><div style="height:3px; background:#BFDFD3; border-radius:2px"><div data-fill="true" style="width:91%; height:3px; background:#0F6E56; border-radius:2px"></div></div></div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; border-bottom:1px solid #EFECE4; cursor:pointer" style-hover="background:#F7F5F0">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="font-size:14px; font-weight:600">Cocoa agroforestry baseline survey</div><div style="font-size:11.5px; color:#6B6B66">Tropenbos Ghana · 2023 · Western North · cited in 2 briefs</div></div>
+            <div style="font-size:12px; color:#444441">Field data</div>
+            <div style="font-size:11px; font-weight:600; color:#0B5644">Public</div>
+            <div style="display:flex; flex-direction:column; gap:5px"><div style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#444441">0.74</div><div style="height:3px; background:#E4E1D8; border-radius:2px"><div data-fill="true" style="width:74%; height:3px; background:#3B917A; border-radius:2px"></div></div></div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; border-bottom:1px solid #EFECE4; cursor:pointer" style-hover="background:#F7F5F0">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="font-size:14px; font-weight:600">Community forestry &amp; benefit sharing</div><div style="font-size:11.5px; color:#6B6B66">TBI DR Congo · 2022 · Mai-Ndombe · cited in 1 brief</div></div>
+            <div style="font-size:12px; color:#444441">Research</div>
+            <div style="font-size:11px; font-weight:600; color:#0B5644">Public</div>
+            <div style="display:flex; flex-direction:column; gap:5px"><div style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#444441">0.69</div><div style="height:3px; background:#E4E1D8; border-radius:2px"><div data-fill="true" style="width:69%; height:3px; background:#3B917A; border-radius:2px"></div></div></div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; border-bottom:1px solid #EFECE4; background:#FBF7F1; cursor:pointer">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="display:flex; align-items:center; gap:8px"><div style="font-size:14px; font-weight:600">Ahafo Ano farmer interview transcripts (batch 12)</div><span style="display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px; background:#F3EBE0; color:#5E4020; border:1px solid #E0D2BE"><span style="width:5px; height:5px; border-radius:1px; border:1.5px solid #8A6032"></span>Classification pending</span></div><div style="font-size:11.5px; color:#6B5236">Field officer upload · 24 Jul · held out of the AI pipeline</div></div>
+            <div style="font-size:12px; color:#444441">Field data</div>
+            <div style="font-size:11px; font-weight:600; color:#8A6032">Untagged</div>
+            <div style="font-size:11.5px; color:#8E8B84">—</div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; border-bottom:1px solid #EFECE4; cursor:pointer" style-hover="background:#F7F5F0">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="font-size:14px; font-weight:600">Smallholder EUDR readiness in West Africa</div><div style="font-size:11.5px; color:#6B6B66">WRI · 2025 · regional · external evidence</div></div>
+            <div style="font-size:12px; color:#444441">Literature</div>
+            <div style="font-size:11px; font-weight:600; color:#0B5644">Public</div>
+            <div style="display:flex; flex-direction:column; gap:5px"><div style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#444441">0.61</div><div style="height:3px; background:#E4E1D8; border-radius:2px"><div data-fill="true" style="width:61%; height:3px; background:#6FA893; border-radius:2px"></div></div></div>
+          </div>
+          <div data-row="ev" style="display:grid; gap:14px; padding:16px 24px; align-items:center; border-bottom:1px solid #EFECE4; cursor:pointer" style-hover="background:#F7F5F0">
+            <div style="display:flex; flex-direction:column; gap:4px"><div style="font-size:14px; font-weight:600">Women-led agroforestry enterprise outcomes</div><div style="font-size:11.5px; color:#6B6B66">TBI Viet Nam · 2023 · Bac Kan</div></div>
+            <div style="font-size:12px; color:#444441">Research</div>
+            <div style="font-size:11px; font-weight:600; color:#0B5644">Public</div>
+            <div style="display:flex; flex-direction:column; gap:5px"><div style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#444441">0.44</div><div style="height:3px; background:#E4E1D8; border-radius:2px"><div data-fill="true" style="width:44%; height:3px; background:#9EC0B0; border-radius:2px"></div></div></div>
+          </div>
+          <div style="padding:16px 24px; display:flex; align-items:center; gap:12px; font-size:12px; color:#6B6B66"><span>Showing 6 of 47 matches</span><span style="color:#C3D2C8">·</span><span style="color:#0F6E56; font-weight:600; cursor:pointer">Load more</span></div>
+        </div>
+
+        <div data-pane="evidence-detail" style="background:#FDFCF9; padding:20px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <div style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#0F6E56">TBG-24-017</div>
+            <div style="font-size:16px; font-weight:600; line-height:1.35">Tree Tenure &amp; Shade Retention in the Cocoa Belt</div>
+            <div style="font-size:11.5px; color:#6B6B66">Amoah, Mensah &amp; Owusu · Tropenbos Ghana · 2024 · 48pp</div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px">
+            <span style="font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3">Field data</span>
+            <span style="font-size:11px; padding:3px 9px; border-radius:999px; background:#EFECE4; color:#444441; border:1px solid #E4E1D8">Ghana</span>
+            <span style="font-size:11px; padding:3px 9px; border-radius:999px; background:#EFECE4; color:#444441; border:1px solid #E4E1D8">Community forestry</span>
+            <span style="font-size:11px; padding:3px 9px; border-radius:999px; background:#EFECE4; color:#444441; border:1px solid #E4E1D8">Public · published</span>
+          </div>
+          <div style="padding:14px 16px; background:#F7F5F0; border-left:2px solid #1D9E75; border-radius:0 4px 4px 0">
+            <p style="margin:0; font-family:'Source Serif 4', Georgia, serif; font-size:14px; line-height:1.6; color:#2C2C2A; text-wrap:pretty">Only 12% of surveyed farmers could name the legal owner of the shade trees standing on their own plots. Where tenure was documented, five-year retention was 2.4× higher.</p>
+            <div style="margin-top:8px; font-size:11px; color:#6B6B66">p.31 · matched excerpt</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Used in</div>
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; color:#444441"><span>EUDR smallholder annex · v3</span><span style="font-size:11px; color:#6B6B66">In review</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; color:#444441"><span>NDC 3.0 forestry submission</span><span style="font-size:11px; color:#6B6B66">Submitted</span></div>
+            <div style="display:flex; justify-content:space-between; font-size:12.5px; color:#444441"><span>Cocobod position paper</span><span style="font-size:11px; color:#6B6B66">Published</span></div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px; padding-top:14px; border-top:1px solid #EFECE4">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Influence</div>
+            <div style="font-size:12.5px; line-height:1.55; color:#444441">Cited once in a Lands Commission working paper, May 2026. <span style="color:#0F6E56; font-weight:600; cursor:pointer">View on impact map</span></div>
+          </div>
+          <div style="margin-top:auto; display:flex; gap:8px">
+            <button style="font-family:inherit; font-size:12.5px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:8px 13px; cursor:pointer" style-hover="background:#0B5644">Open full text</button>
+            <button style="font-family:inherit; font-size:12.5px; font-weight:600; color:#0F6E56; background:#FDFCF9; border:1px solid #C3D2C8; border-radius:6px; padding:8px 13px; cursor:pointer" style-hover="background:#E1F5EE">Add to brief</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1440px; box-sizing:border-box; padding:14px 18px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:13px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> Search results fade and rise 8px in relevance order with a 70ms stagger, so retrieval reads as individual acts rather than a dump. The detail panel slides in 12px over 200ms; row selection is instant (no delay before the tint).</div>
+  </div>
+
+  <div id="1d" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 8px; border-radius:4px">1d</span>
+      <h2 style="margin:0; font-size:20px; font-weight:600">Field Officer view</h2>
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#6B6B66">/field · 390×844 · mobile-first, offline-aware</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start">
+      <div style="width:390px; height:844px; background:#F7F5F0; border:1px solid #DCD8CE; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 32px -12px rgba(44,44,42,0.18)">
+        <div style="flex:none; background:#0F6E56; padding:14px 18px 16px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:center; gap:9px">
+            <div style="width:18px; height:18px; border-radius:3px; border:1.5px solid #E1F5EE; display:flex; align-items:center; justify-content:center"><div style="width:6px; height:6px; background:#E1F5EE; border-radius:1px"></div></div>
+            <span style="font-size:12.5px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#E1F5EE">EviBrief</span>
+            <span style="margin-left:auto; font-size:12px; color:#9ED3C2">Kwame A.</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <div style="font-size:20px; font-weight:600; color:#FDFCF9">This week</div>
+            <div style="font-size:12.5px; color:#9ED3C2">Ahafo Ano landscape · 28 Jul</div>
+          </div>
+        </div>
+        <div data-slide="true" style="flex:none; background:#EFECE4; border-bottom:1px solid #E4E1D8; padding:11px 18px; display:flex; align-items:center; gap:9px">
+          <span style="width:7px; height:7px; border-radius:50%; background:#8E8B84; flex:none"></span>
+          <span style="font-size:12.5px; color:#444441">Offline — showing saved updates</span>
+          <span style="margin-left:auto; font-size:12px; font-weight:600; color:#0F6E56">2 queued</span>
+        </div>
+        <div style="flex:1; overflow:hidden; padding:16px 18px; display:flex; flex-direction:column; gap:14px">
+          <div style="background:#FDFCF9; border:1px solid #E0D2BE; border-left:3px solid #8A6032; border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:9px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#8A6032">Act this month</div>
+            <div style="font-size:16px; font-weight:600; line-height:1.4">Shade-tree registration is being reviewed</div>
+            <div style="font-size:14px; line-height:1.6; color:#444441; text-wrap:pretty">Cocobod is reviewing how farmers register trees on their farms. If farmers in your area have questions, note them — we are sending evidence to the ministry this month.</div>
+            <div style="display:flex; align-items:center; gap:8px; padding-top:10px; border-top:1px solid #EFECE4; font-size:12px; color:#6B6B66"><span>Saved 27 Jul</span><span style="color:#C3D2C8">·</span><span style="color:#0F6E56; font-weight:600">Read in Twi</span></div>
+          </div>
+          <div style="background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:8px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Background</div>
+            <div style="font-size:15px; font-weight:600; line-height:1.4">EU rules on cocoa and forests — what changes</div>
+            <div style="font-size:13.5px; line-height:1.55; color:#6B6B66">One page · saved for offline reading</div>
+          </div>
+          <div style="background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:11px">
+            <div style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Your submissions</div>
+            <div style="display:flex; align-items:center; gap:10px"><span style="width:8px; height:8px; border-radius:50%; background:#8E8B84; flex:none"></span><div style="font-size:14px; color:#2C2C2A">Farm survey · Nyinahin</div><span style="margin-left:auto; font-size:12px; color:#6B6B66">Waiting to send</span></div>
+            <div style="display:flex; align-items:center; gap:10px"><span style="width:8px; height:8px; border-radius:50%; background:#8E8B84; flex:none"></span><div style="font-size:14px; color:#2C2C2A">3 photos · Adugyama</div><span style="margin-left:auto; font-size:12px; color:#6B6B66">Waiting to send</span></div>
+            <div style="display:flex; align-items:center; gap:10px"><span style="width:8px; height:8px; border-radius:50%; background:#1D9E75; flex:none"></span><div style="font-size:14px; color:#2C2C2A">Tree count · Mankranso</div><span style="margin-left:auto; font-size:12px; color:#0B5644; font-weight:600">Sent</span></div>
+          </div>
+        </div>
+        <div style="flex:none; padding:14px 18px 22px; background:#FDFCF9; border-top:1px solid #E4E1D8; display:flex; flex-direction:column; gap:10px">
+          <button style="font-family:inherit; width:100%; font-size:16px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:none; border-radius:6px; padding:16px; cursor:pointer" style-hover="background:#0B5644">Submit an observation</button>
+          <div style="text-align:center; font-size:12px; color:#6B6B66">Works offline — sends when you have signal</div>
+        </div>
+      </div>
+      <div style="flex:1 1 360px; min-width:0; max-width:520px; display:flex; flex-direction:column; gap:16px">
+        <div style="background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; padding:20px; display:flex; flex-direction:column; gap:12px">
+          <div style="font-size:14px; font-weight:600">Constraints this view respects</div>
+          <div style="font-size:13px; line-height:1.65; color:#444441; text-wrap:pretty">One message per card, 14px minimum body text, 48px tap targets, no icon-only controls, no imagery to download. Plain language throughout — no “signal”, “urgency class”, or “relevance score” vocabulary; the officer sees <em>Act this month</em> and <em>Background</em> instead.</div>
+        </div>
+        <div style="background:#2C2C2A; border-radius:6px; padding:20px; display:flex; flex-direction:column; gap:12px">
+          <div style="font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#9ED3C2">USSD fallback · *384#</div>
+          <div style="font-family:'IBM Plex Mono', monospace; font-size:12.5px; line-height:1.9; color:#E8E5DE">EviBrief Ghana<br>1. This month's alert<br>2. Send observation<br>3. Ask a question<br>0. Twi / English<br><br>Reply 1-3</div>
+          <div style="font-size:12px; line-height:1.55; color:#8E8B84">The digest hierarchy is authored once and degrades to four numbered options — the feature-phone path is the same content, not a lesser product.</div>
+        </div>
+        <div style="background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; padding:16px 18px; font-size:13px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> The offline banner slides down 200ms, no bounce, and never covers content. Queued rows switch their dot to accent teal with a 180ms fade as each item syncs — no toast, no progress bar.</div>
+      </div>
+    </div>
+  </div>
+  <div id="1e" style="display:flex; flex-direction:column; gap:14px">
+    <div style="display:flex; align-items:baseline; gap:14px">
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 8px; border-radius:4px">1e</span>
+      <h2 style="margin:0; font-size:20px; font-weight:600">Impact map · donor-facing</h2>
+      <span style="font-family:'IBM Plex Mono', monospace; font-size:12px; color:#6B6B66">/impact · 1440×900 · Programme Director</span>
+    </div>
+    <div data-frame="true" style="width:100%; max-width:1440px; min-width:0; box-sizing:border-box; background:#F7F5F0; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 12px 32px -12px rgba(44,44,42,0.18)">
+      <div style="height:56px; flex:none; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:28px; padding:0 24px">
+        <div style="display:flex; align-items:center; gap:9px">
+          <div style="width:18px; height:18px; border-radius:3px; border:1.5px solid #0F6E56; display:flex; align-items:center; justify-content:center"><div style="width:6px; height:6px; background:#0F6E56; border-radius:1px"></div></div>
+          <span style="font-size:13px; font-weight:600; letter-spacing:0.12em; text-transform:uppercase; color:#0F6E56">EviBrief</span>
+        </div>
+        <div data-nav="main" style="gap:4px">
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Dashboard</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Signals</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Briefs</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Evidence</span>
+          <span style="font-size:13px; font-weight:500; color:#444441; padding:6px 10px; border-radius:4px; cursor:pointer" style-hover="background:#EFECE4">Stakeholders</span>
+          <span style="font-size:13px; font-weight:600; color:#0F6E56; padding:6px 10px; border-radius:4px; background:#E1F5EE">Impact</span>
+        </div>
+        <div style="margin-left:auto; width:30px; height:30px; border-radius:50%; background:#0F6E56; color:#FDFCF9; font-size:11.5px; font-weight:600; display:flex; align-items:center; justify-content:center">PD</div>
+      </div>
+
+      <div style="flex:none; padding:24px 32px 20px; background:#FDFCF9; border-bottom:1px solid #E4E1D8; display:flex; align-items:flex-end; justify-content:space-between; gap:32px">
+        <div style="display:flex; flex-direction:column; gap:5px">
+          <h1 style="margin:0; font-size:24px; font-weight:600; letter-spacing:-0.015em">Evidence into policy</h1>
+          <div style="font-size:13px; color:#6B6B66">Q2 2026 · 14 verified influence events · 9 briefs submitted</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:28px">
+          <div style="display:flex; flex-direction:column; gap:3px"><div style="font-size:26px; font-weight:600; letter-spacing:-0.02em; color:#0F6E56">14</div><div style="font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Influence events</div></div>
+          <div style="width:1px; height:38px; background:#E4E1D8"></div>
+          <div style="display:flex; flex-direction:column; gap:3px"><div style="font-size:26px; font-weight:600; letter-spacing:-0.02em; color:#0F6E56">6</div><div style="font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Policy documents citing TBG</div></div>
+          <div style="width:1px; height:38px; background:#E4E1D8"></div>
+          <div style="display:flex; flex-direction:column; gap:3px"><div style="font-size:26px; font-weight:600; letter-spacing:-0.02em; color:#0F6E56">4.2<span style="font-size:15px; font-weight:500; color:#6B6B66"> days</span></div><div style="font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Signal to submission, median</div></div>
+          <button style="font-family:inherit; font-size:13.5px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:9px 15px; cursor:pointer" style-hover="background:#0B5644">Generate Q2 donor report</button>
+        </div>
+      </div>
+
+      <div data-grid="impact" style="flex:1; display:grid">
+        <div data-pane="impact-main" style="padding:24px 28px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:center; gap:16px">
+            <div style="display:flex; gap:2px; padding:3px; background:#EFECE4; border:1px solid #E4E1D8; border-radius:6px">
+              <span style="font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:4px; background:#FDFCF9; color:#0F6E56">Influence paths</span>
+              <span style="font-size:12.5px; font-weight:500; padding:5px 12px; border-radius:4px; color:#6B6B66; cursor:pointer">Geography</span>
+              <span style="font-size:12.5px; font-weight:500; padding:5px 12px; border-radius:4px; color:#6B6B66; cursor:pointer">Timeline</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px; font-size:11.5px; color:#6B6B66">
+              <span style="display:inline-flex; align-items:center; gap:6px"><span style="width:9px; height:9px; border-radius:50%; background:#0F6E56"></span>Evidence</span>
+              <span style="display:inline-flex; align-items:center; gap:6px"><span style="width:9px; height:9px; border-radius:2px; background:#1D9E75"></span>Brief</span>
+              <span style="display:inline-flex; align-items:center; gap:6px"><span style="width:9px; height:9px; border-radius:50%; background:#FDFCF9; border:2px solid #33495A"></span>Policy document</span>
+              <span style="display:inline-flex; align-items:center; gap:6px"><span style="width:16px; height:2px; background:#C3D2C8"></span>Unverified link</span>
+            </div>
+          </div>
+          <div data-map="true" style="flex:1; position:relative; background:#FDFCF9; border:1px solid #E4E1D8; border-radius:6px; overflow:hidden">
+            <div style="position:absolute; left:-140px; bottom:-260px; width:520px; height:520px; border-radius:50%; border:1px solid #EFECE4; box-shadow:0 0 0 40px #FBFAF6, 0 0 0 41px #EFECE4, 0 0 0 84px #FBFAF6, 0 0 0 85px #EFECE4, 0 0 0 130px #FBFAF6, 0 0 0 131px #EFECE4"></div>
+            <svg viewBox="0 0 1000 470" style="position:absolute; inset:0; width:100%; height:100%">
+              <path pathLength="1" d="M240,110 C300,110 320,150 430,150" fill="none" stroke="#0F6E56" stroke-width="2"></path>
+              <path pathLength="1" d="M240,200 C300,200 330,160 430,150" fill="none" stroke="#0F6E56" stroke-width="2"></path>
+              <path pathLength="1" d="M240,200 C300,220 330,280 430,290" fill="none" stroke="#0F6E56" stroke-width="2"></path>
+              <path pathLength="1" d="M240,300 C300,300 330,295 430,290" fill="none" stroke="#0F6E56" stroke-width="2"></path>
+              <path pathLength="1" d="M240,390 C300,390 330,390 430,385" fill="none" stroke="#C3D2C8" stroke-width="2"></path>
+              <path pathLength="1" d="M560,150 C640,150 660,115 690,115" fill="none" stroke="#1D9E75" stroke-width="2.5"></path>
+              <path pathLength="1" d="M560,150 C640,160 660,250 690,255" fill="none" stroke="#1D9E75" stroke-width="2.5"></path>
+              <path pathLength="1" d="M560,290 C640,290 660,258 690,255" fill="none" stroke="#1D9E75" stroke-width="2.5"></path>
+              <path pathLength="1" d="M560,385 C640,385 660,390 690,390" fill="none" stroke="#C3D2C8" stroke-width="2" stroke-dasharray="5 5" data-dash="true"></path>
+            </svg>
+            <div style="position:absolute; left:28px; top:18px; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Evidence</div>
+            <div style="position:absolute; left:41%; top:18px; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Briefs &amp; submissions</div>
+            <div style="position:absolute; right:28px; top:18px; font-size:10.5px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#6B6B66">Policy outcomes</div>
+
+            <div style="position:absolute; left:24px; top:19%; display:flex; align-items:center; gap:9px"><span style="width:10px; height:10px; border-radius:50%; background:#0F6E56; flex:none"></span><div style="font-size:12px; font-weight:600; color:#2C2C2A; max-width:150px; line-height:1.35">Tree tenure &amp; shade retention</div></div>
+            <div style="position:absolute; left:24px; top:38%; display:flex; align-items:center; gap:9px"><span style="width:10px; height:10px; border-radius:50%; background:#0F6E56; flex:none"></span><div style="font-size:12px; font-weight:600; color:#2C2C2A; max-width:150px; line-height:1.35">Cocoa agroforestry baseline</div></div>
+            <div style="position:absolute; left:24px; top:59%; display:flex; align-items:center; gap:9px"><span style="width:10px; height:10px; border-radius:50%; background:#0F6E56; flex:none"></span><div style="font-size:12px; font-weight:600; color:#2C2C2A; max-width:150px; line-height:1.35">DRC community forestry</div></div>
+            <div style="position:absolute; left:24px; top:78%; display:flex; align-items:center; gap:9px"><span style="width:10px; height:10px; border-radius:50%; background:#C3D2C8; flex:none"></span><div style="font-size:12px; color:#6B6B66; max-width:150px; line-height:1.35">Viet Nam agroforestry outcomes</div></div>
+
+            <div style="position:absolute; left:39%; top:26%; transform:translateY(-50%); background:#E1F5EE; border:1px solid #1D9E75; border-radius:6px; padding:9px 12px; display:flex; flex-direction:column; gap:3px; box-shadow:0 1px 2px rgba(44,44,42,0.05)"><div style="font-size:12px; font-weight:600; color:#0B5644">NDC 3.0 forestry submission</div><div style="font-size:10.5px; color:#1A5A49">Technical submission · Mar 2026</div></div>
+            <div style="position:absolute; left:39%; top:57%; transform:translateY(-50%); background:#E1F5EE; border:1px solid #1D9E75; border-radius:6px; padding:9px 12px; display:flex; flex-direction:column; gap:3px; box-shadow:0 1px 2px rgba(44,44,42,0.05)"><div style="font-size:12px; font-weight:600; color:#0B5644">Cocobod position paper</div><div style="font-size:10.5px; color:#1A5A49">Position paper · Jan 2026</div></div>
+            <div style="position:absolute; left:39%; top:79%; transform:translateY(-50%); background:#FDFCF9; border:1px dashed #C3D2C8; border-radius:6px; padding:9px 12px; display:flex; flex-direction:column; gap:3px"><div style="font-size:12px; font-weight:600; color:#6B6B66">EUDR annex comment</div><div style="font-size:10.5px; color:#8E8B84">In review · not yet submitted</div></div>
+
+            <div style="position:absolute; right:24px; top:21%; transform:translateY(-50%); display:flex; align-items:center; gap:9px; max-width:220px"><span style="width:11px; height:11px; border-radius:50%; background:#FDFCF9; border:2px solid #33495A; flex:none"></span><div style="font-size:12px; font-weight:600; color:#2C2C2A; line-height:1.35">Ghana NDC 3.0 — forestry annex cites TBG field data</div></div>
+            <div style="position:absolute; right:24px; top:52%; transform:translateY(-50%); display:flex; align-items:center; gap:9px; max-width:220px"><span style="width:11px; height:11px; border-radius:50%; background:#FDFCF9; border:2px solid #33495A; flex:none"></span><div style="font-size:12px; font-weight:600; color:#2C2C2A; line-height:1.35">Lands Commission working paper, May 2026</div></div>
+            <div style="position:absolute; right:24px; top:80%; transform:translateY(-50%); display:flex; align-items:center; gap:9px; max-width:220px"><span style="width:11px; height:11px; border-radius:50%; background:#FDFCF9; border:2px dashed #C3D2C8; flex:none"></span><div style="font-size:12px; color:#6B6B66; line-height:1.35">Awaiting outcome</div></div>
+          </div>
+        </div>
+
+        <div data-pane="impact-side" style="background:#FDFCF9; padding:22px 20px; display:flex; flex-direction:column; gap:16px">
+          <div style="display:flex; align-items:center; gap:10px">
+            <div style="font-size:13px; font-weight:600">Influence events</div>
+            <span style="margin-left:auto; font-size:11.5px; color:#0F6E56; font-weight:600; cursor:pointer">All time</span>
+          </div>
+          <div style="border:1px solid #BFDFD3; background:#E1F5EE; border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#0B5644">Adopted in text</span><span style="margin-left:auto; font-size:11px; color:#1A5A49">19 Jun 2026</span></div>
+            <div style="font-size:13.5px; font-weight:600; line-height:1.4; color:#0B5644">NDC 3.0 forestry annex adopts the shade-tenure indicator wording</div>
+            <div style="font-family:'Source Serif 4', Georgia, serif; font-size:12.5px; line-height:1.5; color:#1A5A49">“…registered on-farm tree tenure as a monitored indicator of retention.”</div>
+            <div style="display:flex; align-items:center; gap:7px; padding-top:9px; border-top:1px solid #BFDFD3; font-size:11px; color:#1A5A49"><span style="width:13px; height:13px; border-radius:50%; border:1px solid #1D9E75; background:#FDFCF9; display:flex; align-items:center; justify-content:center; flex:none"><span style="width:4px; height:4px; border-radius:50%; background:#1D9E75"></span></span>Verified by A. Owusu</div>
+          </div>
+          <div style="border:1px solid #E4E1D8; border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Cited</span><span style="margin-left:auto; font-size:11px; color:#6B6B66">14 May 2026</span></div>
+            <div style="font-size:13.5px; font-weight:600; line-height:1.4">Lands Commission working paper cites TBG-24-017 twice</div>
+            <div style="font-size:11.5px; color:#6B6B66">Detected via Scholar alert · verified</div>
+          </div>
+          <div style="border:1px solid #E4E1D8; border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:7px">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#6B6B66">Company commitment</span><span style="margin-left:auto; font-size:11px; color:#6B6B66">22 Apr 2026</span></div>
+            <div style="font-size:13.5px; font-weight:600; line-height:1.4">Supplier sustainability plan references smallholder tenure gap</div>
+            <div style="font-size:11.5px; color:#6B6B66">Logged manually by K. Mensah</div>
+          </div>
+          <div style="border:1px solid #E7EDF2; background:#E7EDF2; border-radius:6px; padding:14px; display:flex; flex-direction:column; gap:6px">
+            <div style="display:flex; align-items:center; gap:8px"><span style="font-size:10.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#33495A">Awaiting verification</span><span style="margin-left:auto; font-size:11px; color:#3E5566">2 events</span></div>
+            <div style="font-size:12.5px; line-height:1.5; color:#3E5566">Unverified events stay out of donor reports until a named staff member confirms the source document.</div>
+          </div>
+          <div style="margin-top:auto; padding:14px; background:#F7F5F0; border:1px solid #E4E1D8; border-radius:6px; display:flex; flex-direction:column; gap:8px">
+            <div style="font-size:12px; font-weight:600">Most-cited evidence type</div>
+            <div style="display:flex; align-items:center; gap:10px"><div style="flex:1; height:6px; background:#E4E1D8; border-radius:3px"><div data-fill="true" style="width:64%; height:6px; background:#0F6E56; border-radius:3px"></div></div><span style="font-family:'IBM Plex Mono', monospace; font-size:11px; color:#444441">64%</span></div>
+            <div style="font-size:11.5px; line-height:1.5; color:#6B6B66">Ghana field data outperforms literature in policy citations — feeding back into research priorities.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1440px; box-sizing:border-box; padding:14px 18px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:13px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> The one cinematic moment: on load, GSAP draws each influence path left to right over ~1.6s in citation-date order, and the outcome node fades up as its line lands. Unverified paths stay dashed and are drawn last, in sage, so credibility ranking is visible in the sequence itself. Hovering a node dims unrelated paths to 25% over 150ms.</div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:24px">
+    <div style="display:flex; flex-direction:column; gap:8px; max-width:760px">
+      <h2 style="margin:0; font-size:22px; font-weight:600; letter-spacing:-0.015em">Core states</h2>
+      <p style="margin:0; font-size:14px; line-height:1.65; color:#444441; text-wrap:pretty">Section 5.2's states, at the panel level where they actually appear. None of them is an error screen: each names what happened, what it costs, and the next action.</p>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:28px; width:100%; max-width:1440px">
+
+      <div id="1f" style="flex:1 1 600px; min-width:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:baseline; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 7px; border-radius:4px">1f</span>
+          <h3 style="margin:0; font-size:16px; font-weight:600">Empty · no evidence above threshold</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">/signals/[id]/generate</span>
+        </div>
+        <div style="background:#FDFCF9; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(44,44,42,0.16)">
+          <div style="padding:16px 22px; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:12px">
+            <div style="display:flex; flex-direction:column; gap:3px">
+              <div style="font-size:14.5px; font-weight:600">Evidence matches</div>
+              <div style="font-size:11.5px; color:#6B6B66">Voluntary carbon market standards revision (ICVCM) · Watch</div>
+            </div>
+            <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">threshold 0.55</span>
+          </div>
+          <div style="padding:36px 40px 30px; display:flex; flex-direction:column; align-items:center; gap:16px; text-align:center">
+            <div style="width:56px; height:56px; border-radius:50%; border:1px solid #C3D2C8; box-shadow:0 0 0 9px #F7F5F0, 0 0 0 10px #E4E1D8, 0 0 0 19px #FBFAF6, 0 0 0 20px #EFECE4"></div>
+            <div style="display:flex; flex-direction:column; gap:8px; max-width:430px">
+              <div style="font-size:17px; font-weight:600">No evidence cleared the confidence threshold</div>
+              <p style="margin:0; font-size:13.5px; line-height:1.6; color:#444441; text-wrap:pretty">The closest match scored 0.41 — below 0.55, so nothing was passed to the generator. Drafting from weak matches is how briefs lose credibility, so we stopped here rather than filling the gap.</p>
+            </div>
+            <div style="display:flex; gap:10px; padding-top:4px">
+              <button style="font-family:inherit; font-size:13px; font-weight:600; color:#FDFCF9; background:#0F6E56; border:1px solid #0F6E56; border-radius:6px; padding:9px 15px; cursor:pointer" style-hover="background:#0B5644">Broaden to 0.40 and review manually</button>
+              <button style="font-family:inherit; font-size:13px; font-weight:600; color:#0F6E56; background:#FDFCF9; border:1px solid #C3D2C8; border-radius:6px; padding:9px 15px; cursor:pointer" style-hover="background:#E1F5EE; border-color:#1D9E75">Log as a research gap</button>
+            </div>
+          </div>
+          <div style="padding:14px 22px; background:#F7F5F0; border-top:1px solid #E4E1D8; display:flex; align-items:center; gap:12px">
+            <span style="font-size:11.5px; color:#6B6B66">Nearest below threshold</span>
+            <span style="font-size:12.5px; color:#444441">Carbon rights &amp; community benefit sharing · TBI Colombia · 2021</span>
+            <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#8E8B84">0.41</span>
+          </div>
+        </div>
+        <div style="padding:12px 16px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:12.5px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> The contour mark draws in over 300ms once; no looping animation on an empty panel. Logging a research gap collapses the panel to a single confirmation row over 200ms.</div>
+      </div>
+
+      <div id="1g" style="flex:1 1 600px; min-width:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:baseline; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 7px; border-radius:4px">1g</span>
+          <h3 style="margin:0; font-size:16px; font-weight:600">Rate-limited · generation delayed</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">/briefs/[id]/edit</span>
+        </div>
+        <div style="background:#FDFCF9; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(44,44,42,0.16)">
+          <div style="padding:16px 22px; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:12px">
+            <div style="font-size:14.5px; font-weight:600">Drafting for: Cocoa company</div>
+            <span style="margin-left:auto; font-size:11.5px; font-weight:600; padding:4px 10px; border-radius:999px; background:#F3EBE0; color:#5E4020; border:1px solid #E0D2BE">Queued</span>
+          </div>
+          <div style="padding:28px 30px; display:flex; flex-direction:column; gap:18px">
+            <div style="display:flex; gap:14px">
+              <div style="width:18px; height:18px; border-radius:50%; border:2px solid #8A6032; flex:none; margin-top:2px; display:flex; align-items:center; justify-content:center"><div style="width:2px; height:7px; background:#8A6032; border-radius:1px"></div></div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <div style="font-size:16px; font-weight:600">Waiting on the model — retrying in 47 seconds</div>
+                <p style="margin:0; font-size:13.5px; line-height:1.6; color:#444441; text-wrap:pretty">The daily free-tier generation quota is temporarily exhausted (14 of 15 requests used this hour). Your draft, evidence selection, and audience choice are saved — the request resumes automatically, and you'll keep your place in the queue if you navigate away.</p>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <div style="height:4px; background:#EFECE4; border-radius:2px; overflow:hidden"><div data-fill="true" style="width:38%; height:4px; background:#8A6032; border-radius:2px"></div></div>
+              <div style="display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#6B6B66"><span>retry 2 of 4 · backoff 60s</span><span>quota resets 15:00 GMT</span></div>
+            </div>
+            <div style="display:flex; gap:10px; padding-top:2px">
+              <button style="font-family:inherit; font-size:13px; font-weight:600; color:#0F6E56; background:#FDFCF9; border:1px solid #C3D2C8; border-radius:6px; padding:9px 15px; cursor:pointer" style-hover="background:#E1F5EE; border-color:#1D9E75">Retry now</button>
+              <button style="font-family:inherit; font-size:13px; font-weight:600; color:#444441; background:transparent; border:1px solid #E4E1D8; border-radius:6px; padding:9px 15px; cursor:pointer" style-hover="background:#EFECE4">Keep editing the Ministry version</button>
+            </div>
+          </div>
+          <div style="padding:13px 22px; background:#E1F5EE; border-top:1px solid #BFDFD3; font-size:12.5px; line-height:1.55; color:#0B5644">The previously approved Ministry draft is untouched and still submittable — a delayed regeneration never blocks work already verified.</div>
+        </div>
+        <div style="padding:12px 16px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:12.5px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> The countdown ticks in text only — no spinner, no pulsing bar. The progress rule advances in 1s steps so the wait is legible at a glance rather than animated for its own sake.</div>
+      </div>
+
+      <div id="1h" style="flex:1 1 600px; min-width:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:baseline; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 7px; border-radius:4px">1h</span>
+          <h3 style="margin:0; font-size:16px; font-weight:600">Generating · sequenced work</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">up to 60s</span>
+        </div>
+        <div style="background:#FDFCF9; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(44,44,42,0.16)">
+          <div style="padding:16px 22px; border-bottom:1px solid #E4E1D8; display:flex; align-items:center; gap:12px">
+            <div style="font-size:14.5px; font-weight:600">Drafting policy brief · Ghana ministry</div>
+            <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">00:31 elapsed</span>
+          </div>
+          <div style="padding:26px 30px; display:flex; flex-direction:column; gap:0">
+            <div style="display:flex; gap:14px">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:0; flex:none"><div style="width:16px; height:16px; border-radius:50%; background:#0F6E56; display:flex; align-items:center; justify-content:center"><div style="width:5px; height:5px; border-radius:50%; background:#FDFCF9"></div></div><div style="width:2px; flex:1; background:#0F6E56; min-height:34px"></div></div>
+              <div style="display:flex; flex-direction:column; gap:3px; padding-bottom:20px">
+                <div style="font-size:14.5px; font-weight:600; color:#2C2C2A">Reading evidence</div>
+                <div style="font-size:12.5px; color:#6B6B66">8 items · 47 chunks · 12s</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:14px">
+              <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:16px; height:16px; border-radius:50%; border:2px solid #0F6E56; background:#E1F5EE; display:flex; align-items:center; justify-content:center"><div style="width:5px; height:5px; border-radius:50%; background:#0F6E56"></div></div><div style="width:2px; flex:1; background:#E4E1D8; min-height:34px"></div></div>
+              <div style="display:flex; flex-direction:column; gap:5px; padding-bottom:20px; flex:1">
+                <div data-breath="true" style="font-size:14.5px; font-weight:600; color:#2C2C2A">Drafting</div>
+                <div style="font-size:12.5px; color:#6B6B66">Section 4 of 6 · Recommendations</div>
+                <div style="height:3px; width:60%; background:#E1F5EE; border-radius:2px; margin-top:2px"><div data-fill="true" style="width:62%; height:3px; background:#0F6E56; border-radius:2px"></div></div>
+              </div>
+            </div>
+            <div style="display:flex; gap:14px">
+              <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:16px; height:16px; border-radius:50%; border:2px solid #E4E1D8; background:#FDFCF9"></div></div>
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <div style="font-size:14.5px; font-weight:600; color:#8E8B84">Verifying citations</div>
+                <div style="font-size:12.5px; color:#8E8B84">Every cited figure is checked against source text before the draft opens</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:13px 22px; background:#F7F5F0; border-top:1px solid #E4E1D8; display:flex; align-items:center; gap:10px; font-size:12.5px; color:#6B6B66"><span>You can leave this page — we'll notify you</span><span style="margin-left:auto; color:#0F6E56; font-weight:600; cursor:pointer">Cancel</span></div>
+        </div>
+        <div style="padding:12px 16px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:12.5px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> Each step's dot fills and its connector draws downward over 250ms as the stage completes; the active label carries a 2s opacity breath at 0.85–1.0 — the only looping motion anywhere in the product, and it stops the moment the stage lands.</div>
+      </div>
+
+      <div id="1i" style="flex:1 1 600px; min-width:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:baseline; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 7px; border-radius:4px">1i</span>
+          <h3 style="margin:0; font-size:16px; font-weight:600">Flagged claim · review prompt</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">/briefs/[id]/edit — inline</span>
+        </div>
+        <div style="background:#FDFCF9; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(44,44,42,0.16)">
+          <div style="padding:26px 30px 22px; display:flex; flex-direction:column; gap:14px">
+            <p style="margin:0; font-size:14.5px; line-height:1.75; color:#2C2C2A; text-wrap:pretty">Farmer-reported uptake of on-farm planting reached <span data-flag="pulse" style="background:#E7EDF2; border-bottom:2px solid #496375; padding:1px 3px; border-radius:2px">38% of cocoa plots in the Western North region</span> following the 2023 seedling programme.</p>
+            <div style="border:1px solid #C6D4DF; background:#E7EDF2; border-radius:6px; padding:16px; display:flex; flex-direction:column; gap:12px">
+              <div style="display:flex; align-items:center; gap:10px">
+                <div style="width:16px; height:16px; border-radius:50%; border:2px solid #496375; flex:none; display:flex; align-items:center; justify-content:center"><div style="width:4px; height:4px; border-radius:50%; background:#496375"></div></div>
+                <div style="font-size:13.5px; font-weight:600; color:#33495A">Not traceable to a cited source</div>
+                <span style="margin-left:auto; font-family:'IBM Plex Mono', monospace; font-size:11px; color:#3E5566">guard pass · 14:11</span>
+              </div>
+              <div style="font-size:13px; line-height:1.6; color:#3E5566; text-wrap:pretty">The figure 38% does not appear in any of the 8 evidence items passed to the generator. The closest supported statement is:</div>
+              <div style="padding:12px 14px; background:#FDFCF9; border-left:2px solid #496375; border-radius:0 4px 4px 0">
+                <p style="margin:0; font-family:'Source Serif 4', Georgia, serif; font-size:13.5px; line-height:1.6; color:#2C2C2A">Uptake of on-farm planting was reported on 31% of surveyed plots in Western North.</p>
+                <div style="margin-top:7px; font-size:11px; color:#6B6B66">Cocoa agroforestry baseline survey, 2023 · p.12</div>
+              </div>
+              <div style="display:flex; gap:8px">
+                <button style="font-family:inherit; font-size:12.5px; font-weight:600; color:#FDFCF9; background:#33495A; border:1px solid #33495A; border-radius:6px; padding:8px 13px; cursor:pointer" style-hover="background:#243745">Replace with 31%</button>
+                <button style="font-family:inherit; font-size:12.5px; font-weight:600; color:#33495A; background:transparent; border:1px solid #C6D4DF; border-radius:6px; padding:8px 13px; cursor:pointer" style-hover="background:#DCE6EE">Cite another source</button>
+                <button style="font-family:inherit; font-size:12.5px; font-weight:600; color:#33495A; background:transparent; border:1px solid transparent; border-radius:6px; padding:8px 11px; cursor:pointer" style-hover="background:#DCE6EE">Delete sentence</button>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; padding-top:6px">
+              <button style="font-family:inherit; font-size:13px; font-weight:600; color:#8E8B84; background:#F2EFE9; border:1px solid #E4E1D8; border-radius:6px; padding:9px 15px; cursor:not-allowed">Approve &amp; submit</button>
+              <span style="font-size:12.5px; color:#6B6B66">Blocked until this flag is cleared by the Research Officer or Director</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 16px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:12.5px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> On arrival the highlight pulses its background 0.35→0 opacity once over 900ms with a soft ease, then holds the steady 2px slate underline. No blink, no colour change, no sound. Resolving fades the highlight out over 200ms and the disabled button transitions to primary.</div>
+      </div>
+
+      <div id="1j" style="flex:1 1 600px; min-width:0; display:flex; flex-direction:column; gap:12px">
+        <div style="display:flex; align-items:baseline; gap:12px">
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; font-weight:500; color:#FDFCF9; background:#2C2C2A; padding:3px 7px; border-radius:4px">1j</span>
+          <h3 style="margin:0; font-size:16px; font-weight:600">Classification pending · queue count</h3>
+          <span style="font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:#6B6B66">/evidence — review queue</span>
+        </div>
+        <div style="background:#FDFCF9; border:1px solid #DCD8CE; border-radius:8px; overflow:hidden; box-shadow:0 8px 24px -12px rgba(44,44,42,0.16)">
+          <div style="padding:16px 22px; border-bottom:1px solid #E0D2BE; background:#F3EBE0; display:flex; align-items:center; gap:12px">
+            <span style="width:9px; height:9px; border-radius:1px; border:1.5px solid #8A6032; flex:none"></span>
+            <div style="font-size:14.5px; font-weight:600; color:#5E4020">6 evidence items awaiting classification</div>
+            <span style="margin-left:auto; font-size:11.5px; color:#6B5236">oldest: 9 days</span>
+          </div>
+          <div style="padding:18px 22px; display:flex; flex-direction:column; gap:14px">
+            <p style="margin:0; font-size:13.5px; line-height:1.6; color:#444441; text-wrap:pretty">Untagged items default to the most restrictive classification and are held out of the AI pipeline entirely — they will not appear in evidence matches until a Research Officer tags them.</p>
+            <div style="border:1px solid #E4E1D8; border-radius:6px; overflow:hidden">
+              <div style="display:flex; align-items:center; gap:12px; padding:13px 15px; border-bottom:1px solid #EFECE4">
+                <div style="display:flex; flex-direction:column; gap:3px; flex:1"><div style="font-size:13.5px; font-weight:600">Ahafo Ano farmer interview transcripts (batch 12)</div><div style="font-size:11.5px; color:#6B6B66">Field officer upload · 24 Jul · 24 transcripts</div></div>
+                <div style="display:flex; gap:6px">
+                  <span style="font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:999px; background:#FDFCF9; color:#444441; border:1px solid #E4E1D8; cursor:pointer" style-hover="border-color:#C3D2C8">Public</span>
+                  <span style="font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:999px; background:#E1F5EE; color:#0B5644; border:1px solid #BFDFD3; cursor:pointer">Community-sourced</span>
+                  <span style="font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:999px; background:#FDFCF9; color:#444441; border:1px solid #E4E1D8; cursor:pointer" style-hover="border-color:#C3D2C8">Internal</span>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:13px 15px; border-bottom:1px solid #EFECE4">
+                <div style="display:flex; flex-direction:column; gap:3px; flex:1"><div style="font-size:13.5px; font-weight:600">Nyinahin plot boundary photos</div><div style="font-size:11.5px; color:#6B6B66">Field officer upload · 21 Jul · 18 images</div></div>
+                <span style="font-size:11.5px; color:#8E8B84">Untagged</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; padding:13px 15px">
+                <div style="display:flex; flex-direction:column; gap:3px; flex:1"><div style="font-size:13.5px; font-weight:600">Draft working paper — tenure cost analysis</div><div style="font-size:11.5px; color:#6B6B66">Internal upload · 18 Jul · unpublished</div></div>
+                <span style="font-size:11.5px; color:#8E8B84">Untagged</span>
+              </div>
+            </div>
+            <div style="padding:13px 15px; background:#E1F5EE; border:1px solid #BFDFD3; border-radius:6px; font-size:12.5px; line-height:1.55; color:#0B5644; text-wrap:pretty">Community-sourced and internal items stay on Tropenbos-controlled storage. Marking one <strong style="font-weight:600">Community-sourced</strong> keeps it searchable for staff but permanently excluded from model prompts.</div>
+          </div>
+        </div>
+        <div style="padding:12px 16px; background:#E7EDF2; border:1px solid #C6D4DF; border-radius:6px; font-size:12.5px; line-height:1.6; color:#33495A; text-wrap:pretty"><strong style="font-weight:600">Motion.</strong> The count in the global header decrements with a 180ms crossfade as each item is tagged, and the row collapses over 200ms. The queue banner never animates on its own — an ageing queue is communicated by the “oldest” figure, not by movement.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+</body>
+</html>
