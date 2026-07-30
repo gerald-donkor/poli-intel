@@ -923,76 +923,58 @@ evidence-governance is the one skill that should be loaded on every task touchin
 
 **10.1 Skills by build phase**
 
-How the skills above map onto the four phases in Section 7's roadmap. agents.md should reference skills by name at the point each phase introduces them — evidence-governance is the one exception, loaded on every phase from Phase 2 onward since it's a standing constraint rather than a phase-specific concern.
+How to actually use the 21 skills (8 project-specific, 13 vendor) at each stage of the build in Section 7's roadmap. Vendor skills provide general tool knowledge; project-specific skills layer this project's actual conventions on top — use them together, not one instead of the other.
 
-|                                     |                                                                                                                                                                    |
-|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Roadmap phase**                   | **Skills to reference**                                                                                                                                            |
-| **Phase 1 — Foundation**            | supabase-schema, server-actions (incl. Auth.js + Uploadthing), design-system, tiptap-editor (basic editor, no citation chips yet)                                  |
-| **Phase 2 — Automation**            | gemini-integration, evidence-governance (now enforced on every call), inngest-jobs, hallucination-guard, tiptap-editor (citation chips + flag rendering added)     |
-| **Phase 3 — Audience intelligence** | tiptap-editor (audience-switcher cross-fade), design-system (motion), gemini-integration (re-generation with new audience parameter)                               |
-| **Phase 4 — Impact & learning**     | inngest-jobs (weekly Impact Tracker run), design-system (GSAP impact map line-drawing), evidence-governance (AI stack scale review, Section 7's Phase 4 task list) |
+**Phase 1 — Foundation (months 1–3)**
 
-**10.2 Vendor & official skills**
+Goal: a working evidence library and manual brief generator, before any automation exists.
 
-In addition to the 8 project-specific skills above, the following vendor-published and Anthropic-official skills should be installed in Claude Code before starting the build. These are general-purpose skills for their respective tools; the project-specific skills in Section 10 layer this project's actual conventions on top of them.
+|                                                          |                                                                            |                                                                                                                                                                                                                         |
+|----------------------------------------------------------|----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Task**                                                 | **Skills to load**                                                         | **How / why**                                                                                                                                                                                                           |
+| **Project scaffold (Next.js, Tailwind, shadcn)**         | shadcn (official) + frontend-design (Anthropic)                            | Run npx shadcn@latest init first, then the shadcn skill guides component choices as screens get built. frontend-design applies general layout/typography judgment throughout, not just at setup.                        |
+| **Database schema (core entities + Auth.js tables)**     | supabase-schema (project) + prisma/skills + supabase/agent-skills (vendor) | supabase-schema has this project's actual entities and the data_classification field; the vendor skills fill in general Postgres/Prisma/RLS knowledge the project skill doesn't restate.                                |
+| **Auth setup (Google Workspace SSO)**                    | server-actions (project)                                                   | Contains the trimmed, domain-restricted Auth.js v5 implementation — use this directly rather than a generic Auth.js skill, which would rebuild the credentials-provider boilerplate this project deliberately excluded. |
+| **Evidence classification UI (Section 4.2, step 11)**    | design-system (project) + shadcn (official)                                | This is the one Phase 1 screen tied directly to evidence-governance's enforcement point — get the three-way classification control right here since every later AI-pipeline task depends on it.                         |
+| **Basic brief editor (no citation chips yet)**           | tiptap-editor (project)                                                    | Only the base Tiptap setup and SSR handling apply in Phase 1; the citation-chip Node and hallucination-flag Mark come in Phase 2 — don't build those early.                                                             |
+| **Manual brief generator, evidence search UI**           | gemini-integration (project) + google-gemini/gemini-skills (vendor)        | First real Gemini API usage in the project — confirm free-tier rate-limit handling from this skill works before Phase 2's automated volume arrives.                                                                     |
+| **Testing the ingestion → classification → search flow** | testdino-hq/playwright-skill (vendor, community)                           | No official Playwright skill exists (Section 10.2) — this community one is the practical choice for early end-to-end tests.                                                                                             |
 
-**Built into Claude Code's default marketplace (claude-plugins-official)**
+**Phase 2 — Automation (months 4–6)**
 
-|                     |                                                         |                                                                                                                                               |
-|---------------------|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| **Skill**           | **Install**                                             | **How it's used in this project**                                                                                                             |
-| **supabase**        | /plugin install supabase@claude-plugins-official        | Postgres schema design, RLS policies, auth patterns — complements the project's own supabase-schema skill for the Section 6.1 free-tier setup |
-| **vercel**          | /plugin install vercel@claude-plugins-official          | Deployment configuration; Vercel Hobby limits and the later Pro-tier migration trigger from Section 6.1                                       |
-| **playwright**      | /plugin install playwright@claude-plugins-official      | Writing and maintaining the Policy Radar's scraping jobs (Section 3.2), run via Inngest                                                       |
-| **sentry**          | /plugin install sentry@claude-plugins-official          | Error tracking setup (Section 6, Monitoring row)                                                                                              |
-| **prisma**          | /plugin install prisma@claude-plugins-official          | General Prisma schema/migration patterns, complementing the project's supabase-schema skill                                                   |
-| **resend**          | /plugin install resend@claude-plugins-official          | Morning digest and notification email setup (Section 6, Email row)                                                                            |
-| **frontend-design** | /plugin install frontend-design@claude-plugins-official | Anthropic's own general UI/UX skill — complements the project's design-system skill and Section 5.6's visual brief                            |
+Goal: the Policy Radar goes live and signals are detected and classified automatically. This is where evidence-governance becomes a standing constraint, not a one-time setup task.
 
-**Vendor-published (separate marketplace)**
+|                                                                 |                                                                                                      |                                                                                                                                                                                                                   |
+|-----------------------------------------------------------------|------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Task**                                                        | **Skills to load**                                                                                   | **How / why**                                                                                                                                                                                                     |
+| **Policy Radar scraping jobs (Section 3.2 cadences)**           | inngest-jobs (project) + inngest (vendor, confirmed via /plugin path) + testdino-hq/playwright-skill | inngest-jobs has the actual source cadences and rate-limit budget; the vendor skills cover Inngest job structure and Playwright scraping mechanics generically.                                                   |
+| **Signal classification, Evidence Matcher (RAG)**               | gemini-integration + evidence-governance (project) + langchain-ai/langchain-skills (vendor)          | evidence-governance must be consulted before every Gemini call from this point forward — not just at setup. LangChain's vendor skill covers general RAG orchestration patterns the project skill doesn't restate. |
+| **Signal dashboard (kanban UI)**                                | design-system (project) + shadcn (official)                                                          | This is the flagship screen from Section 5.6 — lean on design-system's tokens and motion rules (urgency gradient, not stoplight colors) more than default shadcn styling here.                                    |
+| **Citation chips + hallucination-flag rendering in the editor** | tiptap-editor + hallucination-guard (project)                                                        | These two ship together — the citation Node and the flag Mark are both part of this phase's editor work, tied to the fact-check pass landing at the same time.                                                    |
+| **Fact-check / hallucination guard pass itself**                | hallucination-guard (project)                                                                        | No vendor equivalent exists or would make sense — this is entirely project-specific verification logic against this project's evidence schema.                                                                    |
 
-<table>
-<colgroup>
-<col style="width: 16%" />
-<col style="width: 30%" />
-<col style="width: 52%" />
-</colgroup>
-<tbody>
-<tr class="odd">
-<td><strong>Skill</strong></td>
-<td><strong>Install</strong></td>
-<td><strong>How it's used in this project</strong></td>
-</tr>
-<tr class="even">
-<td><strong>inngest</strong></td>
-<td>/plugin marketplace add inngest/inngest-claude-code-plugin<br />
-/plugin install inngest@inngest-claude-code-plugin</td>
-<td>Background job and scheduling patterns — complements the project's inngest-jobs skill for Policy Radar cadences, Evidence Matcher triggers, and Impact Tracker runs (Sections 3.2, 3.5)</td>
-</tr>
-<tr class="odd">
-<td><strong>langchain-skills</strong></td>
-<td>/plugin marketplace add langchain-ai/langchain-skills<br />
-/plugin install langchain-skills@langchain-skills</td>
-<td>RAG pipeline orchestration for the Evidence Matcher (Section 3.3)</td>
-</tr>
-<tr class="even">
-<td><strong>gsap-skills</strong></td>
-<td>/plugin marketplace add greensock/gsap-skills<br />
-/plugin install gsap-skills@greensock</td>
-<td>The impact map's line-drawing animation sequence (Section 5.7) — the one place GSAP is used over Motion</td>
-</tr>
-</tbody>
-</table>
+**Phase 3 — Audience intelligence (months 7–9)**
 
-**Different installer (not /plugin)**
+Goal: one-click audience switching — the same brief reframed for a ministry, a company, and a community leader.
 
-|                    |                                                                         |                                                                                                              |
-|--------------------|-------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| **Skill**          | **Install**                                                             | **How it's used in this project**                                                                            |
-| **gemini-api-dev** | npx skills add google-gemini/gemini-skills --skill gemini-api-dev       | Google's own official Gemini SDK patterns — complements the project's gemini-integration skill (Section 3.4) |
-| **posthog**        | Official MCP setup: posthog.com/docs/model-context-protocol/claude-code | Usage analytics (Section 6, Monitoring row)                                                                  |
-| **shadcn/ui**      | No separate install — npx shadcn@latest init installs it automatically  | Component library; activates once components.json exists (Section 5.5)                                       |
+|                                                              |                                                                        |                                                                                                                                                        |
+|--------------------------------------------------------------|------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Task**                                                     | **Skills to load**                                                     | **How / why**                                                                                                                                          |
+| **Audience switcher UI + cross-fade transition**             | tiptap-editor + design-system (project)                                | tiptap-editor handles diffing the document rather than full re-render; design-system's Section 5.7 motion rules govern the cross-fade specifically.    |
+| **Re-running Brief Generator with a new audience parameter** | gemini-integration + evidence-governance (project)                     | Same governance gate applies here as in Phase 2 — re-generation is still a Gemini call, not exempt just because the evidence was already cleared once. |
+| **Stakeholder CRM (new schema + UI)**                        | supabase-schema (project) + prisma/skills (vendor) + shadcn (official) | New tables, not covered by the Phase 1 schema work — same skill combination pattern as the original schema build.                                      |
+
+**Phase 4 — Impact & learning (months 10–12)**
+
+Goal: close the feedback loop — track where evidence and briefs actually influenced policy.
+
+|                                                                     |                                                                                |                                                                                                                                                                                                |
+|---------------------------------------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Task**                                                            | **Skills to load**                                                             | **How / why**                                                                                                                                                                                  |
+| **Weekly Impact Tracker job**                                       | inngest-jobs (project) + inngest (vendor)                                      | Same combination as the Phase 2 Policy Radar jobs — by this phase the pattern should already be established.                                                                                   |
+| **Impact map (GSAP line-drawing animation)**                        | design-system (project) + greensock/gsap-skills (vendor)                       | The one screen in the whole product using GSAP over Motion (Section 5.7) — load the GSAP vendor skill specifically for this task, not for anything else in the app.                            |
+| **AI stack scale review (Section 7 Phase 4 task list)**             | evidence-governance (project)                                                  | This is the Section 6.1 graduation-trigger review — whether free-tier limits have been outgrown, not a coding task, but the skill's rate-limit knowledge informs the decision.                 |
+| **Deployment, monitoring, analytics (continuous, not phase-bound)** | vercel-labs/agent-skills, getsentry/sentry-for-ai, PostHog wizard (all vendor) | These three apply from Phase 1 onward in practice, not just Phase 4 — listed here because Phase 4 is when they matter most for donor-facing reliability, but install and configure them early. |
 
 <table>
 <colgroup>
@@ -1000,11 +982,50 @@ In addition to the 8 project-specific skills above, the following vendor-publish
 </colgroup>
 <tbody>
 <tr class="odd">
-<td><p><strong>Deliberately not installed</strong></p>
-<p>Auth.js/NextAuth, Tiptap, Motion, and Uploadthing have no established vendor skill worth installing — reviewed during setup and found either too thin or a poor fit (see the Auth.js review in project history). These are covered instead by the project-specific server-actions, tiptap-editor, and design-system skills in Section 10, which encode this project's actual requirements rather than generic tool usage.</p></td>
+<td><p><strong>The one standing rule across all four phases</strong></p>
+<p>evidence-governance is not a Phase 2 skill that stops mattering later — from the moment the first automated Gemini call happens (Phase 2) through Phase 4's re-generation and scale-review tasks, any task touching the AI pipeline should load it first. Treat the phase table above as “when this skill's specific task first appears,” not “when to stop using it.”</p></td>
 </tr>
 </tbody>
 </table>
+
+**10.2 Vendor & official skills (corrected)**
+
+Supersedes an earlier version of this section that relied on Claude Code's /plugin install path against the claude-plugins-official marketplace — that marketplace's cache proved unreliable during setup. The npx skills add format below was verified directly against each vendor's own repository and is the current source of truth.
+
+**Confirmed official — install as-is**
+
+|                              |                                                                   |                                                                                               |
+|------------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| **Skill**                    | **Install**                                                       | **Notes**                                                                                     |
+| **supabase**                 | npx skills add supabase/agent-skills                              | Postgres schema design, RLS policies, auth patterns                                           |
+| **vercel-labs/agent-skills** | npx skills add vercel-labs/agent-skills                           | Deployment, Next.js performance rules                                                         |
+| **gsap-skills**              | npx skills add greensock/gsap-skills                              | The impact map's line-drawing sequence (Section 5.7)                                          |
+| **langchain-skills**         | npx skills add langchain-ai/langchain-skills                      | RAG pipeline orchestration (Section 3.3)                                                      |
+| **gemini-api-dev**           | npx skills add google-gemini/gemini-skills --skill gemini-api-dev | Google's own Gemini SDK patterns                                                              |
+| **sentry**                   | npx skills add getsentry/sentry-for-ai                            | Error tracking. Replaces the now-archived getsentry/sentry-agent-skills.                      |
+| **prisma/skills**            | npx skills add prisma/skills                                      | General Prisma ORM patterns                                                                   |
+| **resend-skills**            | npx skills add resend/resend-skills                               | Email API integration, deliverability                                                         |
+| **frontend-design**          | npx skills add anthropics/skills --skill frontend-design          | Anthropic's own first-party skill — not the similarly-named Vercel skill in a different repo. |
+
+**shadcn/ui — two separate steps**
+
+These do different jobs — run both:
+
+- npx shadcn@latest init — scaffolds the project's components.json and Tailwind config
+
+- npx skills add https://github.com/shadcn-ui/ui/tree/main/skills/shadcn — teaches the agent shadcn's own component and styling patterns
+
+Optional add-on, not a substitute for the official skill: npx skills add mattbx/shadcn-skills — adds awareness of 1,500+ community component registries.
+
+**No confirmed official repo — community fallback**
+
+- Playwright: no official Microsoft-published skill found. Best-documented community option — npx skills add testdino-hq/playwright-skill
+
+- Inngest: confirmed via the plugin marketplace path — claude plugin marketplace add inngest/inngest-claude-code-plugin, then claude plugin install inngest@inngest-claude-code-plugin. The npx skills add form of the same repo has not been independently verified.
+
+**PostHog — confirmed, different installer**
+
+npx -y @posthog/wizard@latest mcp add — official, from posthog.com/docs/model-context-protocol and the PostHog/mcp repo. The wizard is itself an AI agent that reads project source files as context and sends run telemetry to PostHog by default (excluding .env\* files and flagged secrets) — a reasonable tradeoff for standard setup, worth being a deliberate choice given.
 
 Tropenbos Ghana • EviBrief • Technical Specification v1.0
 
