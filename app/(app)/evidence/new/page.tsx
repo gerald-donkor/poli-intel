@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ClassificationPendingAlert } from "@/components/classification-pending-alert";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/session";
 import { countPendingClassification } from "@/lib/db/evidence";
 import { StaffRole } from "@/lib/generated/prisma/enums";
@@ -37,9 +37,12 @@ export default async function NewEvidencePage() {
               Ingesting evidence is restricted to Research Officers and the
               Programme Director.
             </p>
-            <Button variant="outline" render={<Link href="/evidence" />}>
+            <Link
+              href="/evidence"
+              className={buttonVariants({ variant: "outline" })}
+            >
               Back to the evidence library
-            </Button>
+            </Link>
           </div>
         </div>
       </>
@@ -54,9 +57,12 @@ export default async function NewEvidencePage() {
         title="Add evidence"
         subtitle="The text is extracted and chunked on upload. The item is then held for classification before it becomes searchable."
       >
-        <Button variant="outline" render={<Link href="/evidence" />}>
+        <Link
+          href="/evidence"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Evidence library
-        </Button>
+        </Link>
       </PageHeader>
 
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 p-4 tablet:p-6">

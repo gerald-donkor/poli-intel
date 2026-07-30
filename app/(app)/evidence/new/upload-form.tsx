@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Field,
   FieldDescription,
@@ -389,14 +389,22 @@ export function EvidenceUploadForm() {
         <Button type="submit" disabled={busy} className="h-11 tablet:h-8">
           {busy ? "Working…" : "Ingest document"}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={busy}
-          render={<Link href="/evidence" />}
+        {/* An <a> cannot be `disabled` — the attribute is dropped, so a plain
+            `disabled` prop here would leave the link live mid-upload and
+            navigating away would strand the record the discard action cleans
+            up. `aria-disabled` plus removing it from the tab order and the
+            pointer is the accessible equivalent. */}
+        <Link
+          href="/evidence"
+          aria-disabled={busy || undefined}
+          tabIndex={busy ? -1 : undefined}
+          className={cn(
+            buttonVariants({ variant: "ghost" }),
+            busy && "pointer-events-none opacity-50",
+          )}
         >
           Cancel
-        </Button>
+        </Link>
       </div>
 
       <p className="text-ink-3 max-w-[70ch] text-[12.5px]">
@@ -479,12 +487,15 @@ function IngestedPanel({
         so it is not searchable and not eligible for the AI pipeline yet.
       </p>
       <div className="flex flex-wrap gap-3">
-        <Button render={<Link href="/evidence/queue" />}>
+        <Link href="/evidence/queue" className={buttonVariants()}>
           Open the classification queue
-        </Button>
-        <Button variant="outline" render={<Link href="/evidence/new" />}>
+        </Link>
+        <Link
+          href="/evidence/new"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Ingest another document
-        </Button>
+        </Link>
       </div>
     </div>
   );

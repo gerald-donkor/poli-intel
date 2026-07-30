@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/session";
 import { listPendingClassification } from "@/lib/db/evidence";
 import { StaffRole } from "@/lib/generated/prisma/enums";
@@ -38,9 +38,12 @@ export default async function EvidenceQueuePage() {
               Officers and the Programme Director. Ask a Research Officer to
               triage the queue.
             </p>
-            <Button variant="outline" render={<Link href="/evidence" />}>
+            <Link
+              href="/evidence"
+              className={buttonVariants({ variant: "outline" })}
+            >
               Back to the evidence library
-            </Button>
+            </Link>
           </div>
         </div>
       </>
@@ -55,9 +58,12 @@ export default async function EvidenceQueuePage() {
         title="Classification queue"
         subtitle="Newly ingested evidence is held here. Nothing is searchable, and nothing reaches the AI pipeline, until it is tagged."
       >
-        <Button variant="outline" render={<Link href="/evidence" />}>
+        <Link
+          href="/evidence"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Evidence library
-        </Button>
+        </Link>
       </PageHeader>
 
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col p-4 tablet:p-6">

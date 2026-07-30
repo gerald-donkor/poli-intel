@@ -2,7 +2,10 @@ import Link from "next/link";
 
 import { ClassificationPendingAlert } from "@/components/classification-pending-alert";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
+// A control that navigates is a link, styled as a button — not Base UI's
+// `Button`, which claims button semantics and would announce these as buttons
+// while suppressing Cmd-click and "open in new tab" (§11.13).
+import { buttonVariants } from "@/components/ui/button";
 import { canIngestEvidence } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { countPendingClassification, listEligibleEvidence } from "@/lib/db/evidence";
@@ -33,7 +36,9 @@ export default async function EvidencePage() {
       >
         {/* Presentation only. The action authorises server-side regardless. */}
         {mayIngest ? (
-          <Button render={<Link href="/evidence/new" />}>Add evidence</Button>
+          <Link href="/evidence/new" className={buttonVariants()}>
+            Add evidence
+          </Link>
         ) : null}
       </PageHeader>
 
@@ -83,11 +88,16 @@ function EmptyEvidenceState({
           : "Nothing has been ingested into the knowledge base yet. Upload a PDF or a plain-text document to get started."}
       </p>
       {pendingCount > 0 ? (
-        <Button variant="outline" render={<Link href="/evidence/queue" />}>
+        <Link
+          href="/evidence/queue"
+          className={buttonVariants({ variant: "outline" })}
+        >
           Open the classification queue
-        </Button>
+        </Link>
       ) : mayIngest ? (
-        <Button render={<Link href="/evidence/new" />}>Add evidence</Button>
+        <Link href="/evidence/new" className={buttonVariants()}>
+          Add evidence
+        </Link>
       ) : null}
     </div>
   );
