@@ -1,0 +1,548 @@
+// EviBrief — Policy Intelligence & Brief Generator (Tropenbos Ghana)
+//
+// Model names are Prisma-conventional PascalCase and @@map to the spec's
+// snake_case table names, so spec §4.1's entity names stay the database's
+// source of truth.
+//
+// Vector columns are declared as Unsupported("vector(N)") — Prisma has no
+// native vector scalar. N MUST equal EMBEDDING_DIMENSIONS in lib/ai/config.ts.
+// SQL DDL cannot import TypeScript, so this literal is the one unavoidable
+// second copy of that number; the data layer validates vector length against
+// the constant before writing.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+// Prisma 7: connection URLs live in prisma.config.ts (Migrate/Studio) and in
+// the driver adapter in lib/db/client.ts (Prisma Client). Not here.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums — declared once here and imported everywhere (AGENTS.md §12.7).
+// Values are spec-verbatim. Never re-declared as string unions in UI code.
+// ---------------------------------------------------------------------------
+
+/// Declaration order IS the design system's warm→cool ramp
+/// (immediate bronze → near-term olive → horizon teal → watch slate).
+/// Never resort this enum.
+enum Urgency {
+  immediate
+  near_term
+  horizon
+  watch
+
+  @@map("urgency")
+}
+
+enum Relevance {
+  core
+  adjacent
+  background
+
+  @@map("relevance")
+}
+
+enum ImpactArea {
+  restoration
+  community_forestry
+  diversified_production
+  cross_cutting
+
+  @@map("impact_area")
+}
+
+enum Geography {
+  ghana_national
+  cocoa_belt_landscapes
+  international
+  multi_level
+
+  @@map("geography")
+}
+
+/// Signal-level audience targeting (spec §3.2). NOT the five brief-generation
+/// audience profiles (spec §3.4) — collapsing those two lists needs a recorded
+/// decision and there isn't one.
+enum AudienceTarget {
+  ministry
+  cocobod
+  eu_institutions
+  private_sector
+  community_governance
+
+  @@map("audience_target")
+}
+
+enum BriefType {
+  policy_brief
+  technical_submission
+  position_paper
+  stakeholder_note
+  media_backgrounder
+
+  @@map("brief_type")
+}
+
+enum BriefStatus {
+  draft
+  reviewed
+  submitted
+  published
+
+  @@map("brief_status")
+}
+
+enum SignalStatus {
+  new
+  reviewed
+  actioned
+  archived
+
+  @@map("signal_status")
+}
+
+enum EvidenceSourceType {
+  field_data
+  research
+  literature
+
+  @@map("evidence_source_type")
+}
+
+/// The governance gate's vocabulary (AGENTS.md §7.4). Exactly these three.
+/// Only `public_published` is eligible for the AI pipeline.
+enum Classification {
+  public_published
+  community_sourced
+  unpublished_internal
+
+  @@map("classification")
+}
+
+enum StaffRole {
+  programme_director
+  policy_advocacy_officer
+  research_officer
+  field_officer
+
+  @@map("staff_role")
+}
+
+enum FlagReason {
+  unsupported
+  altered
+  misattributed
+
+  @@map("flag_reason")
+}
+
+enum FlagStatus {
+  open
+  resolved
+  dismissed
+
+  @@map("flag_status")
+}
+
+enum IngestionOutcome {
+  succeeded
+  failed
+
+  @@map("ingestion_outcome")
+}
+
+// ---------------------------------------------------------------------------
+// Actors
+// ---------------------------------------------------------------------------
+
+/// Auth.js v5 runs a JWT session strategy, so there are no adapter tables here.
+/// StaffUser exists because the schema independently needs a durable actor to
+/// reference from every audit row (AGENTS.md §8.3, §8.6, §10.8) — role
+/// assignment must survive a session, so it is a row, not a JWT claim.
+model StaffUser {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  role      StaffRole
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  briefsCreated           Brief[]                     @relation("BriefCreatedBy")
+  briefsReviewed          Brief[]                     @relation("BriefReviewedBy")
+  briefVersionsCreated    BriefVersion[]
+  evidenceIngested        EvidenceItem[]
+  flagsResolved           HallucinationFlag[]
+  briefStatusChanges      BriefStatusChange[]
+  signalReclassifications SignalReclassification[]
+  classificationChanges   EvidenceClassificationChange[]
+
+  @@map("staff_user")
+}
+
+// ---------------------------------------------------------------------------
+// Policy Radar
+// ---------------------------------------------------------------------------
+
+model PolicySignal {
+  id          String       @id @default(uuid())
+  sourceUrl   String       @map("source_url")
+  sourceName  String       @map("source_name")
+  detectedAt  DateTime     @map("detected_at")
+  urgency     Urgency
+  relevance   Relevance
+  impactArea  ImpactArea   @map("impact_area")
+  geography   Geography
+  summaryText String       @map("summary_text")
+  status      SignalStatus @default(new)
+
+  /// vector(1536) — see EMBEDDING_DIMENSIONS in lib/ai/config.ts.
+  embedding      Unsupported("vector(1536)")?
+  /// Which embedding model produced `embedding`. Changing models invalidates
+  /// existing vectors; without this there is no safe re-embedding path.
+  embeddingModel String?                      @map("embedding_model")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  briefs            Brief[]
+  reclassifications SignalReclassification[]
+
+  @@index([status])
+  @@index([urgency])
+  @@index([detectedAt])
+  @@map("policy_signal")
+}
+
+// ---------------------------------------------------------------------------
+// Evidence library
+// ---------------------------------------------------------------------------
+
+model EvidenceItem {
+  id          String             @id @default(uuid())
+  title       String
+  authors     String[]
+  year        Int?
+  sourceType  EvidenceSourceType @map("source_type")
+  country     String?
+  impactArea  ImpactArea?        @map("impact_area")
+  fullText    String             @map("full_text")
+  citationKey String             @unique @map("citation_key")
+
+  /// THE GATE, schema half (AGENTS.md §7.3, §12.2). Required, never nullable,
+  /// and defaulted to the safe state so a row arriving by ANY path — upload,
+  /// field submission, scrape, bulk import, raw insert — is already blocked
+  /// from the AI pipeline until a Research Officer tags it.
+  classification Classification @default(unpublished_internal)
+
+  // Ingestion provenance
+  sourceUrl            String?   @map("source_url")
+  sourceFileName       String?   @map("source_file_name")
+  ingestedById         String?   @map("ingested_by_id")
+  ingestedAt           DateTime  @default(now()) @map("ingested_at")
+  extractionCompletedAt DateTime? @map("extraction_completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ingestedBy            StaffUser?                     @relation(fields: [ingestedById], references: [id], onDelete: SetNull)
+  chunks                EvidenceChunk[]
+  briefEvidence         BriefEvidence[]
+  ingestionLogs         IngestionLog[]
+  classificationChanges EvidenceClassificationChange[]
+
+  @@index([classification])
+  @@index([impactArea])
+  @@index([sourceType])
+  @@index([country, year])
+  @@index([ingestedById])
+  @@map("evidence_item")
+}
+
+/// 512-token overlapping segments (spec §4.2). Chunk-level metadata lives here;
+/// document-level metadata lives on EvidenceItem.
+///
+/// Classification is deliberately NOT duplicated here — retrieval joins to the
+/// parent, so a chunk can never disagree with its item (AGENTS.md §7, §12.4).
+model EvidenceChunk {
+  id             String @id @default(uuid())
+  evidenceItemId String @map("evidence_item_id")
+  ordinal        Int
+  chunkText      String @map("chunk_text")
+  charStart      Int    @map("char_start")
+  charEnd        Int    @map("char_end")
+  sourcePage     Int?   @map("source_page")
+
+  /// vector(1536) — see EMBEDDING_DIMENSIONS in lib/ai/config.ts.
+  embedding      Unsupported("vector(1536)")?
+  embeddingModel String?                      @map("embedding_model")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Cascade)
+
+  @@unique([evidenceItemId, ordinal])
+  @@map("evidence_chunk")
+}
+
+// ---------------------------------------------------------------------------
+// Briefs
+// ---------------------------------------------------------------------------
+
+model Brief {
+  id       String  @id @default(uuid())
+  /// Nullable: the Phase 1 manual generator has staff paste a policy document
+  /// with no signal record behind it.
+  signalId String? @map("signal_id")
+
+  briefType BriefType      @map("brief_type")
+  audience  AudienceTarget
+  status    BriefStatus    @default(draft)
+  /// Pointer to the current BriefVersion.version. 0 = no version persisted yet.
+  currentVersion Int       @default(0) @map("current_version")
+
+  generatedAt  DateTime? @map("generated_at")
+  createdById  String?   @map("created_by_id")
+  reviewedById String?   @map("reviewed_by_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  signal     PolicySignal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  createdBy  StaffUser?    @relation("BriefCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  reviewedBy StaffUser?    @relation("BriefReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  versions         BriefVersion[]
+  /// The FINAL evidence set after officer add/remove — the set the fact-check
+  /// pass verifies against, not raw matcher output (AGENTS.md §15.5).
+  evidenceSet      BriefEvidence[]
+  influenceEvents  InfluenceEvent[]
+  statusChanges    BriefStatusChange[]
+  stakeholderShares StakeholderBrief[]
+
+  @@index([status])
+  @@index([signalId])
+  @@index([createdById])
+  @@index([reviewedById])
+  @@map("brief")
+}
+
+model BriefEvidence {
+  briefId        String   @map("brief_id")
+  evidenceItemId String   @map("evidence_item_id")
+  relevanceScore Float?   @map("relevance_score")
+  addedAt        DateTime @default(now()) @map("added_at")
+
+  brief        Brief        @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Restrict)
+
+  @@id([briefId, evidenceItemId])
+  @@index([evidenceItemId])
+  @@map("brief_evidence")
+}
+
+/// Every edit is versioned and no prior version is ever overwritten in place
+/// (AGENTS.md §8.7). Flags hang off a version, not off the brief.
+model BriefVersion {
+  id      String @id @default(uuid())
+  briefId String @map("brief_id")
+  version Int
+
+  bodyText        String  @map("body_text")
+  /// Tiptap document JSON for this version.
+  documentJson    Json?   @map("document_json")
+  generatingModel String? @map("generating_model")
+  promptVersion   String? @map("prompt_version")
+
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  brief     Brief      @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  createdBy StaffUser? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  flags HallucinationFlag[]
+
+  @@unique([briefId, version])
+  @@index([createdById])
+  @@map("brief_version")
+}
+
+/// Hallucination-guard flag: a structured record anchored to a document
+/// position, stored against a BriefVersion so regeneration or audience
+/// switching never inherits cleared state.
+///
+/// ANCHOR REPRESENTATION (decided here, per prompt 04): a Tiptap document
+/// position range `{from, to}` stored as anchorFrom/anchorTo, plus claimText
+/// for re-anchoring when ordinary editing around the claim shifts positions.
+/// This is what the flag Mark in `tiptap-editor` maps to.
+model HallucinationFlag {
+  id             String @id @default(uuid())
+  briefVersionId String @map("brief_version_id")
+
+  anchorFrom Int    @map("anchor_from")
+  anchorTo   Int    @map("anchor_to")
+  /// The claim exactly as generated — also the re-anchoring key.
+  claimText  String @map("claim_text")
+
+  reason FlagReason
+  /// Ids of the evidence items this claim was checked against. Ids only —
+  /// never evidence body text (AGENTS.md §7.6).
+  checkedEvidenceItemIds String[] @map("checked_evidence_item_ids")
+
+  status           FlagStatus @default(open)
+  resolvedById     String?    @map("resolved_by_id")
+  resolvedAt       DateTime?  @map("resolved_at")
+  resolutionReason String?    @map("resolution_reason")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  briefVersion BriefVersion @relation(fields: [briefVersionId], references: [id], onDelete: Cascade)
+  resolvedBy   StaffUser?   @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([briefVersionId, status])
+  @@index([resolvedById])
+  @@map("hallucination_flag")
+}
+
+// ---------------------------------------------------------------------------
+// Impact
+// ---------------------------------------------------------------------------
+
+model InfluenceEvent {
+  id             String   @id @default(uuid())
+  briefId        String   @map("brief_id")
+  eventType      String   @map("event_type")
+  sourceDocument String?  @map("source_document")
+  detectedAt     DateTime @map("detected_at")
+  description    String
+  verified       Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  brief Brief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+
+  @@index([briefId])
+  @@map("influence_event")
+}
+
+// ---------------------------------------------------------------------------
+// Stakeholder CRM
+// ---------------------------------------------------------------------------
+
+model Stakeholder {
+  id                String          @id @default(uuid())
+  name              String
+  organisation      String?
+  role              String?
+  audienceType      AudienceTarget? @map("audience_type")
+  preferredLanguage String?         @map("preferred_language")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /// Join table, so brief history is queryable rather than a scalar array.
+  briefHistory StakeholderBrief[]
+
+  @@map("stakeholder")
+}
+
+model StakeholderBrief {
+  stakeholderId String   @map("stakeholder_id")
+  briefId       String   @map("brief_id")
+  sharedAt      DateTime @default(now()) @map("shared_at")
+  note          String?
+
+  stakeholder Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  brief       Brief       @relation(fields: [briefId], references: [id], onDelete: Cascade)
+
+  @@id([stakeholderId, briefId])
+  @@index([briefId])
+  @@map("stakeholder_brief")
+}
+
+// ---------------------------------------------------------------------------
+// Audit rows — actor + timestamp, never a mutable column
+// (AGENTS.md §8.3, §8.6, §10.8)
+// ---------------------------------------------------------------------------
+
+model BriefStatusChange {
+  id             String       @id @default(uuid())
+  briefId        String       @map("brief_id")
+  actorId        String       @map("actor_id")
+  previousStatus BriefStatus? @map("previous_status")
+  newStatus      BriefStatus  @map("new_status")
+  reason         String?
+  changedAt      DateTime     @default(now()) @map("changed_at")
+
+  brief Brief     @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  actor StaffUser @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([briefId])
+  @@index([actorId])
+  @@map("brief_status_change")
+}
+
+model SignalReclassification {
+  id                String    @id @default(uuid())
+  signalId          String    @map("signal_id")
+  actorId           String    @map("actor_id")
+  previousUrgency   Urgency   @map("previous_urgency")
+  newUrgency        Urgency   @map("new_urgency")
+  previousRelevance Relevance @map("previous_relevance")
+  newRelevance      Relevance @map("new_relevance")
+  reason            String?
+  changedAt         DateTime  @default(now()) @map("changed_at")
+
+  signal PolicySignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  actor  StaffUser    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([signalId])
+  @@index([actorId])
+  @@map("signal_reclassification")
+}
+
+/// Classification changes are restricted to Research Officer and Programme
+/// Director and are logged with actor and timestamp (AGENTS.md §10.8).
+model EvidenceClassificationChange {
+  id                     String         @id @default(uuid())
+  evidenceItemId         String         @map("evidence_item_id")
+  actorId                String         @map("actor_id")
+  previousClassification Classification @map("previous_classification")
+  newClassification      Classification @map("new_classification")
+  reason                 String?
+  changedAt              DateTime       @default(now()) @map("changed_at")
+
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Cascade)
+  actor        StaffUser    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([evidenceItemId])
+  @@index([actorId])
+  @@map("evidence_classification_change")
+}
+
+// ---------------------------------------------------------------------------
+// Ingestion log (AGENTS.md §12.8) — ids, counts and outcomes only.
+// Never document or evidence body text.
+// ---------------------------------------------------------------------------
+
+model IngestionLog {
+  id             String              @id @default(uuid())
+  evidenceItemId String?             @map("evidence_item_id")
+  sourceName     String              @map("source_name")
+  sourceType     EvidenceSourceType? @map("source_type")
+  outcome        IngestionOutcome
+  extractedChars Int?                @map("extracted_chars")
+  chunkCount     Int?                @map("chunk_count")
+  /// Short machine reason, never extracted document text.
+  failureReason  String?             @map("failure_reason")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  evidenceItem EvidenceItem? @relation(fields: [evidenceItemId], references: [id], onDelete: SetNull)
+
+  @@index([evidenceItemId])
+  @@index([createdAt])
+  @@map("ingestion_log")
+}
