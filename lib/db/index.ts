@@ -13,3 +13,21 @@ export {
   findStaffUserByEmail,
   provisionStaffUser,
 } from "./staff";
+export {
+  classifyEvidenceItem,
+  completeEvidenceExtraction,
+  countPendingClassification,
+  createEvidenceShell,
+  deleteEvidenceItem,
+  findEvidenceItemForIngestion,
+  listEligibleEvidence,
+  listPendingClassification,
+  type ClassifyEvidenceResult,
+  type CreateEvidenceShellInput,
+  type CreateEvidenceShellResult,
+  type EvidenceListItem,
+} from "./evidence";
+export {
+  recordIngestionFailure,
+  recordIngestionSuccess,
+} from "./ingestion-log";

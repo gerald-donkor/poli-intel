@@ -91,6 +91,10 @@
   --animate-flag-pulse: flagPulse 900ms ease-out both;
   --animate-breathe: breathe 2s ease-in-out infinite;
   --animate-slide-down: slideDown 200ms ease-out both;
+  /* The classification queue count, 180ms per the handoff's motion table. The
+     banner it sits beside never animates idly — only the number, and only when
+     it changes. */
+  --animate-count-fade: countFade 180ms var(--ease-standard) both;
 
   /* Breakpoints — Tailwind's defaults don't line up with where these layouts
      actually break. These join sm–2xl rather than replacing them. */
@@ -232,6 +236,15 @@
   }
   50% {
     opacity: 0.85;
+  }
+}
+
+@keyframes countFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
