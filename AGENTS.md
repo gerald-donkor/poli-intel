@@ -28,6 +28,22 @@ If you cannot verify an API from `node_modules/`, a skill, or live docs, say so 
 
 # 1. Product
 
+## 1.0 Who this is for
+
+Keep the client in context on every task. EviBrief is built for **Tropenbos Ghana**, the Kumasi-based member of the **Tropenbos International** network — <https://www.tropenbosghana.org/> and <https://www.tropenbos.org/>. Read them when a decision turns on what the organisation actually does; the essentials are here so they don't have to be re-derived each session.
+
+**What they are.** A forest-and-livelihoods research organisation, not an advocacy campaigner and not a think tank. Tropenbos International works across ten countries (Bolivia, Colombia, DR Congo, Ethiopia, Ghana, Indonesia, Philippines, Suriname, Uganda, Vietnam) under the position that *"the future of tropical forests is locally owned"*, applying *"local and scientific knowledge for people and forests"*. Tropenbos Ghana's own framing is *"making knowledge work for forests and people"* and *"better policies inform better practices"* — which is, almost exactly, this product's thesis. It works with communities, companies, and governments as a convening intermediary, so a brief may need to be credible to all three at once.
+
+**What they work on.** Cocoa agroforestry, tree tenure and land rights, restoration of degraded land, community forest management, wildfire prevention, alternative livelihoods (beekeeping, VSLAs), climate and youth capacity-building, and gender and youth as drivers of change. Ghana's operational landscapes are Juabeso-Bia and Sefwi-Wiawso in the Western North Region. Expect the recurring policy topics to be EUDR compliance, tree tenure reform, cocoa-sector sustainability, and forest governance — the impact-area taxonomy and the five audience profiles (section 16.3) exist to serve exactly these.
+
+**What this means for implementation.**
+
+- **The evidence is theirs, and much of it is community-sourced.** Sections 7 and 17 are not abstract compliance — the field data belongs to farmers and CREMA communities Tropenbos has relationships with, and mishandling it costs the organisation trust it cannot rebuy. That is why the classification gate is a hard gate.
+- **Register is research-institutional.** Measured, evidence-first, careful about claims. Their own writing is *"professional yet accessible"*. It is never campaigning, never marketing, never startup-cheerful (section 11.8).
+- **Local specificity is credibility.** A brief that says "in Ghana" where the evidence says "in the Juabeso-Bia landscape" has thrown away the thing that distinguishes Tropenbos from a desk-research outfit. Landscape specificity is a requirement of the evidence section (section 16.2), not a nicety.
+- **Local ownership is the through-line.** Community agency is the organisation's stated position, so the Field Officer path (section 17) and the Twi translation assist (section 16.6) are load-bearing, not peripheral — they are the product taking the client's own position seriously.
+- **No leaf-and-tree visual clichés.** Section 11.7 already forbids them; the client being a forest organisation makes that rule more important, not less. They are a research institution that happens to work on forests.
+
 EviBrief monitors the forest-policy landscape (Ghana, EU, and international bodies), matches emerging policy windows to Tropenbos's own evidence base, and produces audience-tailored policy briefs that staff review, approve, and submit. Its entire value proposition is **traceability**: every claim in a generated brief traces back to verified, classified evidence before a human approves it.
 
 Build only:
