@@ -346,6 +346,11 @@ Roles: **Programme Director**, **Policy & Advocacy Officer**, **Research Officer
 12. Density is role-dependent: Officer and Research views may hold real density (evidence tables, citations, relevance scores); Field Officer and community-facing views strip to one message per screen.
 13. WCAG 2.1 AA is a hard requirement — keyboard navigation across the kanban board and evidence table, ARIA labels on urgency and relevance badges, 4.5:1 minimum text contrast. Verify any new colour pairing before finalising.
 14. Desktop-first for Director and Officer routes; mobile-first for Field Officer routes.
+15. **Every page is fully responsive at every screen size.** A route is not complete until it is usable and legible from 320px to 1600px+ — no horizontal page scroll at any width, no content clipped, no control pushed out of reach, no text below the minimums in section 11.6 and `design-system.md`. Wide content that genuinely cannot reflow (the influence-path diagram) scrolls inside its own panel, never the page. Check every new screen at 390px, 760px, 1000px, 1300px, and 1600px before calling it done.
+
+    **Write mobile-first, and note there is no mobile breakpoint.** `tablet` (760px), `laptop` (1000px), and `desktop` (1300px) are `min-width` variants, so the **unprefixed classes are the small-screen layout** — anything under 760px, phones included. Build that base layer first as a single readable column, then layer `tablet:` / `laptop:` / `desktop:` on top to add columns, reveal side panels, and widen gutters. Do not reach for a `mobile:` variant; it does not exist and must not be added. Do not express small screens as `max-width` overrides of a desktop layout, and never put a fixed pixel width on a page-level container — cap with `max-w-*` plus `w-full` instead.
+
+    "Responsive" means it works at every size, not that every size gets the same layout. Rule 14 still decides the *starting point* and rule 12 still decides the density: Director and Officer routes reflow their columns down to a single stacked column, while `/field` stays single-column all the way up and is never adapted into a desktop layout. Both are fully responsive. What is never acceptable is a screen that only works at the width it was built at.
 
 ---
 
