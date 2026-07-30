@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "inngest:dev": "inngest-cli dev",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate:new": "node scripts/new-migration.mjs",
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@google/genai": "^2.15.0",
     "@hookform/resolvers": "^5.5.7",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
@@ -26,6 +28,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
+    "inngest": "^4.13.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.27.0",
     "next": "16.2.12",
@@ -53,8 +56,12 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "inngest-cli": "^1.39.0",
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "inngest-cli@1.39.0": true
   }
 }

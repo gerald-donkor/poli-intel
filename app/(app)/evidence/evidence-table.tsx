@@ -173,6 +173,12 @@ function EvidenceDetail({ item }: { item: EvidenceListItem }) {
         <DetailRow label="Chunks">
           <span className="font-mono text-[11.5px]">{item.chunkCount}</span>
         </DetailRow>
+        <DetailRow label="Embedding">
+          <EmbeddingState
+            chunkCount={item.chunkCount}
+            embeddedChunkCount={item.embeddedChunkCount}
+          />
+        </DetailRow>
         {item.sourceFileName ? (
           <DetailRow label="Source file">{item.sourceFileName}</DetailRow>
         ) : null}
@@ -192,6 +198,47 @@ function EvidenceDetail({ item }: { item: EvidenceListItem }) {
 
       <EvidenceExcerpt excerpt={item.excerpt} />
     </div>
+  );
+}
+
+/**
+ * Embedding state, stated plainly.
+ *
+ * This is background work with nothing to watch, so there is no spinner and no
+ * progress bar — a bar implies something is happening right now, and usually
+ * nothing is. The honest reading is a count of how many chunks currently carry
+ * a vector.
+ *
+ * The copy says what is true and nothing more: "embedded" means vectors exist,
+ * not that anything was verified, checked, or indexed by the system
+ * (AGENTS.md §8.8). Nothing here is red, and no state is treated as an error —
+ * an unembedded item is a normal item.
+ */
+function EmbeddingState({
+  chunkCount,
+  embeddedChunkCount,
+}: {
+  chunkCount: number;
+  embeddedChunkCount: number;
+}) {
+  if (chunkCount === 0) {
+    return <span className="text-ink-3">No chunks to embed</span>;
+  }
+
+  const label =
+    embeddedChunkCount === 0
+      ? "Not yet embedded"
+      : embeddedChunkCount >= chunkCount
+        ? "Embedded"
+        : "Partly embedded";
+
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <span>{label}</span>
+      <span className="text-ink-3 font-mono text-[11.5px] whitespace-nowrap">
+        {embeddedChunkCount} / {chunkCount} chunks
+      </span>
+    </span>
   );
 }
 

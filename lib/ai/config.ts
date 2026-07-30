@@ -1,11 +1,16 @@
 import "server-only";
 
+import { CHARS_PER_TOKEN_APPROX } from "@/lib/ingestion/config";
+
 /**
  * Central AI config — server-only.
  *
- * This file starts with only what the database schema consumes. Model IDs for
- * generation, temperature, token caps and rate-limit budgets belong to
- * `gemini-integration` and arrive with the first Gemini call, not here.
+ * No model ID, dimension, batch size or rate-limit number is inlined in a
+ * route, action or job (AGENTS.md §13.1). Every call path imports from here.
+ *
+ * Generation settings — model, temperature, token cap — arrive with the first
+ * generation call. This file currently covers embedding only, which is the only
+ * Gemini call the codebase makes.
  */
 
 /**
@@ -39,6 +44,84 @@ export const EMBEDDING_MODEL = "gemini-embedding-2" as const;
  * The one unavoidable second copy of this number is the `vector(1536)` literal
  * in `prisma/schema.prisma` — SQL DDL cannot import TypeScript. The data layer
  * validates vector length against this constant before writing
- * (see `assertEmbeddingDimensions` in `lib/db`).
+ * (see `checkEmbeddingDimensions` in `lib/db`).
  */
 export const EMBEDDING_DIMENSIONS = 1536;
+
+/**
+ * Free-tier request budget (AGENTS.md §13.3, spec §6.1). Approximate, and a
+ * budget to design within rather than a contract — re-check when limits bite.
+ */
+export const GEMINI_RPM_BUDGET = 15;
+export const GEMINI_DAILY_REQUEST_BUDGET = 1500;
+
+/**
+ * The share of the RPM ceiling background embedding is allowed to occupy.
+ *
+ * Deliberately below `GEMINI_RPM_BUDGET`: brief generation is interactive and a
+ * person is watching it, so a large ingest must not be able to consume the
+ * whole minute and push a generation into a 429. This is the number the
+ * embedding job's Inngest throttle is configured from — pacing is flow control,
+ * not a sleep inside a step (`inngest-jobs`, `gemini-integration`).
+ */
+export const EMBEDDING_RPM_ALLOCATION = 10;
+
+/**
+ * Verified 2026-07-30 against
+ * https://ai.google.dev/gemini-api/docs/embeddings.md.txt:
+ * "The overall maximum input tokens limit is 8192 tokens."
+ *
+ * This is the ceiling for the WHOLE request, not per input, which is what makes
+ * batch sizing a real constraint rather than a formality: chunks are ~512 tokens
+ * (`lib/ingestion/config.ts`), so a naive batch of 32 would be rejected.
+ *
+ * The same page records two other facts this pipeline depends on:
+ *   - "You cannot use the `task_type` field for the `gemini-embedding-2` model."
+ *   - "Wrapping each input in a `Content` object and passing them in the
+ *     `contents` parameter returns separate embeddings for each entry" —
+ *     passing bare strings instead returns ONE aggregated vector for the batch,
+ *     which would silently give every chunk in a batch the same embedding.
+ */
+export const EMBEDDING_MAX_INPUT_TOKENS_PER_REQUEST = 8192;
+
+/**
+ * Chunks per embedding request.
+ *
+ * 8 × ~512 tokens ≈ 4,096 tokens, half the request ceiling. Conservative on
+ * purpose: the per-request input cap above is documented but the maximum
+ * *number* of inputs is not, and chunk sizing is a character approximation of a
+ * token count (`lib/ingestion/config.ts`), so the true token cost of a batch is
+ * only ever estimated. Headroom here is cheaper than a rejected request.
+ */
+export const EMBEDDING_BATCH_SIZE = 8;
+
+/**
+ * The second half of the batch ceiling, in the unit the pipeline can actually
+ * measure. A batch is closed when it hits either limit, so an unusually long
+ * chunk cannot push a full-count batch over the token cap.
+ *
+ * 60% of the token ceiling, converted at the chunker's own chars-per-token
+ * approximation so both halves of the pipeline size text the same way.
+ */
+const EMBEDDING_TOKEN_SAFETY_FACTOR = 0.6;
+
+export const EMBEDDING_MAX_BATCH_CHARS = Math.floor(
+  EMBEDDING_MAX_INPUT_TOKENS_PER_REQUEST *
+    EMBEDDING_TOKEN_SAFETY_FACTOR *
+    CHARS_PER_TOKEN_APPROX,
+);
+
+/**
+ * How long to wait before retrying a 429 that carried no retry-delay hint, and
+ * the ceiling applied to a hint that did arrive. Bounded so a pathological hint
+ * cannot park a run for hours.
+ */
+export const EMBEDDING_DEFAULT_RETRY_AFTER_MS = 60_000;
+export const EMBEDDING_MAX_RETRY_AFTER_MS = 15 * 60_000;
+
+/**
+ * Evidence items the daily sweep will pick up in one run. A ceiling, not a
+ * target: the sweep re-runs tomorrow, and a bounded fan-out keeps a large
+ * backlog from spending the whole Gemini day in one go.
+ */
+export const EMBEDDING_SWEEP_ITEM_LIMIT = 25;

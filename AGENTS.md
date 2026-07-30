@@ -552,6 +552,7 @@ Scripts that currently exist in `package.json`:
 - `npm run start` — run the production build locally after `npm run build`
 - `npm run lint` — ESLint
 - `npm run typecheck` — `tsc --noEmit`
+- `npm run inngest:dev` — the Inngest dev server (`npx inngest-cli@latest dev`), alongside `npm run dev`. It auto-discovers the serve endpoint at `/api/inngest` and gives you the run UI at <http://localhost:8288> for triggering jobs, replaying events, and reading step traces. Local runs need no keys: the client sets `isDev` from `NODE_ENV`, so `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are production-only.
 - `npm run db:generate` — `prisma generate`; writes the client to `lib/generated/prisma` (gitignored). Also runs automatically as `postinstall`.
 - `npm run db:migrate:new -- <snake_case_name>` — author a migration from the live-database diff, for review. Writes a file; applies nothing.
 - `npm run db:migrate` — `prisma migrate deploy && prisma generate`; applies pending migrations. Same command in dev, CI, and production. Needs `DIRECT_URL`.
@@ -563,6 +564,6 @@ Scripts that currently exist in `package.json`:
 
 > **Known lint noise.** `npm run lint` currently reports 4 pre-existing errors from code this project does not own: `react-hooks/set-state-in-effect` in the vendored `components/ui/carousel.tsx` and `hooks/use-mobile.ts`, and two errors in `design_handoff_evibrief/support.js`, which is prototype runtime and not application code (section 2). Do not reformat vendored component files or the handoff to satisfy a style rule. Read the output for problems in *your* files.
 
-> **Gaps to flag, not to invent.** There is no test script, and no Inngest or Playwright tooling in `package.json` yet. When a prompt first introduces one of these, add the script in that same change and update this section with it. Never reference a script name before it exists.
+> **Gaps to flag, not to invent.** There is no test script and no Playwright tooling in `package.json` yet. When a prompt first introduces one of these, add the script in that same change and update this section with it. Never reference a script name before it exists.
 
 Report the exact command output; never claim a check passed without running it.

@@ -19,6 +19,7 @@ export {
   countPendingClassification,
   createEvidenceShell,
   deleteEvidenceItem,
+  findEvidenceItemForEmbedding,
   findEvidenceItemForIngestion,
   listEligibleEvidence,
   listPendingClassification,
@@ -28,6 +29,18 @@ export {
   type EvidenceListItem,
 } from "./evidence";
 export {
+  countEmbeddedChunksByItem,
+  listItemsWithUnembeddedChunks,
+  listUnembeddedChunks,
+  loadChunksForEmbedding,
+  purgeEvidenceItemEmbeddings,
+  writeChunkEmbeddings,
+  type ChunkForEmbedding,
+  type UnembeddedChunk,
+} from "./evidence-vectors";
+export {
+  recordEmbeddingRun,
   recordIngestionFailure,
   recordIngestionSuccess,
+  type EmbeddingStage,
 } from "./ingestion-log";

@@ -10,6 +10,7 @@ import type {
 import type { TextChunk } from "@/lib/ingestion/chunk";
 
 import { prisma } from "./client";
+import { countEmbeddedChunksByItem } from "./evidence-vectors";
 
 /**
  * Evidence reads and writes. Every listing that feeds the Evidence Library goes
@@ -32,6 +33,12 @@ export type EvidenceListItem = {
   sourceFileName: string | null;
   ingestedAt: string;
   chunkCount: number;
+  /**
+   * How many of those chunks currently carry a vector. Derived from
+   * `embedding IS NOT NULL`, never from a status column — see
+   * `evidence-vectors.ts`.
+   */
+  embeddedChunkCount: number;
   /** A short opening excerpt for the detail panel — quoted material, set in the serif. */
   excerpt: string;
 };
@@ -72,7 +79,10 @@ const evidenceListSelect = {
   _count: { select: { chunks: true } },
 } as const;
 
-function toListItem(row: EvidenceRow): EvidenceListItem {
+function toListItem(
+  row: EvidenceRow,
+  embeddedCounts: Map<string, number>,
+): EvidenceListItem {
   const excerpt = row.fullText.slice(0, EXCERPT_CHARS);
 
   return {
@@ -89,6 +99,7 @@ function toListItem(row: EvidenceRow): EvidenceListItem {
     sourceFileName: row.sourceFileName,
     ingestedAt: row.ingestedAt.toISOString(),
     chunkCount: row._count.chunks,
+    embeddedChunkCount: embeddedCounts.get(row.id) ?? 0,
     excerpt:
       row.fullText.length > EXCERPT_CHARS ? `${excerpt.trimEnd()}…` : excerpt,
   };
@@ -102,13 +113,19 @@ function toListItem(row: EvidenceRow): EvidenceListItem {
  * eligible set for now.
  */
 export async function listEligibleEvidence(): Promise<EvidenceListItem[]> {
-  const rows = await prisma.evidenceItem.findMany({
-    where: { ...ELIGIBLE_EVIDENCE_WHERE, extractionCompletedAt: { not: null } },
-    orderBy: { ingestedAt: "desc" },
-    select: evidenceListSelect,
-  });
+  const [rows, embeddedCounts] = await Promise.all([
+    prisma.evidenceItem.findMany({
+      where: {
+        ...ELIGIBLE_EVIDENCE_WHERE,
+        extractionCompletedAt: { not: null },
+      },
+      orderBy: { ingestedAt: "desc" },
+      select: evidenceListSelect,
+    }),
+    countEmbeddedChunksByItem(),
+  ]);
 
-  return rows.map(toListItem);
+  return rows.map((row) => toListItem(row, embeddedCounts));
 }
 
 /**
@@ -129,7 +146,9 @@ export async function listPendingClassification(): Promise<EvidenceListItem[]> {
     select: evidenceListSelect,
   });
 
-  return rows.map(toListItem);
+  // Nothing in this queue is eligible, so nothing in it can hold a vector. The
+  // empty map is the honest answer, not a shortcut.
+  return rows.map((row) => toListItem(row, new Map()));
 }
 
 /** The queue count the classification-pending banner renders (§7.5). */
@@ -251,6 +270,26 @@ export function findEvidenceItemForIngestion(evidenceItemId: string) {
     select: {
       id: true,
       ingestedById: true,
+      sourceType: true,
+      extractionCompletedAt: true,
+    },
+  });
+}
+
+/**
+ * What the embedding job needs to judge an item and log the run.
+ *
+ * `classification` is read here, from the database, and is the ONLY value the
+ * gate is allowed to judge — never a field carried on an event payload
+ * (see `evidence-vectors.ts`).
+ */
+export function findEvidenceItemForEmbedding(evidenceItemId: string) {
+  return prisma.evidenceItem.findUnique({
+    where: { id: evidenceItemId },
+    select: {
+      id: true,
+      classification: true,
+      citationKey: true,
       sourceType: true,
       extractionCompletedAt: true,
     },

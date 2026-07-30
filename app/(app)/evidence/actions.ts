@@ -9,6 +9,7 @@ import {
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
 import { classifyEvidenceItem } from "@/lib/db/evidence";
+import { sendEvidenceClassificationChanged } from "@/lib/jobs/client";
 
 import { classifyEvidenceSchema, type ClassifyEvidenceInput } from "./schema";
 
@@ -80,6 +81,12 @@ export async function classifyEvidenceAction(
       },
     };
   }
+
+  // After the commit, never inside it (see `lib/jobs/client.ts`). The job this
+  // starts decides for itself whether the item is eligible — this only tells it
+  // that something changed, and it re-reads the classification from the
+  // database rather than taking anything from here.
+  await sendEvidenceClassificationChanged(parsed.data.evidenceItemId);
 
   revalidatePath("/evidence");
   revalidatePath("/evidence/queue");
