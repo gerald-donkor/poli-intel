@@ -1,11 +1,21 @@
 import type { ReactNode } from "react";
 
 import { AppNav } from "@/components/app-nav";
+import { toStaffUserDto } from "@/lib/auth/dto";
+import { requireStaffUser } from "@/lib/auth/session";
 
 // Desktop shell for the Director and Officer surfaces. A nested layout rather
 // than a second root layout: sibling root layouts force a full page reload when
 // navigating between them, and the fonts load once in app/layout.tsx.
-export default function AppLayout({ children }: { children: ReactNode }) {
+//
+// The `requireStaffUser()` below is a convenience redirect, NOT the enforcement
+// boundary. Layouts do not re-render on navigation (Next's authentication
+// guide), so the real check is the DAL call inside each page and the
+// authorisation check inside each Server Action (AGENTS.md §10.1). Never read
+// this line as "everything under (app) is protected".
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const staffUser = await requireStaffUser();
+
   return (
     <>
       <a
@@ -14,7 +24,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <AppNav />
+      <AppNav user={toStaffUserDto(staffUser)} />
       <main id="main" className="flex min-h-0 flex-1 flex-col">
         {children}
       </main>

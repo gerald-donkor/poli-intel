@@ -8,3 +8,8 @@ import "server-only";
 
 export { prisma } from "./client";
 export { checkEmbeddingDimensions, type EmbeddingCheck } from "./embedding";
+export {
+  findStaffUserById,
+  findStaffUserByEmail,
+  provisionStaffUser,
+} from "./staff";

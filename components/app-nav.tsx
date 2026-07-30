@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Kbd } from "@/components/ui/kbd";
+import { UserMenu } from "@/components/user-menu";
+import type { StaffUserDto } from "@/lib/auth/dto";
 import { cn } from "@/lib/utils";
 
 // The four desktop surfaces. `/field` is deliberately absent — it is a separate
 // surface with its own chrome, not a tab of this one.
 //
-// This list is presentation only. When auth lands, showing or hiding a link here
-// is NOT access control: every Server Action authorises its caller server-side
+// This list is presentation only. Showing or hiding a link here is NOT access
+// control: every Server Action authorises its caller server-side
 // (AGENTS.md §10.1). Do not treat a hidden link as a permission check.
 const NAV_LINKS = [
   { href: "/signals", label: "Signals" },
@@ -25,7 +26,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppNav() {
+export function AppNav({ user }: { user: StaffUserDto }) {
   const pathname = usePathname();
 
   return (
@@ -87,11 +88,7 @@ export function AppNav() {
             </span>
             <Kbd className="bg-stone text-ink-3 shrink-0 font-mono">⌘K</Kbd>
           </button>
-          <Avatar className="size-[30px]">
-            <AvatarFallback className="bg-surface-tint text-primary-ink text-[11.5px] font-semibold">
-              TB
-            </AvatarFallback>
-          </Avatar>
+          <UserMenu user={user} />
         </div>
       </nav>
     </header>

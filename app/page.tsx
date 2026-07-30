@@ -1,8 +1,15 @@
 import { redirect } from "next/navigation";
 
-// No marketing landing page is in scope. Signals is the daily-use screen.
-// When auth lands this becomes role-dependent — a Field Officer should land on
-// /field — but there is no session to read yet, so no role logic here.
-export default function RootPage() {
-  redirect("/signals");
+import { getCurrentStaffUser, landingPathForRole } from "@/lib/auth/session";
+
+// No marketing landing page is in scope. This route resolves where a person
+// belongs from the role on their `StaffUser` row: a Field Officer lands on
+// /field, everyone else on the daily-use Signals screen. An unauthenticated
+// visitor goes to /signin.
+export default async function RootPage() {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) redirect("/signin");
+
+  redirect(landingPathForRole(staffUser.role));
 }

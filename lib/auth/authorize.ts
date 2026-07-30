@@ -1,0 +1,129 @@
+import "server-only";
+
+import { StaffRole } from "@/lib/generated/prisma/enums";
+
+/**
+ * The AGENTS.md §10 role matrix, expressed once as named predicates.
+ *
+ * Every Server Action authorises its caller by calling one of these, inside the
+ * action, server-side. Hiding a link or disabling a button is presentation and
+ * is never the control (§10.1).
+ *
+ * This module is server-only and must stay unreachable from client code: no
+ * role list and no predicate may appear in a shared Zod schema or anything a
+ * client component can import (§10.10).
+ */
+
+/**
+ * Approve, send back, or reject a brief — Programme Director only (§10.2).
+ *
+ * **Role alone is not sufficient.** §9.5 requires the approval action to
+ * additionally re-read hallucination-guard flag state server-side and refuse
+ * while any flag is unresolved. A caller that checks only this predicate has
+ * silently dropped that rule.
+ */
+export function canApproveOrRejectBrief(role: StaffRole): boolean {
+  return role === StaffRole.programme_director;
+}
+
+/** Submit or publish an approved brief — Programme Director only (§10.2). */
+export function canSubmitOrPublishBrief(role: StaffRole): boolean {
+  return role === StaffRole.programme_director;
+}
+
+/**
+ * Generate and refine briefs (§10.3). A Policy & Advocacy Officer may generate
+ * but may never approve, including their own drafts.
+ */
+export function canGenerateBrief(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/**
+ * Manage stakeholder records (§10.3). A Field Officer has no CRM access at all
+ * (§10.5).
+ */
+export function canManageStakeholders(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/** Ingest evidence into the knowledge base (§10.4). */
+export function canIngestEvidence(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director || role === StaffRole.research_officer
+  );
+}
+
+/**
+ * Set or change an evidence item's classification (§10.8).
+ *
+ * This is the enforcement point for the governance gate's tagging rule
+ * (§7.3): nothing leaves `unpublished_internal` without a caller who passes
+ * here, and the change is logged with actor and timestamp.
+ */
+export function canChangeEvidenceClassification(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director || role === StaffRole.research_officer
+  );
+}
+
+/**
+ * Resolve or dismiss a hallucination-guard flag (§10.6).
+ *
+ * Object-level, not role-only. §10.6 states two things: dismissal is restricted
+ * to Research Officer and Programme Director, *and* nobody clears a flag on a
+ * brief they drafted — the rule is named for the Policy & Advocacy Officer
+ * because that is the role that can draft without being able to dismiss, but a
+ * reviewer marking their own work as verified is exactly what the guard exists
+ * to prevent, so it holds for every role.
+ *
+ * The brief's author and the acting user are required arguments precisely so a
+ * caller cannot accidentally perform only the role half of this check.
+ */
+export function canDismissFlag(
+  role: StaffRole,
+  brief: { createdById: string },
+  actorStaffUserId: string,
+): boolean {
+  const roleMayDismiss =
+    role === StaffRole.programme_director ||
+    role === StaffRole.research_officer;
+
+  return roleMayDismiss && brief.createdById !== actorStaffUserId;
+}
+
+/** Submit a field observation — open to all four roles (§10.5). */
+export function canSubmitFieldObservation(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer ||
+    role === StaffRole.research_officer ||
+    role === StaffRole.field_officer
+  );
+}
+
+/**
+ * The typed result a Server Action returns instead of throwing across the
+ * action boundary (AGENTS.md §18).
+ *
+ * Only the two variants this prompt's features can actually produce ship here.
+ * `refused-ineligible-classification`, `refused-unresolved-flags`,
+ * `rate-limited`, and `gap` arrive with the features that produce them —
+ * shaping them speculatively now is over-engineering.
+ */
+export type ActionRefusal =
+  | { kind: "unauthorised"; message: string }
+  | { kind: "invalid"; fieldErrors: Record<string, string[]> };
+
+/** The standard unauthorised refusal, so the copy is not reinvented per action. */
+export function unauthorised(
+  message = "You do not have permission to do that.",
+): Extract<ActionRefusal, { kind: "unauthorised" }> {
+  return { kind: "unauthorised", message };
+}
