@@ -80,10 +80,12 @@ export function AppNav() {
           <button
             type="button"
             disabled
-            className="bg-paper border-line rounded-card text-ink-3 laptop:flex hidden h-8 w-[230px] items-center justify-between border px-2.5 text-left text-[13px]"
+            className="bg-paper border-line rounded-card text-ink-3 laptop:flex hidden h-8 w-[240px] items-center justify-between gap-2 border px-2.5 text-left text-[13px]"
           >
-            <span>Search signals, briefs, evidence</span>
-            <Kbd className="bg-stone text-ink-3 font-mono">⌘K</Kbd>
+            <span className="truncate whitespace-nowrap">
+              Search signals &amp; evidence
+            </span>
+            <Kbd className="bg-stone text-ink-3 shrink-0 font-mono">⌘K</Kbd>
           </button>
           <Avatar className="size-[30px]">
             <AvatarFallback className="bg-surface-tint text-primary-ink text-[11.5px] font-semibold">
