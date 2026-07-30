@@ -73,8 +73,23 @@ For every implementation request:
 8. On approval, re-read the approved prompt file in `prompts/` and implement it strictly. Implement only after user approval. Entering "y" or "Y" = `Approved. Execute.`
 9. Run available checks (section 19).
 10. Share exact steps to test or run the completed feature.
+11. Commit the resulting change to `main`, unprompted. Every executed prompt ends in a commit — never leave implemented work uncommitted. Do not push unless asked.
 
 Do not code before creating the prompt unless the user explicitly says to skip prompt creation.
+
+**Why step 11 matters.** Resolving what is already built (below, and on any resume) reads the files on disk and `git log`, never the prompt files. Work left uncommitted makes that resolution wrong and invites a duplicate prompt for a feature that already exists.
+
+**Resuming in a new session.** Entering `I` or `i` = `Work out what comes next and write its prompt file.` It runs steps 1–7 of this workflow and stops at the approval question. It never implements anything — `i` writes the prompt, `y` executes it.
+
+Resolving what "next" means, in a session with no prior context:
+
+1. **The number** is the highest existing prompt number in `prompts/` plus one. Never renumber, never overwrite, never reuse a number (section 4).
+2. **The scope** is the next unbuilt item from section 1's build list, ordered by what unblocks the most downstream work. The spec's four-phase roadmap (section 7 of the spec) is the narrative for why that order exists; use it as context, not as a checklist to walk mechanically.
+3. **Establish what is already built from the repository** — the files on disk and `git log` — not from the existing prompt files. A committed prompt file is evidence that a prompt was written, never that it was executed. Writing a prompt for work that already exists is the main failure mode here.
+4. **Name the chosen scope and say why it is next in the first line of the reply**, before writing the file, so a wrong call is visible immediately.
+5. If two candidates are genuinely equally unblocking, write neither yet — name both, state the trade-off, and ask.
+
+Then finish with step 7's question as written.
 
 **Design references and assets**
 
@@ -522,9 +537,11 @@ Scripts that currently exist in `package.json`:
 - `npm run lint` — ESLint
 - `npm run typecheck` — `tsc --noEmit`
 - `npm run db:generate` — `prisma generate`; writes the client to `lib/generated/prisma` (gitignored). Also runs automatically as `postinstall`.
-- `npm run db:migrate` — `prisma migrate dev`; needs `DIRECT_URL` in `.env.local`
-- `npm run db:deploy` — `prisma migrate deploy`; the non-interactive path for CI and production
+- `npm run db:migrate:new -- <snake_case_name>` — author a migration from the live-database diff, for review. Writes a file; applies nothing.
+- `npm run db:migrate` — `prisma migrate deploy && prisma generate`; applies pending migrations. Same command in dev, CI, and production. Needs `DIRECT_URL`.
 - `npm run db:studio` — `prisma studio`
+
+> **Never run `prisma migrate dev`.** Prisma has no HNSW index type, so the pgvector similarity indexes on `evidence_chunk.embedding` and `policy_signal.embedding` live only in migration SQL and are invisible to `schema.prisma`. Every diff consequently proposes `DROP INDEX` on both, and `migrate dev` writes those drops into the migration it generates — silently leaving both vector columns unindexed, which makes every retrieval a sequential scan (section 15.1). `npm run db:migrate:new` produces the same diff with those drops filtered out; it protects any index named `*_embedding_cosine_idx`, so name new pgvector indexes to that pattern. A migration that adds a vector column must have its HNSW cosine index written in by hand, as `prisma/migrations/20260730100000_init/migration.sql` does.
 
 "Run available checks" (sections 2 and 18) currently means running `npm run lint` and `npm run typecheck`, plus `npm run build` when the change could affect the build, and reporting the exact output.
 

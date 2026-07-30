@@ -9,6 +9,14 @@
 // SQL DDL cannot import TypeScript, so this literal is the one unavoidable
 // second copy of that number; the data layer validates vector length against
 // the constant before writing.
+//
+// NEVER RUN `prisma migrate dev` ON THIS SCHEMA.
+// Prisma has no HNSW index type, so the pgvector similarity indexes exist only
+// in migration SQL and are invisible here. Every diff therefore proposes
+// dropping them, and `migrate dev` writes that DROP into the migration it
+// generates — leaving both vector columns unindexed and every retrieval a
+// sequential scan. Author migrations with `npm run db:migrate:new`, which
+// filters those drops out, and apply them with `npm run db:migrate`.
 
 generator client {
   provider = "prisma-client"
