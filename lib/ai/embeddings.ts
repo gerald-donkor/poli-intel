@@ -1,6 +1,5 @@
 import "server-only";
 
-import { ApiError, GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import { checkEmbeddingDimensions } from "@/lib/db/embedding";
@@ -12,12 +11,11 @@ import {
 
 import {
   EMBEDDING_BATCH_SIZE,
-  EMBEDDING_DEFAULT_RETRY_AFTER_MS,
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MAX_BATCH_CHARS,
-  EMBEDDING_MAX_RETRY_AFTER_MS,
   EMBEDDING_MODEL,
 } from "./config";
+import { getGeminiClient, toGeminiRequestFailure } from "./gemini";
 
 /**
  * THE DOOR INTO THE MODEL (AGENTS.md §7.2, `evidence-governance`).
@@ -66,21 +64,6 @@ const embedContentResponseSchema = z.object({
     .array(z.object({ values: z.array(z.number()).min(1) }))
     .min(1),
 });
-
-/** Lazy so a missing key is a typed refusal at call time, not an import crash. */
-let client: GoogleGenAI | null = null;
-
-function getClient(): GoogleGenAI | null {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-
-  // Server-only, and never `NEXT_PUBLIC_*` (AGENTS.md §18). Absent is an
-  // ordinary, reportable outcome — not an obscure SDK error three frames down.
-  if (!apiKey) return null;
-
-  client ??= new GoogleGenAI({ apiKey });
-
-  return client;
-}
 
 /**
  * Split chunks into request-sized batches.
@@ -155,7 +138,7 @@ export async function embedEvidenceCandidates(
     };
   }
 
-  const ai = getClient();
+  const ai = getGeminiClient();
 
   if (!ai) {
     return { ok: false, failure: { reason: "missing_api_key" }, refused };
@@ -175,7 +158,7 @@ export async function embedEvidenceCandidates(
       config: { outputDimensionality: EMBEDDING_DIMENSIONS },
     });
   } catch (error) {
-    return { ok: false, failure: toRequestFailure(error), refused };
+    return { ok: false, failure: toGeminiRequestFailure(error), refused };
   }
 
   const parsed = embedContentResponseSchema.safeParse(raw);
@@ -227,39 +210,3 @@ export async function embedEvidenceCandidates(
   return { ok: true, embedded, refused };
 }
 
-function toRequestFailure(error: unknown): EmbeddingFailure {
-  if (error instanceof ApiError) {
-    if (error.status === 429) {
-      return {
-        reason: "rate_limited",
-        retryAfterMs: readRetryDelayMs(error.message),
-      };
-    }
-
-    return { reason: "request_failed", status: error.status };
-  }
-
-  return { reason: "request_failed", status: null };
-}
-
-/**
- * Gemini returns a `retryDelay` in a 429's error details. The SDK surfaces the
- * body only as the error message, so it is read out with a bounded pattern and
- * clamped — the hint is honoured where it exists (`gemini-integration`) without
- * letting a malformed one park a run.
- *
- * The message itself is never logged or stored; only the number leaves here.
- */
-function readRetryDelayMs(message: string): number {
-  const match = /"retryDelay"\s*:\s*"(\d{1,5})(?:\.\d+)?s"/.exec(message);
-
-  if (!match) return EMBEDDING_DEFAULT_RETRY_AFTER_MS;
-
-  const seconds = Number(match[1]);
-
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return EMBEDDING_DEFAULT_RETRY_AFTER_MS;
-  }
-
-  return Math.min(seconds * 1000, EMBEDDING_MAX_RETRY_AFTER_MS);
-}

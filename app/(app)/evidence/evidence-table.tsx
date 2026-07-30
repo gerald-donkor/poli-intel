@@ -11,7 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { EvidenceListItem } from "@/lib/db/evidence";
+import type {
+  EvidenceSearchResult,
+  MatchProvenance,
+} from "@/lib/evidence/search";
 import { cn } from "@/lib/utils";
 
 import {
@@ -23,21 +26,40 @@ import {
 /**
  * The eligible evidence listing and its detail panel.
  *
- * TWO columns for now. The handoff's three-column recipe
- * (`desktop:grid-cols-[216px_1fr_340px]`) adds a filter rail on the left —
- * that rail, and keyword/semantic search, are the evidence-library-search
- * prompt. Rendering an empty filter column ahead of it would be a placeholder
- * pretending to be a feature.
+ * The filter rail is the third column of the handoff's Evidence Library recipe
+ * (`desktop:grid-cols-[216px_1fr_340px]`) and is rendered by the page, outside
+ * this component — so this holds the table and the detail panel, and the page
+ * composes the rail beside them.
  *
  * Below 760px the Type and Classification columns drop out of the table and are
  * read from the detail panel instead (design-system.md, responsive table).
  */
-export function EvidenceTable({ items }: { items: EvidenceListItem[] }) {
+
+/**
+ * Rows given a staggered reveal. The handoff asks for a 70ms stagger; past this
+ * many rows the last card would arrive over a second after the first, which is
+ * a wait rather than an explanation. Everything beyond simply appears.
+ */
+const MAX_STAGGERED_ROWS = 8;
+const ROW_STAGGER_MS = 70;
+
+export function EvidenceTable({
+  results,
+  showMatch,
+}: {
+  results: EvidenceSearchResult[];
+  /** True when a query is active. The Match column exists only then. */
+  showMatch: boolean;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(
-    items[0]?.id ?? null,
+    results[0]?.id ?? null,
   );
 
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+  // Results change under the selection whenever a filter or query moves, so the
+  // selected id may no longer be in the list. Reconciling to the first result
+  // here — rather than in an effect — means the panel is never briefly empty.
+  const selected =
+    results.find((item) => item.id === selectedId) ?? results[0] ?? null;
 
   return (
     <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_360px]">
@@ -50,6 +72,11 @@ export function EvidenceTable({ items }: { items: EvidenceListItem[] }) {
               <TableHead className="text-ink-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
                 Title
               </TableHead>
+              {showMatch ? (
+                <TableHead className="text-ink-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                  Match
+                </TableHead>
+              ) : null}
               <TableHead className="text-ink-2 hidden text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
                 Type
               </TableHead>
@@ -68,16 +95,26 @@ export function EvidenceTable({ items }: { items: EvidenceListItem[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => {
-              const isSelected = item.id === selectedId;
+            {results.map((item, index) => {
+              const isSelected = item.id === selected?.id;
 
               return (
                 <TableRow
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
                   aria-current={isSelected ? "true" : undefined}
+                  // Match reveal: fade + 8px rise, 70ms apart, in match order
+                  // (handoff motion table). Only when there is a match to
+                  // reveal — a browse listing is not a result set. The global
+                  // reduced-motion rule neutralises it.
+                  style={
+                    showMatch && index < MAX_STAGGERED_ROWS
+                      ? { animationDelay: `${index * ROW_STAGGER_MS}ms` }
+                      : undefined
+                  }
                   className={cn(
                     "border-line cursor-pointer border-b transition-colors duration-150",
+                    showMatch && index < MAX_STAGGERED_ROWS && "animate-rise-in",
                     // Selected row is a surface-tint background, never a
                     // checkbox alone (design-system.md, evidence table).
                     isSelected ? "bg-surface-tint" : "hover:bg-stone/60",
@@ -100,6 +137,11 @@ export function EvidenceTable({ items }: { items: EvidenceListItem[] }) {
                       </span>
                     </button>
                   </TableCell>
+                  {showMatch ? (
+                    <TableCell className="py-2.5">
+                      <MatchCell match={item.match} />
+                    </TableCell>
+                  ) : null}
                   <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
                     {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
                   </TableCell>
@@ -142,7 +184,60 @@ export function EvidenceTable({ items }: { items: EvidenceListItem[] }) {
   );
 }
 
-function EvidenceDetail({ item }: { item: EvidenceListItem }) {
+/**
+ * The Match column: always populated when it is rendered, so every row explains
+ * why it is in the list.
+ *
+ * Similarity is a number AND a bar, never colour alone (design-system.md,
+ * evidence table), with the same information in the `aria-label`. A literal hit
+ * has no similarity to report and says so in words rather than borrowing a
+ * number it does not have.
+ */
+function MatchCell({ match }: { match: MatchProvenance | null }) {
+  if (match === null) return null;
+
+  if (match.kind === "keyword") {
+    return <span className="text-ink-2 text-[13px]">Keyword</span>;
+  }
+
+  const score = Math.round(match.similarity * 100);
+  const alsoKeyword = match.kind === "both";
+
+  return (
+    <span
+      className="flex min-w-[104px] flex-col gap-1"
+      aria-label={`Closeness ${score} out of 100${
+        alsoKeyword ? ", and a keyword match" : ""
+      }`}
+    >
+      <span className="flex items-center gap-2">
+        <span className="text-ink font-mono text-[11.5px] font-medium tabular-nums">
+          {score}
+        </span>
+        <span
+          aria-hidden="true"
+          className="bg-stone h-1 w-14 overflow-hidden rounded-full"
+        >
+          <span
+            className="bg-primary block h-full rounded-full"
+            style={{ width: `${score}%` }}
+          />
+        </span>
+      </span>
+      {alsoKeyword ? (
+        <span className="text-ink-3 text-[11.5px]">and keyword</span>
+      ) : null}
+    </span>
+  );
+}
+
+function EvidenceDetail({ item }: { item: EvidenceSearchResult }) {
+  const match = item.match;
+  const matchedPassage =
+    match !== null && match.kind !== "keyword"
+      ? { excerpt: match.chunkExcerpt, ordinal: match.chunkOrdinal }
+      : null;
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
@@ -195,6 +290,16 @@ function EvidenceDetail({ item }: { item: EvidenceListItem }) {
           </DetailRow>
         ) : null}
       </dl>
+
+      {/* The matched passage sits above the opening excerpt: it is the reason
+          this row is on screen, and burying it under the document's first
+          paragraph would make the reader hunt for it. */}
+      {matchedPassage ? (
+        <EvidenceExcerpt
+          excerpt={matchedPassage.excerpt}
+          label={`Matched passage · chunk ${matchedPassage.ordinal}`}
+        />
+      ) : null}
 
       <EvidenceExcerpt excerpt={item.excerpt} />
     </div>
@@ -265,13 +370,20 @@ function DetailRow({
  * a reader tells what a source said from what the system wrote; never set this
  * in Inter.
  */
-export function EvidenceExcerpt({ excerpt }: { excerpt: string }) {
+export function EvidenceExcerpt({
+  excerpt,
+  label = "Opening excerpt",
+}: {
+  excerpt: string;
+  /** What this passage is. The matched-passage variant names its chunk. */
+  label?: string;
+}) {
   if (!excerpt) return null;
 
   return (
     <figure className="flex flex-col gap-1.5">
       <figcaption className="text-ink-3 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
-        Opening excerpt
+        {label}
       </figcaption>
       <blockquote className="border-accent text-ink font-serif text-[15px] leading-[1.55] border-l-2 pl-4">
         {excerpt}

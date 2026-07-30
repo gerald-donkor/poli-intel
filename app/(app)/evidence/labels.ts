@@ -34,6 +34,13 @@ export const IMPACT_AREA_OPTIONS = Object.values(ImpactArea).map((value) => ({
   label: IMPACT_AREA_LABELS[value],
 }));
 
+/**
+ * The unset option in every filter select. "Any" rather than "All": a filter
+ * that is not set does not assert that everything matched, and the library only
+ * ever lists what the gate allows.
+ */
+export const EVIDENCE_SEARCH_OPTIONS_ANY = "Any";
+
 export function formatIngestedAt(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",

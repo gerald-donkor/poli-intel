@@ -1,10 +1,16 @@
 import "server-only";
 
-import { EMBEDDING_MODEL } from "@/lib/ai/config";
+import {
+  EMBEDDING_MODEL,
+  EVIDENCE_SEARCH_CANDIDATE_CHUNKS,
+  EVIDENCE_SEARCH_MAX_ITEMS,
+  EVIDENCE_SEARCH_MIN_SIMILARITY,
+} from "@/lib/ai/config";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { Classification } from "@/lib/generated/prisma/enums";
 
 import { prisma } from "./client";
+import type { EvidenceFilters } from "./evidence";
 
 /**
  * The vector half of the data layer.
@@ -127,23 +133,135 @@ export function purgeEvidenceItemEmbeddings(
 }
 
 /**
- * Embedded-chunk counts per item, for the evidence detail panel.
+ * Embedded-chunk counts for the items being rendered, for the detail panel.
  *
- * Ungrouped by item id rather than filtered to a list: the eligible corpus is
- * small and this is one indexed-ish pass instead of a parameter list that grows
- * with the page. Revisit when the library gets its filters and pagination.
+ * Scoped to the ids on screen now that the library filters and caps its result
+ * set — counting the whole table to render at most a hundred rows was the
+ * shortcut the previous note said to revisit.
+ *
+ * An empty id list returns an empty map without touching the database.
  */
-export async function countEmbeddedChunksByItem(): Promise<Map<string, number>> {
+export async function countEmbeddedChunksByItem(
+  evidenceItemIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (evidenceItemIds.length === 0) return new Map();
+
   const rows = await prisma.$queryRaw<
     { evidenceItemId: string; embeddedCount: number }[]
   >`
     SELECT evidence_item_id AS "evidenceItemId", COUNT(*)::int AS "embeddedCount"
     FROM evidence_chunk
     WHERE embedding IS NOT NULL
+      AND evidence_item_id IN (${Prisma.join([...evidenceItemIds])})
     GROUP BY evidence_item_id
   `;
 
   return new Map(rows.map((row) => [row.evidenceItemId, row.embeddedCount]));
+}
+
+/** One item's closest matching chunk, and how close it was. */
+export type EvidenceChunkMatch = {
+  evidenceItemId: string;
+  chunkOrdinal: number;
+  chunkText: string;
+  /** Cosine similarity, `1 - distance`. Higher is closer. */
+  similarity: number;
+};
+
+/**
+ * The Evidence Library's semantic search: cosine similarity over chunk vectors,
+ * collapsed to one row per item.
+ *
+ * THE GATE, in the one place Prisma's `where` cannot reach. Classification is
+ * not duplicated onto chunks (`supabase-schema`), so the join to the parent item
+ * IS the enforcement:
+ *
+ *     i.classification = public_published
+ *
+ * is the same one fact as `ELIGIBLE_EVIDENCE_WHERE`, expressed in SQL the way
+ * `listItemsWithUnembeddedChunks` already does. It is the third layer of that
+ * rule, not a substitute for the other two — only eligible items are embedded at
+ * all (`lib/ai/embeddings.ts`), and `purgeEvidenceItemEmbeddings` strips the
+ * vectors again on a downgrade.
+ *
+ * INDEX BEHAVIOUR, honestly: the metadata filters sit in the same `WHERE` as the
+ * similarity ordering, so Postgres may post-filter the HNSW result set. An
+ * aggressive filter can therefore return fewer candidates than the limit
+ * suggests — `EVIDENCE_SEARCH_CANDIDATE_CHUNKS` over-fetches for exactly that
+ * reason. Do not tune `hnsw.ef_search` without a corpus to measure against.
+ *
+ * Every value below is a bound parameter, including the vector and the enums.
+ * Nothing is interpolated into the statement.
+ */
+export async function searchEvidenceChunksByVector({
+  queryVector,
+  filters,
+}: {
+  queryVector: number[];
+  filters: EvidenceFilters;
+}): Promise<EvidenceChunkMatch[]> {
+  const vector = JSON.stringify(queryVector);
+
+  const conditions: Prisma.Sql[] = [];
+
+  if (filters.country !== null) {
+    conditions.push(Prisma.sql`AND i.country = ${filters.country}`);
+  }
+
+  if (filters.year !== null) {
+    conditions.push(Prisma.sql`AND i.year = ${filters.year}::int`);
+  }
+
+  if (filters.impactArea !== null) {
+    conditions.push(
+      Prisma.sql`AND i.impact_area = ${filters.impactArea}::"impact_area"`,
+    );
+  }
+
+  if (filters.sourceType !== null) {
+    conditions.push(
+      Prisma.sql`AND i.source_type = ${filters.sourceType}::"evidence_source_type"`,
+    );
+  }
+
+  const filterSql =
+    conditions.length > 0 ? Prisma.join(conditions, " ") : Prisma.empty;
+
+  // Three nested selects, each doing one thing: rank chunks by distance, keep
+  // each item's closest one, then apply the threshold and the item cap.
+  // `DISTINCT ON` must lead its `ORDER BY` with the distinct expression, which
+  // is why the similarity ordering cannot collapse into the same statement.
+  return prisma.$queryRaw<EvidenceChunkMatch[]>`
+    SELECT closest."evidenceItemId",
+           closest."chunkOrdinal",
+           closest."chunkText",
+           closest."similarity"
+    FROM (
+      SELECT DISTINCT ON (candidate."evidenceItemId")
+             candidate."evidenceItemId",
+             candidate."chunkOrdinal",
+             candidate."chunkText",
+             (1 - candidate.distance)::float8 AS "similarity"
+      FROM (
+        SELECT c.evidence_item_id AS "evidenceItemId",
+               c.ordinal AS "chunkOrdinal",
+               c.chunk_text AS "chunkText",
+               (c.embedding <=> ${vector}::vector) AS distance
+        FROM evidence_chunk c
+        JOIN evidence_item i ON i.id = c.evidence_item_id
+        WHERE c.embedding IS NOT NULL
+          AND i.extraction_completed_at IS NOT NULL
+          AND i.classification = ${Classification.public_published}::"classification"
+          ${filterSql}
+        ORDER BY c.embedding <=> ${vector}::vector
+        LIMIT ${EVIDENCE_SEARCH_CANDIDATE_CHUNKS}
+      ) candidate
+      ORDER BY candidate."evidenceItemId", candidate.distance ASC
+    ) closest
+    WHERE closest."similarity" >= ${EVIDENCE_SEARCH_MIN_SIMILARITY}
+    ORDER BY closest."similarity" DESC
+    LIMIT ${EVIDENCE_SEARCH_MAX_ITEMS}
+  `;
 }
 
 /**

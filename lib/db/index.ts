@@ -22,10 +22,17 @@ export {
   findEvidenceItemForEmbedding,
   findEvidenceItemForIngestion,
   listEligibleEvidence,
+  listEvidenceFacets,
   listPendingClassification,
+  loadEvidenceListItems,
+  NO_EVIDENCE_FILTERS,
   type ClassifyEvidenceResult,
   type CreateEvidenceShellInput,
   type CreateEvidenceShellResult,
+  type EvidenceFacets,
+  type EvidenceFilters,
+  type EvidenceKeywordQuery,
+  type EvidenceListingPage,
   type EvidenceListItem,
 } from "./evidence";
 export {
@@ -34,8 +41,10 @@ export {
   listUnembeddedChunks,
   loadChunksForEmbedding,
   purgeEvidenceItemEmbeddings,
+  searchEvidenceChunksByVector,
   writeChunkEmbeddings,
   type ChunkForEmbedding,
+  type EvidenceChunkMatch,
   type UnembeddedChunk,
 } from "./evidence-vectors";
 export {

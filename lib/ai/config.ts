@@ -125,3 +125,68 @@ export const EMBEDDING_MAX_RETRY_AFTER_MS = 15 * 60_000;
  * backlog from spending the whole Gemini day in one go.
  */
 export const EMBEDDING_SWEEP_ITEM_LIMIT = 25;
+
+/* ---------------------------------------------------------------------------
+ * Evidence Library search
+ *
+ * These size the LIBRARY SEARCH path — a person typing into the filter rail on
+ * /evidence. They are NOT the Evidence Matcher's retrieval order, which is a
+ * separate, fixed contract: embed the signal → top 20 candidates → cross-encoder
+ * rerank → top 8 to the generator (AGENTS.md §15.1). Nothing below reranks and
+ * nothing below assembles generation context. Do not reuse these numbers there,
+ * and do not read the Matcher's numbers back into here.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The cap that makes the branded `SearchQuery` type structurally meaningful.
+ *
+ * Re-exported rather than declared here because the shared Zod schema needs the
+ * same number in the browser — see `lib/evidence/search-limits.ts` for why the
+ * source of truth sits outside this server-only module.
+ */
+export { EVIDENCE_SEARCH_MAX_QUERY_CHARS } from "@/lib/evidence/search-limits";
+
+/**
+ * Chunks the vector query retrieves before collapsing to one row per item.
+ *
+ * Over-fetches on purpose. The metadata filters live in the same `WHERE` as the
+ * similarity ordering, so Postgres may post-filter the HNSW result set: an
+ * aggressive filter can hand back fewer usable candidates than the limit
+ * suggests. A long document also contributes many chunks that collapse to a
+ * single row, so 60 chunks is nowhere near 60 items.
+ *
+ * A starting value with no corpus behind it. Raise it if filtered searches come
+ * back thin; do not reach for `hnsw.ef_search` without something to measure.
+ */
+export const EVIDENCE_SEARCH_CANDIDATE_CHUNKS = 60;
+
+/**
+ * Items a semantic search returns. Stated in the UI when it bites ("showing the
+ * 20 closest matches") rather than silently truncating. Pagination arrives when
+ * a real corpus makes it necessary.
+ */
+export const EVIDENCE_SEARCH_MAX_ITEMS = 20;
+
+/**
+ * The browse ceiling — filters only, no query. Higher than the semantic cap
+ * because a browse listing costs one indexed Prisma query and no Gemini
+ * request, but still bounded: an unbounded listing is a page that gets slower
+ * every week without anyone deciding it should.
+ */
+export const EVIDENCE_BROWSE_MAX_ITEMS = 100;
+
+/**
+ * Cosine similarity (`1 - distance`) a chunk must clear to be shown.
+ *
+ * A STARTING VALUE, not a measured one. There is no corpus to tune against yet,
+ * and a guessed number presented as a verified one is worse than a documented
+ * guess. Revisit once the library holds a real body of evidence and a Research
+ * Officer can say whether 0.35 admits noise or hides matches.
+ */
+export const EVIDENCE_SEARCH_MIN_SIMILARITY = 0.35;
+
+/**
+ * How much of the closest-matching chunk the detail panel quotes. Enough to
+ * recognise the passage, short enough not to reproduce the document.
+ */
+export const EVIDENCE_SEARCH_EXCERPT_CHARS = 400;
