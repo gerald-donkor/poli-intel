@@ -8,9 +8,8 @@ import { CHARS_PER_TOKEN_APPROX } from "@/lib/ingestion/config";
  * No model ID, dimension, batch size or rate-limit number is inlined in a
  * route, action or job (AGENTS.md §13.1). Every call path imports from here.
  *
- * Generation settings — model, temperature, token cap — arrive with the first
- * generation call. This file currently covers embedding only, which is the only
- * Gemini call the codebase makes.
+ * Two call families live here: embedding, and brief generation with its
+ * fact-check pass.
  */
 
 /**
@@ -125,6 +124,60 @@ export const EMBEDDING_MAX_RETRY_AFTER_MS = 15 * 60_000;
  * backlog from spending the whole Gemini day in one go.
  */
 export const EMBEDDING_SWEEP_ITEM_LIMIT = 25;
+
+/* ---------------------------------------------------------------------------
+ * Brief generation and the hallucination-guard fact-check pass
+ *
+ * Both calls in the pair use the same model and the same temperature: the guard
+ * is a reading task over supplied text, and a warmer verifier would invent
+ * disagreement as readily as a warmer generator invents evidence.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Verified 2026-07-31 against the installed `@google/genai` 2.15.0 and the
+ * `gemini-api-dev` skill's current-models list: `gemini-3.6-flash` is the
+ * current Flash model, 1M-token context, and is what spec §3.4 names.
+ */
+export const GENERATION_MODEL = "gemini-3.6-flash" as const;
+
+/** Spec §3.4 — factual grounding, not fluency. */
+export const GENERATION_TEMPERATURE = 0.3;
+
+/** Spec §3.4. The ceiling for one generated brief, not per section. */
+export const GENERATION_MAX_OUTPUT_TOKENS = 4000;
+
+/**
+ * Evidence items passed to the generator as structured context
+ * (AGENTS.md §13.7, spec §3.3 step 4), and the cap on the pasted policy
+ * document.
+ *
+ * Re-exported rather than declared here, for the same reason as
+ * `EVIDENCE_SEARCH_MAX_QUERY_CHARS` below: the shared Zod schema needs both
+ * numbers in the browser. See `lib/briefs/generation-limits.ts`.
+ */
+export {
+  BRIEF_POLICY_TEXT_MAX_CHARS,
+  GENERATION_EVIDENCE_CONTEXT_SIZE,
+} from "@/lib/briefs/generation-limits";
+
+/**
+ * How much of each item's text travels with it.
+ *
+ * Bounded on purpose: "never pass unbounded context" (§13.7) is not satisfied by
+ * bounding the item COUNT while letting a 90-page document ride along inside
+ * one of them. 8 × 4,000 chars ≈ 8,000 tokens of evidence, which leaves the
+ * model's window overwhelmingly to the policy text and the instructions.
+ */
+export const GENERATION_EVIDENCE_EXCERPT_CHARS = 4000;
+
+/**
+ * Structured output that fails Zod validation is retried exactly once, then the
+ * attempt is recorded as failed (AGENTS.md §9.4, §13.8). One, not three: a model
+ * that has produced malformed JSON twice at temperature 0.3 is not going to be
+ * argued into it on the third attempt, and each retry spends free-tier budget a
+ * person is waiting on.
+ */
+export const GENERATION_INVALID_OUTPUT_RETRIES = 1;
 
 /* ---------------------------------------------------------------------------
  * Evidence Library search

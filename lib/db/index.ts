@@ -24,6 +24,7 @@ export {
   listEligibleEvidence,
   listEvidenceFacets,
   listPendingClassification,
+  loadEvidenceForGenerationContext,
   loadEvidenceListItems,
   NO_EVIDENCE_FILTERS,
   type ClassifyEvidenceResult,
@@ -35,6 +36,24 @@ export {
   type EvidenceListingPage,
   type EvidenceListItem,
 } from "./evidence";
+export {
+  findBriefDetail,
+  listBriefs,
+  persistGeneratedBrief,
+  type BriefDetail,
+  type BriefFlag,
+  type BriefListItem,
+  type GeneratedFlag,
+  type PersistGeneratedBriefInput,
+} from "./briefs";
+export {
+  createBriefGeneration,
+  failBriefGeneration,
+  findOwnedBriefGeneration,
+  markBriefDrafting,
+  recordBriefDraft,
+  type CreateBriefGenerationInput,
+} from "./brief-generation";
 export {
   countEmbeddedChunksByItem,
   listItemsWithUnembeddedChunks,

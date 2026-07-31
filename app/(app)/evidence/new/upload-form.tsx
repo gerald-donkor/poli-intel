@@ -152,6 +152,17 @@ export function EvidenceUploadForm() {
         return;
       }
 
+      // `ActionRefusal` carries variants this action cannot produce — the
+      // governance and rate-limit refusals belong to the generation path — so
+      // the invalid case is named rather than assumed.
+      if (refusal.kind !== "invalid") {
+        setRun({
+          phase: "failed",
+          message: "That evidence record could not be created.",
+        });
+        return;
+      }
+
       // Field-mapped messages belong on the field. Anything that maps to no
       // field is surfaced as a panel rather than silently dropped.
       let unmapped: string | null = null;

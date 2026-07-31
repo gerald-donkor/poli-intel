@@ -27,11 +27,11 @@ What the config module holds:
 
 | Setting | Value | Source / status |
 |---|---|---|
-| Generation model | `gemini-3.6-flash` | Confirmed in `gemini-api-dev`'s current-models list |
+| Generation model | `gemini-3.6-flash` | Confirmed in `gemini-api-dev`'s current-models list, and verified live against the API on 2026-07-31 |
 | Temperature | `0.3` | Spec §3.4 — factual grounding |
 | Max output tokens | `4000` | Spec §3.4 |
-| Embedding model | **Gemini Embedding 2 — model ID needs verification** | Spec §6 names the model, not an ID. `gemini-api-dev` does not list embedding IDs. Verify against the installed SDK or `https://ai.google.dev/gemini-api/docs/embeddings.md.txt` before writing it. Do not guess. |
-| Embedding dimensionality | **needs verification** | Stated **once** here and consumed by the pgvector column — see `supabase-schema` §"dimensionality". Must match the model's actual output. |
+| Embedding model | `gemini-embedding-2` | Verified 2026-07-30 against `https://ai.google.dev/gemini-api/docs/embeddings.md.txt`. Note `task_type` is NOT supported by this model, and each input must be wrapped in a `Content` object or the batch returns ONE aggregated vector. |
+| Embedding dimensionality | `1536` | Chosen, not defaulted: pgvector's HNSW index caps at 2000 dimensions and the model auto-normalises truncated output. Stated **once** in `lib/ai/config.ts` and consumed by the pgvector column — see `supabase-schema` §"dimensionality". |
 | Requests/day budget | ~1,500 | Spec §6.1, §8.2 — free tier, approximate |
 | Requests/minute budget | 15 RPM | `AGENTS.md` §13.3 — approximate |
 | Retrieval context size | top 8 evidence items | Spec §3.3 step 4, `AGENTS.md` §13.7 |
@@ -92,6 +92,14 @@ Request structured output and **validate every structured response with Zod befo
 - Invalid output is retried **once**, then recorded as a failed generation.
 - Never persist unvalidated model output. No cast past a parse failure, no `any`.
 - The same rule covers the fact-check pass's output — see `hallucination-guard`.
+
+The request surface, verified against `@google/genai` 2.15.0 and a live call on 2026-07-31 — `lib/ai/structured.ts` is the one implementation:
+
+- `models.generateContent({ model, contents, config })`, with the system prompt in `config.systemInstruction` (not a message).
+- `config.responseMimeType: "application/json"` plus `config.responseJsonSchema` — JSON Schema, from Zod 4's `schema.toJSONSchema({ io: "output" })`.
+- **`responseJsonSchema` accepts a documented SUBSET of JSON Schema**, and `z.toJSONSchema` emits more than that (`$schema`, `minLength`, `pattern`). Strip anything outside the SDK's allow-list before sending; the same Zod schema validates the response afterwards, which is where the dropped constraints were doing the real work. `lib/ai/structured.ts` holds the allow-list.
+- `config.thinkingConfig.thinkingLevel` — on a thinking model the 4,000-token cap is shared with reasoning tokens, so a constrained reading-and-writing task sets `MINIMAL` and spends the cap on the document.
+- **The SDK reads `GOOGLE_GENAI_USE_VERTEXAI` from the process environment** and silently routes to Vertex AI when it is set — which then 404s or 403s against a Gemini API key. If calls fail for no visible reason, check the shell that started the server.
 
 ## Progress states, not a spinner
 

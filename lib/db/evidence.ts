@@ -254,6 +254,39 @@ export async function loadEvidenceListItems(
     .filter((item): item is EvidenceListItem => item !== undefined);
 }
 
+/**
+ * The rows the generation gate judges.
+ *
+ * `ELIGIBLE_EVIDENCE_WHERE` IS DELIBERATELY ABSENT, and this is the one listing
+ * in this module where that is correct. The gate must SEE an ineligible item to
+ * refuse it by name (`gateEvidenceForGeneration`); filtering here would instead
+ * silently shrink the officer's chosen set and generate from a different
+ * selection than the one on screen. Read at generation time, so a classification
+ * changed between picking and generating is caught (§7.1).
+ *
+ * `fullText` is read here and is bounded into an excerpt inside the gate, never
+ * before it — a caller that only wanted metadata has no reason to be here.
+ */
+export function loadEvidenceForGenerationContext(ids: readonly string[]) {
+  if (ids.length === 0) return Promise.resolve([]);
+
+  return prisma.evidenceItem.findMany({
+    where: { id: { in: [...ids] }, extractionCompletedAt: { not: null } },
+    select: {
+      id: true,
+      title: true,
+      authors: true,
+      year: true,
+      country: true,
+      impactArea: true,
+      sourceType: true,
+      citationKey: true,
+      classification: true,
+      fullText: true,
+    },
+  });
+}
+
 /** The country and year options the filter rail offers. */
 export type EvidenceFacets = {
   countries: string[];

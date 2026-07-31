@@ -192,11 +192,17 @@ function QueueRow({
       }
 
       setPendingChoice(null);
+      // `ActionRefusal` carries variants this action cannot produce (the
+      // governance and rate-limit refusals belong to the generation path), so
+      // the two it CAN produce are named explicitly rather than treated as
+      // "unauthorised, or else invalid".
       setError(
         result.refusal.kind === "unauthorised"
           ? result.refusal.message
-          : (Object.values(result.refusal.fieldErrors)[0]?.[0] ??
-            "That classification could not be recorded."),
+          : result.refusal.kind === "invalid"
+            ? (Object.values(result.refusal.fieldErrors)[0]?.[0] ??
+              "That classification could not be recorded.")
+            : "That classification could not be recorded.",
       );
     });
   };

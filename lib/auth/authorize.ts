@@ -1,6 +1,7 @@
 import "server-only";
 
 import { StaffRole } from "@/lib/generated/prisma/enums";
+import type { Classification } from "@/lib/generated/prisma/enums";
 
 /**
  * The AGENTS.md §10 role matrix, expressed once as named predicates.
@@ -112,14 +113,31 @@ export function canSubmitFieldObservation(role: StaffRole): boolean {
  * The typed result a Server Action returns instead of throwing across the
  * action boundary (AGENTS.md §18).
  *
- * Only the two variants this prompt's features can actually produce ship here.
- * `refused-ineligible-classification`, `refused-unresolved-flags`,
- * `rate-limited`, and `gap` arrive with the features that produce them —
- * shaping them speculatively now is over-engineering.
+ * Each variant ships with the feature that can actually produce it.
+ * `refused-unresolved-flags` and `gap` are still absent, because brief approval
+ * and the Evidence Matcher are not built — shaping them speculatively is
+ * over-engineering.
  */
 export type ActionRefusal =
   | { kind: "unauthorised"; message: string }
-  | { kind: "invalid"; fieldErrors: Record<string, string[]> };
+  | { kind: "invalid"; fieldErrors: Record<string, string[]> }
+  /**
+   * The governance gate refused part of a selection, so the whole run was
+   * refused (`lib/ai/evidence-context.ts`). Items are named by TITLE and
+   * CLASSIFICATION so the officer knows what to go and fix — never by excerpt,
+   * never by body text (§7.6).
+   */
+  | {
+      kind: "refused-ineligible-classification";
+      items: { id: string; title: string; classification: Classification }[];
+    }
+  /**
+   * A free-tier 429. Carries retry timing, and never loses what already exists
+   * (§13.4). Not an error: this is normal operation on the free tier.
+   */
+  | { kind: "rate-limited"; retryAfterMs: number }
+  /** A generation attempt that ended without a brief. Recorded, not swallowed. */
+  | { kind: "generation-failed"; message: string };
 
 /** The standard unauthorised refusal, so the copy is not reinvented per action. */
 export function unauthorised(
