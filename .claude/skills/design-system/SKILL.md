@@ -130,6 +130,16 @@ Never write UI copy implying the system decided, approved, verified, or endorsed
 
 Not just the happy path (`AGENTS.md` §17.6, spec §5.2): **empty** (matcher below threshold, with a real next step), **rate-limited** (retry timing, draft intact), **offline / sync-pending** (visible, never a silent queue), **classification-pending** (visible queue count), **flagged** (blocking approval). Each has a treatment in the handoff. A screen shipped with only its happy path is incomplete.
 
+## Responsive: every page, every size (`AGENTS.md` §11.15)
+
+Migrated from the root file so it loads with the rest of the UI guidance.
+
+**Every page is fully responsive at every screen size.** A route is not complete until it is usable and legible from 320px to 1600px+ — no horizontal page scroll at any width, no content clipped, no control pushed out of reach, no text below the minimums in `AGENTS.md` §11.6 and `design-system.md`. Wide content that genuinely cannot reflow (the influence-path diagram) scrolls inside its own panel, never the page. Check every new screen at 390px, 760px, 1000px, 1300px, and 1600px before calling it done.
+
+**Write mobile-first, and note there is no mobile breakpoint.** `tablet` (760px), `laptop` (1000px), and `desktop` (1300px) are `min-width` variants, so the **unprefixed classes are the small-screen layout** — anything under 760px, phones included. Build that base layer first as a single readable column, then layer `tablet:` / `laptop:` / `desktop:` on top to add columns, reveal side panels, and widen gutters. Do not reach for a `mobile:` variant; it does not exist and must not be added. Do not express small screens as `max-width` overrides of a desktop layout, and never put a fixed pixel width on a page-level container — cap with `max-w-*` plus `w-full` instead.
+
+"Responsive" means it works at every size, not that every size gets the same layout. `AGENTS.md` §11.14 still decides the *starting point* and §11.12 still decides the density: Director and Officer routes reflow their columns down to a single stacked column, while `/field` stays single-column all the way up and is never adapted into a desktop layout. Both are fully responsive. What is never acceptable is a screen that only works at the width it was built at.
+
 ## Related
 
 - `design_handoff_evibrief/design-system.md` — **authoritative**; read it first

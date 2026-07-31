@@ -377,11 +377,7 @@ Roles: **Programme Director**, **Policy & Advocacy Officer**, **Research Officer
 12. Density is role-dependent: Officer and Research views may hold real density (evidence tables, citations, relevance scores); Field Officer and community-facing views strip to one message per screen.
 13. WCAG 2.1 AA is a hard requirement — keyboard navigation across the kanban board and evidence table, ARIA labels on urgency and relevance badges, 4.5:1 minimum text contrast. Verify any new colour pairing before finalising.
 14. Desktop-first for Director and Officer routes; mobile-first for Field Officer routes.
-15. **Every page is fully responsive at every screen size.** A route is not complete until it is usable and legible from 320px to 1600px+ — no horizontal page scroll at any width, no content clipped, no control pushed out of reach, no text below the minimums in section 11.6 and `design-system.md`. Wide content that genuinely cannot reflow (the influence-path diagram) scrolls inside its own panel, never the page. Check every new screen at 390px, 760px, 1000px, 1300px, and 1600px before calling it done.
-
-    **Write mobile-first, and note there is no mobile breakpoint.** `tablet` (760px), `laptop` (1000px), and `desktop` (1300px) are `min-width` variants, so the **unprefixed classes are the small-screen layout** — anything under 760px, phones included. Build that base layer first as a single readable column, then layer `tablet:` / `laptop:` / `desktop:` on top to add columns, reveal side panels, and widen gutters. Do not reach for a `mobile:` variant; it does not exist and must not be added. Do not express small screens as `max-width` overrides of a desktop layout, and never put a fixed pixel width on a page-level container — cap with `max-w-*` plus `w-full` instead.
-
-    "Responsive" means it works at every size, not that every size gets the same layout. Rule 14 still decides the *starting point* and rule 12 still decides the density: Director and Officer routes reflow their columns down to a single stacked column, while `/field` stays single-column all the way up and is never adapted into a desktop layout. Both are fully responsive. What is never acceptable is a screen that only works at the width it was built at.
+15. **Every page is fully responsive at every screen size** — usable and legible from 320px to 1600px+, no horizontal page scroll at any width. The breakpoint mechanics (there is no `mobile:` variant; `tablet`/`laptop`/`desktop` are `min-width`, so unprefixed classes *are* the phone layout) and the widths to check are in the **`design-system`** skill, which is already loaded for all UI work.
 
 ---
 
@@ -414,39 +410,25 @@ Roles: **Programme Director**, **Policy & Advocacy Officer**, **Research Officer
 
 # 14. Policy Radar and background jobs
 
-1. All scheduled and event-triggered work runs as Inngest functions. Never a bare `setInterval`, never real work inline in a cron route, never a fire-and-forget promise in a request handler.
-2. Respect per-source cadences — Ghana Gazette / Forestry Commission daily, EUDR weekly, UNFCCC daily during COP, Cocobod weekly, ITTO monthly, CBD monthly, news daily. Cadences live in config, not scattered across job definitions.
-3. Structured sources are scraped with Playwright; RSS feeds are polled; unstructured monitoring uses Gemini with Google Search grounding.
-4. Deduplicate signals with fuzzy text matching before creating a record. A repeat alert on the same event is a defect.
-5. Radar jobs run server-side with retry logic and tolerate slow or unreachable sources without failing the whole run. One dead source does not abort the batch.
-6. Structure jobs to stay within Inngest free-tier limits — batch and fan out deliberately rather than one invocation per item.
-7. Staff receive a morning digest of classified signals via email (Resend) and/or Slack webhook. A source returning no new signals is reported in the weekly gap analysis — silence may mean a monitoring failure, not a quiet week.
-8. The Evidence Matcher is triggered by signal detection. The Brief Generator is not (section 8).
-9. The Impact Tracker runs weekly.
+The nine binding rules — per-source cadences, dedup, failure isolation, the free-tier job budget, what triggers the Evidence Matcher — live in the **`inngest-jobs`** skill. Load it before writing or changing any background work.
+
+Two constraints stay here because they are cross-cutting: all scheduled and event-triggered work runs as Inngest functions (never a bare `setInterval`, never real work inline in a cron route, never a fire-and-forget promise in a request handler), and signal detection triggers the Evidence Matcher and stops there — never the Brief Generator (section 8).
 
 ---
 
 # 15. Evidence Matcher and RAG
 
-1. Retrieval order is fixed: embed the signal text → pgvector cosine similarity → top 20 candidates → cross-encoder rerank → top 8 to the generator with relevance scores and source metadata.
-2. Only `public_published` evidence enters retrieval (section 7).
-3. Metadata filters are country, year, impact area, and evidence type (field data vs. literature).
-4. **Evidence gaps are surfaced, not hidden.** When nothing clears the confidence threshold, return an explicit gap — and in the UI, an empty state with a real next step (broaden the search, flag as a research gap), never a blank panel.
-5. Officers can add and remove matched evidence before generation; the final evidence set used for a brief is recorded on the brief.
-6. RAG orchestration uses LangChain.js inside Server Actions. Retrieval logic stays in the AI and data layers, never in a component.
+The fixed retrieval order, metadata filters, gap surfacing, and the officer's add/remove of matched evidence live in the **`evidence-matcher`** skill. Load it before implementing or changing retrieval.
+
+Two constraints stay here: only `public_published` evidence enters retrieval (section 7), and evidence gaps are surfaced explicitly, never papered over.
 
 ---
 
 # 16. Brief generation output
 
-1. Brief types are policy brief (4–6pp), technical submission (8–15pp), position paper (2–3pp), stakeholder note (1pp), media backgrounder (1pp). Length targets are part of the contract, not a suggestion.
-2. Standard policy brief structure: header (issue title, date, audience, classification) → executive summary (3–4 sentences, one clear recommendation) → context (max 200 words) → evidence (3–5 findings with citations and landscape specificity) → recommendations (2–4 concrete asks, one per decision-maker type) → implementation pathway → about Tropenbos Ghana.
-3. The five audience profiles are Ghana ministry official, cocoa company sustainability team, EU regulator / DG ENV, donor / programme officer, and CREMA community governance. Each has defined framing emphasis and tone; profiles live in one config location.
-4. Audience switching reframes the **same** evidence — it must read as "same evidence, reframed", not "new document loaded". Citations stay anchored; diff against the current draft rather than replacing it wholesale.
-5. Every brief records its signal, evidence set, audience, version, and generating model.
-6. Translation assist renders Twi on demand for community-facing versions — not pre-computed, and still a Gemini call subject to section 7.
-7. Generation target is a draft within 60 seconds, shown as sequenced progress states — "Reading evidence" → "Drafting" → "Verifying citations" — not a generic spinner.
-8. Export goes Tiptap document → `docx` for Word, Pandoc for PDF, plus Google Docs. Export never bypasses flag state: exporting a brief with unresolved flags carries a visible notice.
+Brief types and length targets, the standard policy-brief structure, the five audience profiles, audience-switch diffing, progress states, and export rules live in the **`brief-output`** skill. Load it before generating, reframing, translating, or exporting a brief.
+
+Three constraints stay here: translation assist is still a Gemini call subject to section 7; every brief records its signal, evidence set, audience, version, and generating model; and export never bypasses flag state (section 9).
 
 ---
 
@@ -489,36 +471,7 @@ Never run from browser code:
 
 The canonical list lives in `.env.example`. Only `NEXT_PUBLIC_*` values may reach browser code; everything else is server-only.
 
-| Variable | Purpose | Exposure |
-| -------- | ------- | -------- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Gemini 3.6 Flash generation, Gemini Embedding 2, Google Search grounding | server only |
-| `DATABASE_URL` | Supabase pooled connection for Prisma Client | server only |
-| `DIRECT_URL` | Supabase direct connection for Prisma migrations | server only |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | client + server |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | client + server |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service-role access for server-side jobs and storage | server only |
-| `AUTH_SECRET` | Auth.js v5 session and JWT signing | server only |
-| `AUTH_URL` | Auth.js canonical deployment URL | server only |
-| `AUTH_GOOGLE_ID` | Google Workspace OAuth client ID | server only |
-| `AUTH_GOOGLE_SECRET` | Google Workspace OAuth client secret | server only |
-| `AUTH_ALLOWED_DOMAIN` | Workspace domain restriction for SSO sign-in (section 10) | server only |
-| `INNGEST_EVENT_KEY` | Sending events to Inngest | server only |
-| `INNGEST_SIGNING_KEY` | Verifying Inngest requests to the serve endpoint | server only |
-| `RESEND_API_KEY` | Morning digest and notification email | server only |
-| `DIGEST_FROM_EMAIL` | Verified sender address for digests | server only |
-| `UPLOADTHING_TOKEN` | PDF and document ingestion uploads | server only |
-| `SLACK_WEBHOOK_URL` | Optional; signal digest delivery to Slack | server only |
-| `WHATSAPP_API_TOKEN` | WhatsApp Business API auth (Twilio or 360dialog) | server only |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp sender identity | server only |
-| `AFRICASTALKING_USERNAME` | Africa's Talking USSD gateway auth | server only |
-| `AFRICASTALKING_API_KEY` | Africa's Talking USSD gateway auth | server only |
-| `SENTRY_DSN` | Server-side error reporting | server only |
-| `SENTRY_AUTH_TOKEN` | Source map upload at build time | server only |
-| `NEXT_PUBLIC_SENTRY_DSN` | Browser error reporting | client + server |
-| `NEXT_PUBLIC_POSTHOG_KEY` | PostHog project key | client + server |
-| `NEXT_PUBLIC_POSTHOG_HOST` | PostHog host (self-hosted) | client + server |
-
-Keep this table and `.env.example` in sync when variables change. Never commit a real secret. Never send evidence body text to Sentry or PostHog (section 7).
+Never commit a real secret. Never send evidence body text to Sentry or PostHog (section 7).
 
 ## Code standards
 

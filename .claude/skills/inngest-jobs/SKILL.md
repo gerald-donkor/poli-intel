@@ -115,9 +115,24 @@ Email specifics: `resend`, `react-email`, `email-best-practices` (vendor). `RESE
 - Prefer a small number of long, stepped functions over many tiny ones where the work is genuinely sequential.
 - Supabase Free **pauses after 7 days of inactivity** (spec §6.1). Scheduled jobs incidentally keep it warm — but don't rely on that, and don't add a job whose only purpose is keeping it awake.
 
+## The §14 contract, in full
+
+Migrated verbatim from `AGENTS.md` §14 so the root file no longer carries it. These nine rules bind on every job.
+
+1. All scheduled and event-triggered work runs as Inngest functions. Never a bare `setInterval`, never real work inline in a cron route, never a fire-and-forget promise in a request handler.
+2. Respect per-source cadences — Ghana Gazette / Forestry Commission daily, EUDR weekly, UNFCCC daily during COP, Cocobod weekly, ITTO monthly, CBD monthly, news daily. Cadences live in config, not scattered across job definitions.
+3. Structured sources are scraped with Playwright; RSS feeds are polled; unstructured monitoring uses Gemini with Google Search grounding.
+4. Deduplicate signals with fuzzy text matching before creating a record. A repeat alert on the same event is a defect.
+5. Radar jobs run server-side with retry logic and tolerate slow or unreachable sources without failing the whole run. One dead source does not abort the batch.
+6. Structure jobs to stay within Inngest free-tier limits — batch and fan out deliberately rather than one invocation per item.
+7. Staff receive a morning digest of classified signals via email (Resend) and/or Slack webhook. A source returning no new signals is reported in the weekly gap analysis — silence may mean a monitoring failure, not a quiet week.
+8. The Evidence Matcher is triggered by signal detection. The Brief Generator is not (`AGENTS.md` §8).
+9. The Impact Tracker runs weekly.
+
 ## Related
 
 - `evidence-governance` — the gate, before any model call from a job
+- `evidence-matcher` — what signal detection triggers
 - `gemini-integration` — classification and embedding call paths, backoff, batching
 - `supabase-schema` — the signal/evidence/influence tables these jobs write
 - `inngest-*`, `playwright-skill`, `resend`, `react-email` (vendor) — the mechanics
