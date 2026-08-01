@@ -106,8 +106,11 @@ export default async function BriefPage({
             >
               Download Word
             </a>
+            {/* The watch ramp, not the ambient secondary ink: this line is about
+                open flag state, and watch is the guard's ramp (design-system,
+                §11.4). 9.1:1 on `card`. */}
             {openFlagCount > 0 ? (
-              <span className="text-ink-3 max-w-[30ch] text-[12.5px] leading-snug tablet:text-right">
+              <span className="text-watch-ink max-w-[30ch] text-[12.5px] leading-snug tablet:text-right">
                 The file carries a notice about{" "}
                 {openFlagCount === 1
                   ? "the claim"
