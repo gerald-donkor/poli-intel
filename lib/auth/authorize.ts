@@ -44,6 +44,26 @@ export function canGenerateBrief(role: StaffRole): boolean {
 }
 
 /**
+ * Edit a brief's document — §10.3's "generates and refines briefs", so the same
+ * two roles that may generate one.
+ *
+ * A Research Officer is deliberately not here. §10.4's "annotates gaps" is real,
+ * but it reads as review annotation rather than document authorship, and it
+ * ships with the review work rather than being guessed at as an edit right.
+ * A Field Officer has no brief surface at all (§10.5).
+ *
+ * ROLE ALONE IS NOT SUFFICIENT. The caller must also check the brief's own
+ * state: a `submitted` or `published` brief is not editable regardless of role,
+ * and that check lives in the save transaction where it cannot be raced.
+ */
+export function canEditBrief(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/**
  * Manage stakeholder records (§10.3). A Field Officer has no CRM access at all
  * (§10.5).
  */
@@ -136,6 +156,12 @@ export type ActionRefusal =
    * (§13.4). Not an error: this is normal operation on the free tier.
    */
   | { kind: "rate-limited"; retryAfterMs: number }
+  /**
+   * Someone else saved a new version of this document while the caller was
+   * editing an older one. The caller's buffer is never discarded on the strength
+   * of this — two officers in the same brief must both keep their text (§8.7).
+   */
+  | { kind: "version-conflict"; currentVersion: number }
   /** A generation attempt that ended without a brief. Recorded, not swallowed. */
   | { kind: "generation-failed"; message: string };
 

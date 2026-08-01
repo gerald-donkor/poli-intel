@@ -89,6 +89,11 @@
 
   --animate-rise-in: riseIn 240ms var(--ease-standard) both;
   --animate-flag-pulse: flagPulse 900ms ease-out both;
+  /* The same 900ms single pulse, for the editor's inline guard-flag Mark. The
+     panel's version settles onto a slate surface because the panel IS a slate
+     surface; a Mark sits over the document's own prose, so it settles back to
+     transparent and the steady 2px underline is what remains (§9.7). */
+  --animate-flag-mark-pulse: flagMarkPulse 900ms ease-out both;
   --animate-breathe: breathe 2s ease-in-out infinite;
   --animate-slide-down: slideDown 200ms ease-out both;
   /* The classification queue count, 180ms per the handoff's motion table. The
@@ -224,6 +229,20 @@
   }
   100% {
     background-color: var(--color-watch-surface);
+  }
+}
+
+/* Once, 900ms, opacity 0 → 0.35 → 0, leaving the steady underline the Mark
+   carries as a border. Never a blink, never a loop (AGENTS.md §9.7). */
+@keyframes flagMarkPulse {
+  0% {
+    background-color: rgb(73 99 117 / 0);
+  }
+  45% {
+    background-color: rgb(73 99 117 / 0.35);
+  }
+  100% {
+    background-color: rgb(73 99 117 / 0);
   }
 }
 

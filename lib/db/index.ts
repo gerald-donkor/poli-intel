@@ -38,13 +38,18 @@ export {
 } from "./evidence";
 export {
   findBriefDetail,
+  findBriefForEdit,
   listBriefs,
   persistGeneratedBrief,
+  saveBriefVersion,
   type BriefDetail,
   type BriefFlag,
+  type BriefForEdit,
   type BriefListItem,
   type GeneratedFlag,
   type PersistGeneratedBriefInput,
+  type SaveBriefVersionInput,
+  type SaveBriefVersionResult,
 } from "./briefs";
 export {
   createBriefGeneration,

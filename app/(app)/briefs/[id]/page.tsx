@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { audienceLabel } from "@/lib/ai/audience-profiles";
 import { briefTypeLabel } from "@/lib/ai/brief-types";
+import { canEditBrief } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { findBriefDetail } from "@/lib/db";
+import { BriefStatus } from "@/lib/generated/prisma/enums";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
 import { BriefBody } from "./brief-body";
@@ -34,12 +36,19 @@ export default async function BriefPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireStaffUser();
+  const staffUser = await requireStaffUser();
 
   const { id } = await params;
   const brief = await findBriefDetail(id);
 
   if (!brief) notFound();
+
+  // Presentation only. The edit route authorises the caller itself, and so does
+  // the save action — hiding a link is never the control (§10.1).
+  const mayEdit =
+    canEditBrief(staffUser.role) &&
+    brief.status !== BriefStatus.submitted &&
+    brief.status !== BriefStatus.published;
 
   return (
     <>
@@ -58,6 +67,14 @@ export default async function BriefPage({
         <Link href="/briefs" className={buttonVariants({ variant: "outline" })}>
           All briefs
         </Link>
+        {mayEdit ? (
+          <Link
+            href={`/briefs/${brief.id}/edit`}
+            className={buttonVariants({ variant: "default" })}
+          >
+            Edit
+          </Link>
+        ) : null}
       </PageHeader>
 
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-4 p-4 tablet:p-6">
@@ -78,10 +95,10 @@ export default async function BriefPage({
           <div className="flex min-w-0 flex-col gap-4 laptop:order-1">
             <BriefBody bodyText={brief.bodyText} />
             <p className="text-ink-3 max-w-[70ch] text-[12.5px]">
-              This is a draft. Editing, audience switching, export, and the
-              review that clears a flag and lets the Programme Director approve
-              it arrive with the editor and review screens. Nothing here has been
-              approved, submitted, or published.
+              This is a draft. Audience switching, export, and the review that
+              clears a flag and lets the Programme Director approve it arrive
+              with the review and export screens. Nothing here has been approved,
+              submitted, or published.
             </p>
           </div>
         </div>

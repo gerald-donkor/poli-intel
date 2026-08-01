@@ -152,12 +152,22 @@ export async function generateBrief({
  * a JSON column, and `BriefVersion.documentJson` accordingly stays null until
  * the editor prompt builds the Tiptap document from this same text.
  */
+/**
+ * The divider above the findings.
+ *
+ * Exported because `buildDocumentFromDraft` locates the findings by walking to
+ * it — the per-finding citations are the one part of the draft this assembler
+ * cannot emit, so the document builder threads them in afterwards and needs to
+ * know where the findings start. One literal, read by both.
+ */
+export const EVIDENCE_SECTION_HEADING = "Evidence";
+
 export function assembleBodyText(draft: BriefDraft): string {
   const blocks: string[] = [
     line(draft.title),
     `Executive summary\n${prose(draft.executiveSummary)}`,
     `Context\n${prose(draft.context)}`,
-    "Evidence",
+    EVIDENCE_SECTION_HEADING,
     ...draft.findings.map(
       (finding) => `${line(finding.heading)}\n${prose(finding.body)}`,
     ),

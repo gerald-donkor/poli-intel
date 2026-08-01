@@ -8,11 +8,13 @@ import type { GatedEvidenceContext } from "@/lib/ai/evidence-context";
 import { anchorClaim, factCheckDraft } from "@/lib/ai/fact-check";
 import {
   assembleBodyText,
+  EVIDENCE_SECTION_HEADING,
   generateBrief,
   parseStoredDraft,
 } from "@/lib/ai/generate-brief";
 import type { StructuredCallFailure } from "@/lib/ai/structured";
 import { canGenerateBrief, unauthorised } from "@/lib/auth/authorize";
+import { buildDocumentFromDraft } from "@/lib/briefs/document";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
 import {
@@ -253,6 +255,18 @@ export async function verifyBriefAction(
     };
   }
 
+  // The editor's document, built from the very same `bodyText` so that every
+  // anchor computed above stays valid, with the findings' citation chips
+  // threaded in. Chips render to nothing in `bodyText`, so the two agree.
+  const document = buildDocumentFromDraft({
+    bodyText,
+    evidenceSectionHeading: EVIDENCE_SECTION_HEADING,
+    findingCitations: draft.findings.map((finding) => ({
+      evidenceItemIds: finding.citations,
+    })),
+    citationKeys: new Map(context.map((item) => [item.id, item.citationKey])),
+  });
+
   const briefId = await persistGeneratedBrief({
     generationId,
     createdById: attempt.createdById,
@@ -260,6 +274,7 @@ export async function verifyBriefAction(
     audience: attempt.audience,
     evidenceItemIds: attempt.evidenceItemIds,
     bodyText,
+    documentJson: document,
     generatingModel: attempt.generatingModel,
     promptVersion: attempt.promptVersion,
     flags: checked.unsupported.map((claim) => ({

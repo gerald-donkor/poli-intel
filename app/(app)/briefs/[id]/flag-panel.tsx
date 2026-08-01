@@ -1,6 +1,9 @@
+"use client";
+
 import { GuardFlagIcon } from "@/components/guard-flag-icon";
 import type { BriefDetail, BriefFlag } from "@/lib/db/briefs";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
+import { cn } from "@/lib/utils";
 
 import { FLAG_REASON_DETAIL, FLAG_REASON_LABELS } from "../labels";
 
@@ -34,13 +37,24 @@ import { FLAG_REASON_DETAIL, FLAG_REASON_LABELS } from "../labels";
  * RESOLVING a flag is not built here — the dismissal action and the approval
  * refusal ship with the review work. There is deliberately no disabled control
  * with nothing behind it; the panel says so in words instead.
+ *
+ * SHARED WITH THE EDITOR, extended rather than duplicated. `onSelectFlag` and
+ * `activeFlagId` are the editor's pairing between a flagged span in the document
+ * and its entry here; the read-only page passes neither and renders exactly as
+ * before. The entries carry stable `flag-<id>` element ids so the editor can
+ * scroll one into view from the other direction. Nothing about the visual
+ * contract changes with them — selecting a flag is navigation, not resolution.
  */
 export function FlagPanel({
   flags,
   evidence,
+  onSelectFlag,
+  activeFlagId,
 }: {
   flags: BriefFlag[];
   evidence: BriefDetail["evidence"];
+  onSelectFlag?: (flagId: string) => void;
+  activeFlagId?: string | null;
 }) {
   const open = flags.filter((flag) => flag.status === FlagStatus.open);
 
@@ -89,7 +103,11 @@ export function FlagPanel({
         {open.map((flag) => (
           <li
             key={flag.id}
-            className="border-watch-border bg-card/60 rounded-card border p-3"
+            id={`flag-${flag.id}`}
+            className={cn(
+              "border-watch-border bg-card/60 rounded-card border p-3 transition-colors duration-150",
+              activeFlagId === flag.id && "border-watch bg-watch-surface",
+            )}
           >
             <p className="text-watch-ink text-meta font-semibold tracking-[0.06em] uppercase">
               {FLAG_REASON_LABELS[flag.reason]}
@@ -109,6 +127,15 @@ export function FlagPanel({
                   .join("; ")}
               </p>
             ) : null}
+            {onSelectFlag === undefined ? null : (
+              <button
+                type="button"
+                onClick={() => onSelectFlag(flag.id)}
+                className="text-watch-ink mt-2 cursor-pointer text-[12.5px] font-medium underline-offset-2 hover:underline"
+              >
+                Find this claim in the document
+              </button>
+            )}
           </li>
         ))}
       </ul>
