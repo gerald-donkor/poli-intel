@@ -185,6 +185,72 @@ export type BriefFlag = {
   checkedEvidenceItemIds: string[];
   anchorFrom: number;
   anchorTo: number;
+  /**
+   * Who last changed this flag's state, when, and why (§9.6).
+   *
+   * The three columns describe the CURRENT state rather than a resolution
+   * specifically: on `resolved`/`dismissed` they are the person who cleared it,
+   * and on a reopened flag they are the person who reopened it. There is no
+   * per-flag audit table and this prompt adds no migration, so reading them as
+   * "the last state change" is the only shape that keeps a reopening's reason
+   * recorded at all — and a discarded reason would be worse than a reused
+   * column.
+   */
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  resolutionReason: string | null;
+};
+
+/** The columns every flag read needs, so the two reads cannot drift apart. */
+const FLAG_SELECT = {
+  id: true,
+  claimText: true,
+  reason: true,
+  status: true,
+  checkedEvidenceItemIds: true,
+  anchorFrom: true,
+  anchorTo: true,
+  resolvedAt: true,
+  resolutionReason: true,
+  resolvedBy: { select: { name: true } },
+} as const;
+
+type FlagRow = {
+  id: string;
+  claimText: string;
+  reason: FlagReason;
+  status: FlagStatus;
+  checkedEvidenceItemIds: string[];
+  anchorFrom: number;
+  anchorTo: number;
+  resolvedAt: Date | null;
+  resolutionReason: string | null;
+  resolvedBy: { name: string | null } | null;
+};
+
+function toBriefFlag(row: FlagRow): BriefFlag {
+  return {
+    id: row.id,
+    claimText: row.claimText,
+    reason: row.reason,
+    status: row.status,
+    checkedEvidenceItemIds: row.checkedEvidenceItemIds,
+    anchorFrom: row.anchorFrom,
+    anchorTo: row.anchorTo,
+    resolvedByName: row.resolvedBy?.name ?? null,
+    resolvedAt: row.resolvedAt?.toISOString() ?? null,
+    resolutionReason: row.resolutionReason,
+  };
+}
+
+/** One decision on a brief, as recorded (§8.3). */
+export type BriefStatusEvent = {
+  id: string;
+  actorName: string | null;
+  previousStatus: BriefStatus | null;
+  newStatus: BriefStatus;
+  reason: string | null;
+  changedAt: string;
 };
 
 export type BriefDetail = {
@@ -193,7 +259,13 @@ export type BriefDetail = {
   audience: BriefAudience;
   status: BriefStatus;
   generatedAt: string | null;
+  /**
+   * The author, for the object-level half of `canDismissFlag`. Nobody clears a
+   * flag on a brief they drafted, whatever their role (§10.6).
+   */
+  createdById: string | null;
   createdByName: string | null;
+  statusHistory: BriefStatusEvent[];
   version: number;
   bodyText: string;
   generatingModel: string | null;
@@ -210,7 +282,14 @@ export type BriefDetail = {
   }[];
 };
 
-/** The read behind /briefs/[id]. Current version only; history is a later prompt. */
+/**
+ * The read behind /briefs/[id] — the current version, its flags, the evidence
+ * set, and the record of who moved this brief and why.
+ *
+ * The status history is read here rather than lazily: it is the audit trail
+ * behind the review panel on the same screen, and a decision nobody can see
+ * recorded is the same as no review at all (§8.3).
+ */
 export async function findBriefDetail(
   briefId: string,
 ): Promise<BriefDetail | null> {
@@ -222,7 +301,19 @@ export async function findBriefDetail(
       audience: true,
       status: true,
       generatedAt: true,
+      createdById: true,
       createdBy: { select: { name: true } },
+      statusChanges: {
+        orderBy: { changedAt: "desc" },
+        select: {
+          id: true,
+          previousStatus: true,
+          newStatus: true,
+          reason: true,
+          changedAt: true,
+          actor: { select: { name: true } },
+        },
+      },
       versions: {
         orderBy: { version: "desc" },
         take: 1,
@@ -233,15 +324,7 @@ export async function findBriefDetail(
           promptVersion: true,
           flags: {
             orderBy: { anchorFrom: "asc" },
-            select: {
-              id: true,
-              claimText: true,
-              reason: true,
-              status: true,
-              checkedEvidenceItemIds: true,
-              anchorFrom: true,
-              anchorTo: true,
-            },
+            select: FLAG_SELECT,
           },
         },
       },
@@ -277,12 +360,21 @@ export async function findBriefDetail(
     audience: brief.audience,
     status: brief.status,
     generatedAt: brief.generatedAt?.toISOString() ?? null,
+    createdById: brief.createdById,
     createdByName: brief.createdBy?.name ?? null,
+    statusHistory: brief.statusChanges.map((row) => ({
+      id: row.id,
+      actorName: row.actor?.name ?? null,
+      previousStatus: row.previousStatus,
+      newStatus: row.newStatus,
+      reason: row.reason,
+      changedAt: row.changedAt.toISOString(),
+    })),
     version: version.version,
     bodyText: version.bodyText,
     generatingModel: version.generatingModel,
     promptVersion: version.promptVersion,
-    flags: version.flags,
+    flags: version.flags.map(toBriefFlag),
     evidence: brief.evidenceSet.map((row) => row.evidenceItem),
   };
 }
@@ -350,15 +442,7 @@ export async function findBriefForEdit(
           documentJson: true,
           flags: {
             orderBy: { anchorFrom: "asc" },
-            select: {
-              id: true,
-              claimText: true,
-              reason: true,
-              status: true,
-              checkedEvidenceItemIds: true,
-              anchorFrom: true,
-              anchorTo: true,
-            },
+            select: FLAG_SELECT,
           },
         },
       },
@@ -397,7 +481,7 @@ export async function findBriefForEdit(
     version: version.version,
     bodyText: version.bodyText,
     documentJson: version.documentJson,
-    flags: version.flags,
+    flags: version.flags.map(toBriefFlag),
     evidence: brief.evidenceSet.map((row) => row.evidenceItem),
   };
 }
@@ -418,6 +502,23 @@ export type SaveBriefVersionResult =
   | { ok: false; reason: "not-found" }
   | { ok: false; reason: "not-editable"; status: BriefStatus }
   | { ok: false; reason: "conflict"; currentVersion: number };
+
+/**
+ * Whether a brief's document may still be changed.
+ *
+ * `reviewed` is in the not-editable set alongside `submitted` and `published`,
+ * and that is deliberate: approval attaches to a document, so if editing
+ * continued after approval a Director's approval would sit on text they never
+ * read. The alternative — silently returning an edited brief to `draft` — would
+ * move a status without an explicit human action, which §8.3 forbids. A Director
+ * who wants changes SENDS THE BRIEF BACK first, which is what send-back is for.
+ *
+ * The route reads this to render its panel; the save transaction re-reads it
+ * because between the two is exactly where the status can change.
+ */
+export function isEditableStatus(status: BriefStatus): boolean {
+  return status === BriefStatus.draft;
+}
 
 /**
  * An edit, as a NEW version. No prior version is ever overwritten (§8.7).
@@ -449,10 +550,7 @@ export async function saveBriefVersion(
 
     if (!brief) return { ok: false, reason: "not-found" };
 
-    if (
-      brief.status === BriefStatus.submitted ||
-      brief.status === BriefStatus.published
-    ) {
+    if (!isEditableStatus(brief.status)) {
       return { ok: false, reason: "not-editable", status: brief.status };
     }
 
@@ -532,6 +630,249 @@ export async function saveBriefVersion(
     });
 
     return { ok: true, version: nextVersion };
+  });
+}
+
+/* -------------------------------------------------------------------------
+ * Review — flag resolution and the status chain
+ * ---------------------------------------------------------------------- */
+
+export type FlagForResolution = {
+  id: string;
+  briefId: string;
+  /** Null where the author's row is gone. Nobody can be that person, so the
+   *  object-level half of `canDismissFlag` cannot match — which is correct. */
+  briefCreatedById: string | null;
+  status: FlagStatus;
+  /** A flag on a superseded version is history and is not resolvable (§8.7). */
+  isCurrentVersion: boolean;
+};
+
+/**
+ * The object a flag-resolution caller must authorise against, read before any
+ * validation of the rest of the input.
+ *
+ * It returns IDS AND STATE ONLY — no claim text. An authorisation check has no
+ * business loading the claim it is about (§7.6).
+ */
+export async function findFlagForResolution(
+  flagId: string,
+): Promise<FlagForResolution | null> {
+  const flag = await prisma.hallucinationFlag.findUnique({
+    where: { id: flagId },
+    select: {
+      id: true,
+      status: true,
+      briefVersion: {
+        select: {
+          version: true,
+          brief: {
+            select: { id: true, createdById: true, currentVersion: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!flag) return null;
+
+  return {
+    id: flag.id,
+    briefId: flag.briefVersion.brief.id,
+    briefCreatedById: flag.briefVersion.brief.createdById,
+    status: flag.status,
+    isCurrentVersion:
+      flag.briefVersion.version === flag.briefVersion.brief.currentVersion,
+  };
+}
+
+export type ResolveFlagInput = {
+  flagId: string;
+  actorId: string;
+  /** `resolved` and `dismissed` clear a flag; `open` reopens a cleared one. */
+  nextStatus: FlagStatus;
+  reason: string;
+};
+
+export type ResolveFlagResult =
+  | { ok: true; briefId: string; status: FlagStatus; openFlagCount: number }
+  | { ok: false; reason: "not-found" | "not-current-version" | "wrong-state" };
+
+/**
+ * A flag's state, changed under authority and recorded (§9.6).
+ *
+ * `resolved` and `dismissed` are DIFFERENT OUTCOMES and both are kept: resolved
+ * means a person checked the claim against a source and it holds; dismissed
+ * means the claim is being let through without that check, because the sentence
+ * was rewritten or removed. Both stop blocking approval, and the difference is
+ * the entire audit value of the record — collapsing them into one "clear" would
+ * throw it away.
+ *
+ * One transaction, re-reading the flag inside it: the caller authorised against
+ * a read from before the click, and the flag can be cleared or the version
+ * superseded in between.
+ */
+export async function resolveHallucinationFlag(
+  input: ResolveFlagInput,
+): Promise<ResolveFlagResult> {
+  return prisma.$transaction(async (tx) => {
+    const flag = await tx.hallucinationFlag.findUnique({
+      where: { id: input.flagId },
+      select: {
+        id: true,
+        status: true,
+        briefVersionId: true,
+        briefVersion: {
+          select: {
+            version: true,
+            brief: { select: { id: true, currentVersion: true } },
+          },
+        },
+      },
+    });
+
+    if (!flag) return { ok: false, reason: "not-found" };
+
+    if (flag.briefVersion.version !== flag.briefVersion.brief.currentVersion) {
+      return { ok: false, reason: "not-current-version" };
+    }
+
+    const reopening = input.nextStatus === FlagStatus.open;
+    const isOpen = flag.status === FlagStatus.open;
+
+    // Reopening a flag that is open, or clearing one that is already cleared,
+    // is a stale click. Refused, not silently re-applied — the second write
+    // would overwrite the first reviewer's record.
+    if (reopening === isOpen) return { ok: false, reason: "wrong-state" };
+
+    await tx.hallucinationFlag.update({
+      where: { id: flag.id },
+      data: {
+        status: input.nextStatus,
+        // The three columns record the LAST STATE CHANGE, so a reopening keeps
+        // its actor, time and reason rather than discarding them. `status` is
+        // what says whether that change was a clearing or a reopening.
+        resolvedById: input.actorId,
+        resolvedAt: new Date(),
+        resolutionReason: input.reason,
+      },
+    });
+
+    const openFlagCount = await tx.hallucinationFlag.count({
+      where: { briefVersionId: flag.briefVersionId, status: FlagStatus.open },
+    });
+
+    return {
+      ok: true,
+      briefId: flag.briefVersion.brief.id,
+      status: input.nextStatus,
+      openFlagCount,
+    };
+  });
+}
+
+/** The four named moves. There is deliberately no generic "set status". */
+export type BriefTransition = "approve" | "send_back" | "submit" | "publish";
+
+export type ChangeBriefStatusInput = {
+  briefId: string;
+  actorId: string;
+  transition: BriefTransition;
+  reason: string | null;
+};
+
+export type ChangeBriefStatusResult =
+  | { ok: true; status: BriefStatus }
+  | { ok: false; reason: "not-found" }
+  | { ok: false; reason: "wrong-status"; status: BriefStatus }
+  | { ok: false; reason: "open-flags"; openFlagCount: number };
+
+/** Which statuses each transition may start from, and where it lands. */
+const TRANSITIONS: Record<
+  BriefTransition,
+  { from: readonly BriefStatus[]; to: BriefStatus }
+> = {
+  approve: { from: [BriefStatus.draft], to: BriefStatus.reviewed },
+  send_back: {
+    from: [BriefStatus.draft, BriefStatus.reviewed],
+    to: BriefStatus.draft,
+  },
+  submit: { from: [BriefStatus.reviewed], to: BriefStatus.submitted },
+  publish: { from: [BriefStatus.reviewed], to: BriefStatus.published },
+};
+
+/**
+ * A status move, as an explicit human decision, with its audit row written in
+ * the same transaction (§8.3).
+ *
+ * THE APPROVAL REFUSAL LIVES HERE (§9.5). `approve` counts the CURRENT
+ * version's open flags inside the transaction — not a count passed from the
+ * client, not a value read when the page rendered — because the window between
+ * render and click is exactly where a flag gets reopened or a new version
+ * written. The disabled button is presentation; this count is the control.
+ *
+ * A decline is recorded even when it moves nothing: sending back a brief that is
+ * still `draft` writes a row with `previousStatus = newStatus = draft`. The row
+ * records a DECISION, not only a transition, and the reason is its payload.
+ *
+ * The approved version is pinned structurally rather than stored: a brief is not
+ * editable from `reviewed` onward (`isEditableStatus`), so the version that was
+ * approved is `brief.currentVersion` and cannot change under the approval.
+ */
+export async function changeBriefStatus(
+  input: ChangeBriefStatusInput,
+): Promise<ChangeBriefStatusResult> {
+  const rule = TRANSITIONS[input.transition];
+
+  return prisma.$transaction(async (tx) => {
+    const brief = await tx.brief.findUnique({
+      where: { id: input.briefId },
+      select: { id: true, status: true, currentVersion: true },
+    });
+
+    if (!brief) return { ok: false, reason: "not-found" };
+
+    if (!rule.from.includes(brief.status)) {
+      return { ok: false, reason: "wrong-status", status: brief.status };
+    }
+
+    if (input.transition === "approve") {
+      const openFlagCount = await tx.hallucinationFlag.count({
+        where: {
+          status: FlagStatus.open,
+          briefVersion: {
+            briefId: brief.id,
+            version: brief.currentVersion,
+          },
+        },
+      });
+
+      if (openFlagCount > 0) {
+        return { ok: false, reason: "open-flags", openFlagCount };
+      }
+    }
+
+    await tx.brief.update({
+      where: { id: brief.id },
+      data: {
+        status: rule.to,
+        ...(input.transition === "approve"
+          ? { reviewedById: input.actorId }
+          : {}),
+      },
+    });
+
+    await tx.briefStatusChange.create({
+      data: {
+        briefId: brief.id,
+        actorId: input.actorId,
+        previousStatus: brief.status,
+        newStatus: rule.to,
+        reason: input.reason,
+      },
+    });
+
+    return { ok: true, status: rule.to };
   });
 }
 

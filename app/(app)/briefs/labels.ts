@@ -1,4 +1,4 @@
-import { BriefStatus, FlagReason } from "@/lib/generated/prisma/enums";
+import { BriefStatus, FlagReason, FlagStatus } from "@/lib/generated/prisma/enums";
 
 /**
  * Presentation labels for the brief enums, derived from the Prisma enums rather
@@ -38,6 +38,30 @@ export const FLAG_REASON_DETAIL: Record<FlagReason, string> = {
     "The source named here does not appear to state this. Check the attribution.",
 };
 
+/**
+ * What a closed flag says happened. A person checked the claim, or a person let
+ * it through without checking — never that the system verified anything (§8.8).
+ */
+export const FLAG_STATUS_LABELS: Record<FlagStatus, string> = {
+  [FlagStatus.open]: "Needs checking",
+  [FlagStatus.resolved]: "Checked against a source",
+  [FlagStatus.dismissed]: "Let through without a check",
+};
+
+/**
+ * The Director's four moves, in their own words.
+ *
+ * "Send back" covers both of the spec's declining actions — sending back for
+ * changes and rejecting — because the data model fixes `status` to four values.
+ * The two are told apart by the reason recorded on the decision.
+ */
+export const BRIEF_TRANSITION_LABELS = {
+  approve: "Approve",
+  send_back: "Send back",
+  submit: "Mark as submitted",
+  publish: "Mark as published",
+} as const;
+
 export function formatGeneratedAt(iso: string | null): string {
   if (iso === null) return "Not recorded";
 
@@ -45,5 +69,16 @@ export function formatGeneratedAt(iso: string | null): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+/** A decision's timestamp — to the minute, because an audit trail needs one. */
+export function formatDecisionAt(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }

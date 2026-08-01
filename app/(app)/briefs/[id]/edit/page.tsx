@@ -12,7 +12,7 @@ import {
   buildDocumentFromBodyText,
   parseStoredDocument,
 } from "@/lib/briefs/document";
-import { findBriefForEdit } from "@/lib/db";
+import { findBriefForEdit, isEditableStatus } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
 
 import { BRIEF_STATUS_LABELS } from "../../labels";
@@ -61,14 +61,15 @@ export default async function BriefEditPage({
 
   if (!brief) notFound();
 
-  if (
-    brief.status === BriefStatus.submitted ||
-    brief.status === BriefStatus.published
-  ) {
+  if (!isEditableStatus(brief.status)) {
     return (
       <NotAvailable
         title={`This brief has been ${BRIEF_STATUS_LABELS[brief.status].toLowerCase()}`}
-        body="A brief that has left the building is no longer editable. Its full text and every version behind it stay on the brief's page."
+        body={
+          brief.status === BriefStatus.reviewed
+            ? "An approval attaches to a document, so an approved brief is no longer editable — otherwise the Programme Director's approval would sit on text they never read. If it needs changes, ask the Director to send it back."
+            : "A brief that has left the building is no longer editable. Its full text and every version behind it stay on the brief's page."
+        }
         briefId={id}
       />
     );

@@ -5,27 +5,37 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { audienceLabel } from "@/lib/ai/audience-profiles";
 import { briefTypeLabel } from "@/lib/ai/brief-types";
-import { canEditBrief } from "@/lib/auth/authorize";
+import {
+  canApproveOrRejectBrief,
+  canDismissFlag,
+  canEditBrief,
+} from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
-import { findBriefDetail } from "@/lib/db";
-import { BriefStatus } from "@/lib/generated/prisma/enums";
+import { findBriefDetail, isEditableStatus } from "@/lib/db";
+import { FlagStatus } from "@/lib/generated/prisma/enums";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
 import { BriefBody } from "./brief-body";
 import { CitationList } from "./citation-list";
 import { FlagPanel } from "./flag-panel";
+import { ReviewPanel } from "./review-panel";
+import { StatusHistory } from "./status-history";
 
 export const metadata = {
   title: "Brief · EviBrief",
 };
 
 /**
- * A generated draft, read-only.
+ * A generated draft, and the surface on which it is reviewed.
  *
- * Editing is the Tiptap prompt; approval, status transitions and flag
- * resolution are the review work. NEITHER IS STUBBED HERE. A disabled control
- * with no action behind it would imply the capability exists and is merely
- * switched off, so the screen says in words what is coming instead (§8.8).
+ * PERMISSIONS ARE RESOLVED HERE, SERVER-SIDE, AND ARE PRESENTATION ONLY. Both
+ * actions authorise their own caller — a control that is not rendered is not a
+ * control that is enforced (§10.1). A role that may review sees the panel; a
+ * role that may not sees no disabled ghost of it, and the brief reads as before.
+ *
+ * Governance surfaces come first in the rail: the flag panel, then the decision,
+ * then the citations. At one column the rail already precedes the document, so
+ * neither is ever what gets pushed below the fold (design-system, responsive).
  *
  * Only completed generations resolve. An attempt still drafting or verifying has
  * no `Brief` row, so it 404s rather than rendering a half-checked document —
@@ -45,10 +55,22 @@ export default async function BriefPage({
 
   // Presentation only. The edit route authorises the caller itself, and so does
   // the save action — hiding a link is never the control (§10.1).
-  const mayEdit =
-    canEditBrief(staffUser.role) &&
-    brief.status !== BriefStatus.submitted &&
-    brief.status !== BriefStatus.published;
+  const mayEdit = canEditBrief(staffUser.role) && isEditableStatus(brief.status);
+
+  // The object-level half matters here: nobody closes a flag on a brief they
+  // drafted, whatever their role. A brief whose author's row is gone has no
+  // author anyone can be, and the empty string never matches a real id.
+  const mayResolveFlags = canDismissFlag(
+    staffUser.role,
+    { createdById: brief.createdById ?? "" },
+    staffUser.id,
+  );
+
+  const mayReview = canApproveOrRejectBrief(staffUser.role);
+
+  const openFlagCount = brief.flags.filter(
+    (flag) => flag.status === FlagStatus.open,
+  ).length;
 
   return (
     <>
@@ -84,7 +106,19 @@ export default async function BriefPage({
             it moves into the side rail beside the document. */}
         <div className="grid min-w-0 grid-cols-1 gap-4 laptop:grid-cols-[minmax(0,1fr)_minmax(0,340px)] laptop:items-start desktop:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <div className="flex min-w-0 flex-col gap-4 laptop:order-2">
-            <FlagPanel flags={brief.flags} evidence={brief.evidence} />
+            <FlagPanel
+              flags={brief.flags}
+              evidence={brief.evidence}
+              canResolve={mayResolveFlags}
+            />
+            {mayReview ? (
+              <ReviewPanel
+                briefId={brief.id}
+                status={brief.status}
+                openFlagCount={openFlagCount}
+              />
+            ) : null}
+            <StatusHistory events={brief.statusHistory} />
             <CitationList evidence={brief.evidence} />
             <GenerationProvenance
               generatingModel={brief.generatingModel}
@@ -95,10 +129,9 @@ export default async function BriefPage({
           <div className="flex min-w-0 flex-col gap-4 laptop:order-1">
             <BriefBody bodyText={brief.bodyText} />
             <p className="text-ink-3 max-w-[70ch] text-[12.5px]">
-              This is a draft. Audience switching, export, and the review that
-              clears a flag and lets the Programme Director approve it arrive
-              with the review and export screens. Nothing here has been approved,
-              submitted, or published.
+              Audience switching and export arrive with their own screens. Every
+              move this brief makes is a person&rsquo;s decision, recorded with
+              their name and the time.
             </p>
           </div>
         </div>

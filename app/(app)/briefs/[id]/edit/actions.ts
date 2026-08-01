@@ -117,10 +117,15 @@ function toRefusal(
   }
 
   if (saved.reason === "not-editable") {
+    // `reviewed` is in this set deliberately: an approval attaches to a
+    // document, and editing after one would leave the Director's approval on
+    // text they never read. Send-back is the way back to editing (§8.3).
     return unauthorised(
-      saved.status === BriefStatus.submitted
-        ? "This brief has been submitted and is no longer editable."
-        : "This brief has been published and is no longer editable.",
+      saved.status === BriefStatus.reviewed
+        ? "This brief has been approved and is no longer editable. Ask the Programme Director to send it back if it needs changes."
+        : saved.status === BriefStatus.submitted
+          ? "This brief has been submitted and is no longer editable."
+          : "This brief has been published and is no longer editable.",
     );
   }
 

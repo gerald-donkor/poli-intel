@@ -133,10 +133,9 @@ export function canSubmitFieldObservation(role: StaffRole): boolean {
  * The typed result a Server Action returns instead of throwing across the
  * action boundary (AGENTS.md §18).
  *
- * Each variant ships with the feature that can actually produce it.
- * `refused-unresolved-flags` and `gap` are still absent, because brief approval
- * and the Evidence Matcher are not built — shaping them speculatively is
- * over-engineering.
+ * Each variant ships with the feature that can actually produce it. `gap` is
+ * still absent, because the Evidence Matcher is not built — shaping it
+ * speculatively is over-engineering.
  */
 export type ActionRefusal =
   | { kind: "unauthorised"; message: string }
@@ -151,6 +150,17 @@ export type ActionRefusal =
       kind: "refused-ineligible-classification";
       items: { id: string; title: string; classification: Classification }[];
     }
+  /**
+   * Approval refused because the hallucination guard still has open flags on the
+   * brief's current version (§9.5). The action re-reads flag state inside its own
+   * transaction and returns this; the disabled button is separate and is not the
+   * control.
+   *
+   * It carries a COUNT, never the claims. The claims are already on screen in the
+   * flag panel, and a refusal payload is one more place claim text could end up
+   * in a log (§7.6).
+   */
+  | { kind: "refused-unresolved-flags"; openFlagCount: number }
   /**
    * A free-tier 429. Carries retry timing, and never loses what already exists
    * (§13.4). Not an error: this is normal operation on the free tier.
