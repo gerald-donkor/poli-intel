@@ -9,6 +9,7 @@ import {
   canApproveOrRejectBrief,
   canDismissFlag,
   canEditBrief,
+  canExportBrief,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { findBriefDetail, isEditableStatus } from "@/lib/db";
@@ -68,6 +69,11 @@ export default async function BriefPage({
 
   const mayReview = canApproveOrRejectBrief(staffUser.role);
 
+  // Presentation only, and NOT gated on flag state or status: an open flag
+  // blocks approval and nothing else, and the exported file carries the notice
+  // with it rather than the download being withheld (§16.8).
+  const mayExport = canExportBrief(staffUser.role);
+
   const openFlagCount = brief.flags.filter(
     (flag) => flag.status === FlagStatus.open,
   ).length;
@@ -89,6 +95,28 @@ export default async function BriefPage({
         <Link href="/briefs" className={buttonVariants({ variant: "outline" })}>
           All briefs
         </Link>
+        {mayExport ? (
+          <span className="flex flex-col items-start gap-1 tablet:items-end">
+            {/* A plain anchor, not `Link`: this is a file response from a Route
+                Handler, not a client-side navigation. Never disabled by flag
+                state — the notice inside the file is the mechanism (§16.8). */}
+            <a
+              href={`/api/briefs/${brief.id}/export?format=docx`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              Download Word
+            </a>
+            {openFlagCount > 0 ? (
+              <span className="text-ink-3 max-w-[30ch] text-[12.5px] leading-snug tablet:text-right">
+                The file carries a notice about{" "}
+                {openFlagCount === 1
+                  ? "the claim"
+                  : `the ${openFlagCount} claims`}{" "}
+                still being checked.
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         {mayEdit ? (
           <Link
             href={`/briefs/${brief.id}/edit`}
@@ -129,9 +157,10 @@ export default async function BriefPage({
           <div className="flex min-w-0 flex-col gap-4 laptop:order-1">
             <BriefBody bodyText={brief.bodyText} />
             <p className="text-ink-3 max-w-[70ch] text-[12.5px]">
-              Audience switching and export arrive with their own screens. Every
-              move this brief makes is a person&rsquo;s decision, recorded with
-              their name and the time.
+              A downloaded copy carries this brief&rsquo;s status, its evidence
+              set, and any claim still being checked. Audience switching arrives
+              with its own screen. Every move this brief makes is a
+              person&rsquo;s decision, recorded with their name and the time.
             </p>
           </div>
         </div>

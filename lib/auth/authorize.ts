@@ -64,6 +64,31 @@ export function canEditBrief(role: StaffRole): boolean {
 }
 
 /**
+ * Take a copy of a brief out of the product — the Word download.
+ *
+ * NOT `canEditBrief` REUSED. A Research Officer may not author a brief's
+ * document but may certainly take a copy of one to check its claims against a
+ * source (§10.4), so the two rights are genuinely different and sharing a
+ * predicate would quietly grant or deny the wrong one. A Field Officer has no
+ * brief surface at all and is refused (§10.5).
+ *
+ * NOT GATED ON FLAG STATE, and deliberately so. An unresolved flag blocks
+ * Programme Director approval (§9.5) and nothing else; export is never blocked
+ * and never silent, because the exported file carries the notice with it
+ * (§16.8). Adding flag state here would invent a fifth thing a flag blocks.
+ *
+ * STATUS-INDEPENDENT too: a `draft` is exactly what someone needs to circulate
+ * for comment, and the file states its own status so nobody has to guess.
+ */
+export function canExportBrief(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer ||
+    role === StaffRole.research_officer
+  );
+}
+
+/**
  * Manage stakeholder records (§10.3). A Field Officer has no CRM access at all
  * (§10.5).
  */

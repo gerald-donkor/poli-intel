@@ -1,3 +1,4 @@
+import { FLAG_REASON_LABELS } from "@/lib/briefs/flag-labels";
 import { BriefStatus, FlagReason, FlagStatus } from "@/lib/generated/prisma/enums";
 
 /**
@@ -22,12 +23,12 @@ export const BRIEF_STATUS_LABELS: Record<BriefStatus, string> = {
  * What a flag is saying, in the guard's own register: the claim needs a person's
  * eyes, not that it is false. "Not traceable to the supplied evidence" is right;
  * "incorrect" is not (`hallucination-guard`).
+ *
+ * Defined in `lib/briefs/flag-labels.ts` and re-exported here, because the Word
+ * export writes the same sentence into a file that leaves the building and the
+ * two must not drift apart.
  */
-export const FLAG_REASON_LABELS: Record<FlagReason, string> = {
-  [FlagReason.unsupported]: "Not traceable to the supplied evidence",
-  [FlagReason.altered]: "Differs from what the evidence states",
-  [FlagReason.misattributed]: "Attributed to a source that does not say it",
-};
+export { FLAG_REASON_LABELS };
 
 export const FLAG_REASON_DETAIL: Record<FlagReason, string> = {
   [FlagReason.unsupported]:

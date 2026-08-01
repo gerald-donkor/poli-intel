@@ -380,6 +380,116 @@ export async function findBriefDetail(
 }
 
 /* -------------------------------------------------------------------------
+ * Export
+ * ---------------------------------------------------------------------- */
+
+export type BriefForExport = {
+  id: string;
+  /** The current version's first line — the brief's own title (`listBriefs`). */
+  title: string;
+  briefType: BriefType;
+  audience: BriefAudience;
+  status: BriefStatus;
+  generatedAt: string | null;
+  version: number;
+  bodyText: string;
+  /** Null for every brief generated before the editor existed. */
+  documentJson: unknown;
+  generatingModel: string | null;
+  /** OPEN flags only — see below. */
+  openFlags: { claimText: string; reason: FlagReason }[];
+  evidence: {
+    title: string;
+    authors: string[];
+    year: number | null;
+    citationKey: string;
+    country: string | null;
+    sourceUrl: string | null;
+  }[];
+};
+
+/**
+ * The read behind the Word download.
+ *
+ * SHAPED FOR THE ROUTE, not bolted onto `findBriefDetail`, which four other
+ * things already read and which does not return `documentJson` at all.
+ *
+ * IT READS ONLY WHAT LEAVES THE BUILDING. `classification` is deliberately not
+ * selected — the export makes no Gemini call, so it has no gate to run and no
+ * business widening its read towards one (§7). No chunk table is touched, and
+ * no evidence body text is read: the file carries citation metadata only, the
+ * same fields `CitationList` renders on screen.
+ *
+ * ONLY OPEN FLAGS ARE SELECTED. Closed flags produce neither the notice nor the
+ * list, so loading their claim text would be reading document content for
+ * nothing (§7.6). Flag state is read from the CURRENT version, exactly as
+ * approval reads it.
+ */
+export async function findBriefForExport(
+  briefId: string,
+): Promise<BriefForExport | null> {
+  const brief = await prisma.brief.findUnique({
+    where: { id: briefId },
+    select: {
+      id: true,
+      briefType: true,
+      audience: true,
+      status: true,
+      generatedAt: true,
+      versions: {
+        orderBy: { version: "desc" },
+        take: 1,
+        select: {
+          version: true,
+          bodyText: true,
+          documentJson: true,
+          generatingModel: true,
+          flags: {
+            where: { status: FlagStatus.open },
+            orderBy: { anchorFrom: "asc" },
+            select: { claimText: true, reason: true },
+          },
+        },
+      },
+      evidenceSet: {
+        orderBy: { addedAt: "asc" },
+        select: {
+          evidenceItem: {
+            select: {
+              title: true,
+              authors: true,
+              year: true,
+              citationKey: true,
+              country: true,
+              sourceUrl: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const version = brief?.versions[0];
+
+  if (!brief || !version) return null;
+
+  return {
+    id: brief.id,
+    title: firstLine(version.bodyText),
+    briefType: brief.briefType,
+    audience: brief.audience,
+    status: brief.status,
+    generatedAt: brief.generatedAt?.toISOString() ?? null,
+    version: version.version,
+    bodyText: version.bodyText,
+    documentJson: version.documentJson,
+    generatingModel: version.generatingModel,
+    openFlags: version.flags,
+    evidence: brief.evidenceSet.map((row) => row.evidenceItem),
+  };
+}
+
+/* -------------------------------------------------------------------------
  * The editor
  * ---------------------------------------------------------------------- */
 
