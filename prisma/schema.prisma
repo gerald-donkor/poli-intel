@@ -208,6 +208,23 @@ enum IngestionOutcome {
   @@map("ingestion_outcome")
 }
 
+/// How one Policy Radar attempt against one source ended.
+///
+/// `empty` and `failed` are separate values because the weekly gap analysis
+/// cannot otherwise tell a broken scraper from a quiet week — silence is
+/// reported, not assumed (AGENTS.md §14.7). `not_implemented` is the third
+/// kind of silence: a source declared in the registry whose retrieval method
+/// has no implementation yet, which must read as "not yet monitored" rather
+/// than as a source that found nothing.
+enum RadarOutcome {
+  found
+  empty
+  failed
+  not_implemented
+
+  @@map("radar_outcome")
+}
+
 // ---------------------------------------------------------------------------
 // Actors
 // ---------------------------------------------------------------------------
@@ -242,14 +259,37 @@ model StaffUser {
 // ---------------------------------------------------------------------------
 
 model PolicySignal {
-  id          String       @id @default(uuid())
-  sourceUrl   String       @map("source_url")
-  sourceName  String       @map("source_name")
-  detectedAt  DateTime     @map("detected_at")
+  id         String   @id @default(uuid())
+  sourceUrl  String   @map("source_url")
+  sourceName String   @map("source_name")
+  detectedAt DateTime @map("detected_at")
+
+  /// The detected document's own headline, stored verbatim from the source.
+  ///
+  /// Not in spec §4.1's field list, and added deliberately: domain-level
+  /// deduplication is fuzzy matching over titles BEFORE the insert
+  /// (AGENTS.md §14.4), so a stored, comparable title is what makes "the same
+  /// notice at two URLs is one signal" possible at all. `summaryText` cannot
+  /// serve — it is produced by the classification call, which runs after the
+  /// dedup decision has already been taken.
+  title String
+
   urgency     Urgency
   relevance   Relevance
   impactArea  ImpactArea   @map("impact_area")
   geography   Geography
+
+  /// Signal-level audience targeting (spec §3.2), set by the classification
+  /// call alongside the four enums above.
+  ///
+  /// NULLABLE, unlike its four siblings, and for a reason that only applies to
+  /// it: the other four were non-nullable from the initial migration, whereas
+  /// this column is being added to a table that may already hold rows. A
+  /// default would stamp every pre-radar signal with an audience nobody chose,
+  /// which is the same defect as inventing a default urgency — a fabricated
+  /// classification in front of a reviewer. Absent is honest; wrong is not.
+  audienceTarget AudienceTarget? @map("audience_target")
+
   summaryText String       @map("summary_text")
   status      SignalStatus @default(new)
 
@@ -269,6 +309,40 @@ model PolicySignal {
   @@index([urgency])
   @@index([detectedAt])
   @@map("policy_signal")
+}
+
+/// One Policy Radar attempt against one source — the record that makes
+/// "silence is reported, not assumed" possible (AGENTS.md §14.7).
+///
+/// EVERY attempt writes exactly one row, including the ones that found nothing
+/// and the ones that failed. Without this table the weekly gap analysis cannot
+/// distinguish a scraper broken by a site redesign from a genuinely quiet week,
+/// and a source that has silently stopped working looks exactly like a source
+/// with no news.
+///
+/// Ids, counts, outcomes and short machine reasons ONLY — the same rule as
+/// IngestionLog. Never a scraped body, never a fetched document's text, never a
+/// caught error's message (§7.6, §13.9).
+model RadarRun {
+  id         String   @id @default(uuid())
+  /// The registry key from lib/radar/sources.ts, stable across renames.
+  sourceId   String   @map("source_id")
+  sourceName String   @map("source_name")
+
+  outcome              RadarOutcome
+  itemsSeen            Int          @default(0) @map("items_seen")
+  signalsCreated       Int          @default(0) @map("signals_created")
+  duplicatesSuppressed Int          @default(0) @map("duplicates_suppressed")
+  /// Short machine reason, never a fetched document or an error message.
+  failureReason        String?      @map("failure_reason")
+
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  /// The one query the gap analysis runs: recent runs, by source. Nothing
+  /// speculative alongside it (AGENTS.md §12.5).
+  @@index([sourceId, startedAt])
+  @@map("radar_run")
 }
 
 // ---------------------------------------------------------------------------

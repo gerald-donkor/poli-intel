@@ -180,6 +180,73 @@ export const GENERATION_EVIDENCE_EXCERPT_CHARS = 4000;
 export const GENERATION_INVALID_OUTPUT_RETRIES = 1;
 
 /* ---------------------------------------------------------------------------
+ * Policy Radar
+ *
+ * Signal classification reuses GENERATION_MODEL and GENERATION_TEMPERATURE
+ * above rather than declaring its own: it is a constrained reading task over a
+ * supplied document, which is what 0.3 is for, and a second model ID would be a
+ * second thing to keep in step (AGENTS.md §13.1).
+ *
+ * What is radar-specific is the SIZE of the work — how much of a fetched
+ * document travels to the model, how many items one run may process, and the
+ * share of the RPM ceiling the radar is allowed to occupy. Cadences are NOT
+ * here: they live in lib/radar/sources.ts, which is the one place they live.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * How much of a fetched public document reaches the classification call.
+ *
+ * "Never pass unbounded context" (§13.7) is not only a generation rule. A
+ * listing page can carry a whole site's navigation, and a feed entry can carry
+ * a full article; 6,000 characters is roughly 1,500 tokens, which is ample for
+ * judging urgency and impact area and nowhere near the point where a single
+ * scraped page could dominate a day's budget.
+ */
+export const RADAR_MAX_DOCUMENT_CHARS = 6000;
+
+/**
+ * Items one source's run may process.
+ *
+ * A ceiling, not a target. Sources re-list, and the fetch runs again tomorrow
+ * (or next Monday), so a bounded run costs at most a day's delay on the
+ * eleventh item while making one run's Gemini spend predictable — which is what
+ * the throttle below is derived from.
+ */
+export const RADAR_MAX_ITEMS_PER_RUN = 5;
+
+/** Classification, then the signal's own embedding. Both per created item. */
+export const RADAR_GEMINI_CALLS_PER_ITEM = 2;
+
+/**
+ * The share of the RPM ceiling the radar may occupy.
+ *
+ * Below GEMINI_RPM_BUDGET for the same reason EMBEDDING_RPM_ALLOCATION is: a
+ * scheduled fan-out across seven sources must not be able to consume the whole
+ * minute and push an officer's interactive generation into a 429.
+ */
+export const RADAR_RPM_ALLOCATION = 10;
+
+/**
+ * Fetch runs Inngest may START per minute — the radar's flow control, derived
+ * rather than guessed.
+ *
+ * One run classifies and embeds up to RADAR_MAX_ITEMS_PER_RUN items, so its
+ * worst case is that many × RADAR_GEMINI_CALLS_PER_ITEM requests. Dividing the
+ * allocation by that worst case is what keeps the radar inside its share even
+ * when every source returns a full page of new notices. Pacing is flow control,
+ * never a sleep inside a step (`inngest-jobs`, `gemini-integration`).
+ *
+ * Floored at 1: the radar always makes progress, and a 429 that still lands is
+ * a handled, recorded outcome rather than a crash (§13.3).
+ */
+export const RADAR_FETCH_RUNS_PER_MINUTE = Math.max(
+  1,
+  Math.floor(
+    RADAR_RPM_ALLOCATION / (RADAR_MAX_ITEMS_PER_RUN * RADAR_GEMINI_CALLS_PER_ITEM),
+  ),
+);
+
+/* ---------------------------------------------------------------------------
  * Evidence Library search
  *
  * These size the LIBRARY SEARCH path — a person typing into the filter rail on

@@ -4,6 +4,8 @@ import {
   embedEvidenceBatch,
   embedEvidenceOnClassification,
 } from "./functions/embed-evidence";
+import { fetchRadarSource } from "./functions/radar-fetch";
+import { scheduleRadarSources } from "./functions/radar-schedule";
 import { sweepUnembeddedEvidence } from "./functions/sweep-unembedded";
 
 /**
@@ -17,6 +19,8 @@ export const inngestFunctions = [
   embedEvidenceOnClassification,
   embedEvidenceBatch,
   sweepUnembeddedEvidence,
+  scheduleRadarSources,
+  fetchRadarSource,
 ];
 
 export { inngest } from "./client";

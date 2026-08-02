@@ -510,6 +510,7 @@ Scripts that currently exist in `package.json`:
 - `npm run db:migrate:new -- <snake_case_name>` — author a migration from the live-database diff, for review. Writes a file; applies nothing.
 - `npm run db:migrate` — `prisma migrate deploy && prisma generate`; applies pending migrations. Same command in dev, CI, and production. Needs `DIRECT_URL`.
 - `npm run db:studio` — `prisma studio`
+- `npm run playwright:install` — download the Chromium build Playwright drives. Needed once per machine, and again after a Playwright version bump; the npm package alone does not ship a browser. Only the Policy Radar's scrape sources use it, and they run as Inngest jobs — a radar run against a scrape source fails with `scrape_failed` until this has been run.
 
 > **Never run `prisma migrate dev`.** Prisma has no HNSW index type, so the pgvector similarity indexes on `evidence_chunk.embedding` and `policy_signal.embedding` live only in migration SQL and are invisible to `schema.prisma`. Every diff consequently proposes `DROP INDEX` on both, and `migrate dev` writes those drops into the migration it generates — silently leaving both vector columns unindexed, which makes every retrieval a sequential scan (section 15.1). `npm run db:migrate:new` produces the same diff with those drops filtered out; it protects any index named `*_embedding_cosine_idx`, so name new pgvector indexes to that pattern. A migration that adds a vector column must have its HNSW cosine index written in by hand, as `prisma/migrations/20260730100000_init/migration.sql` does.
 
@@ -517,6 +518,6 @@ Scripts that currently exist in `package.json`:
 
 > **Known lint noise.** `npm run lint` currently reports 4 pre-existing errors from code this project does not own: `react-hooks/set-state-in-effect` in the vendored `components/ui/carousel.tsx` and `hooks/use-mobile.ts`, and two errors in `design_handoff_evibrief/support.js`, which is prototype runtime and not application code (section 2). Do not reformat vendored component files or the handoff to satisfy a style rule. Read the output for problems in *your* files.
 
-> **Gaps to flag, not to invent.** There is no test script and no Playwright tooling in `package.json` yet. When a prompt first introduces one of these, add the script in that same change and update this section with it. Never reference a script name before it exists.
+> **Gaps to flag, not to invent.** There is still no test script in `package.json`. When a prompt first introduces one, add the script in that same change and update this section with it. Never reference a script name before it exists. Playwright is now installed, but as a **scraping** dependency for the Policy Radar only — there is no end-to-end test runner, no `playwright.config.ts`, and no `tests/` directory, so `npx playwright test` is not a command this project has.
 
 Report the exact command output; never claim a check passed without running it.

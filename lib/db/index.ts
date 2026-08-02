@@ -85,6 +85,14 @@ export {
   type UnembeddedChunk,
 } from "./evidence-vectors";
 export {
+  createClassifiedSignal,
+  findRecentSignalsForDedup,
+  recordRadarRun,
+  touchSignalDetectedAt,
+  type CreateClassifiedSignalInput,
+  type RecordRadarRunInput,
+} from "./signals";
+export {
   recordEmbeddingRun,
   recordIngestionFailure,
   recordIngestionSuccess,

@@ -45,6 +45,38 @@ export const evidenceEmbeddingBatchRequested = eventType(
   { schema: staticSchema<{ evidenceItemId: string; chunkIds: string[] }>() },
 );
 
+/**
+ * One source is due — go and fetch it.
+ *
+ * Emitted by the radar scheduler, one per due source, so each source's fetch is
+ * its own run with its own retries. That is what stops a timeout on ITTO losing
+ * the day's Gazette results (AGENTS.md §14.5).
+ *
+ * `dueOn` is the UTC date the scheduler decided for, and it is half of the
+ * idempotency key: a replayed or double-fired cron re-requests the same source
+ * for the same day and Inngest drops it.
+ */
+export const radarSourceFetchRequested = eventType(
+  "radar/source.fetch.requested",
+  { schema: staticSchema<{ sourceId: string; dueOn: string }>() },
+);
+
+/**
+ * A new policy signal exists.
+ *
+ * THE EVIDENCE MATCHER SUBSCRIBES TO THIS. The Brief Generator does not, and
+ * must not: detection triggers the Matcher and stops there, and generation is
+ * on demand only (AGENTS.md §8.4, §14.8). Nothing subscribes yet, which is
+ * correct — the Matcher is a later prompt.
+ *
+ * Carries the signal id and nothing else. Not `summaryText`, not the title, not
+ * the source document: the standing rule at the top of this file is not being
+ * weakened for the one payload where the text would have been convenient.
+ */
+export const signalDetected = eventType("signal/detected", {
+  schema: staticSchema<{ signalId: string }>(),
+});
+
 export const inngest = new Inngest({
   id: "evibrief",
   // v4 defaults to Cloud mode, which requires a signing key. Scoped to
