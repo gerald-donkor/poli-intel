@@ -137,6 +137,24 @@ export {
   type DigestWindowReads,
 } from "./digest";
 export {
+  createStakeholder,
+  findStakeholderDetail,
+  listSharesForBrief,
+  listStakeholderOptions,
+  listStakeholders,
+  recordBriefShare,
+  updateStakeholder,
+  type BriefShare,
+  type RecordBriefShareInput,
+  type RecordBriefShareResult,
+  type StakeholderDetail,
+  type StakeholderInput,
+  type StakeholderListItem,
+  type StakeholderOption,
+  type StakeholderShare,
+  type UpdateStakeholderResult,
+} from "./stakeholders";
+export {
   recordEmbeddingRun,
   recordIngestionFailure,
   recordIngestionSuccess,

@@ -8,7 +8,7 @@ import { UserMenu } from "@/components/user-menu";
 import type { StaffUserDto } from "@/lib/auth/dto";
 import { cn } from "@/lib/utils";
 
-// The four desktop surfaces. `/field` is deliberately absent — it is a separate
+// The five desktop surfaces. `/field` is deliberately absent — it is a separate
 // surface with its own chrome, not a tab of this one.
 //
 // This list is presentation only. Showing or hiding a link here is NOT access
@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/signals", label: "Signals" },
   { href: "/briefs", label: "Briefs" },
+  // Contacts follow from the thing you send them, so this sits after Briefs.
+  { href: "/stakeholders", label: "Stakeholders" },
   { href: "/evidence", label: "Evidence" },
   { href: "/impact", label: "Impact" },
 ] as const;

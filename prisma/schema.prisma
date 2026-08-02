@@ -270,6 +270,7 @@ model StaffUser {
   briefStatusChanges      BriefStatusChange[]
   signalReclassifications SignalReclassification[]
   classificationChanges   EvidenceClassificationChange[]
+  stakeholderSharesLogged StakeholderBrief[]
 
   @@map("staff_user")
 }
@@ -776,6 +777,17 @@ model StakeholderBrief {
   briefId       String   @map("brief_id")
   sharedAt      DateTime @default(now()) @map("shared_at")
   note          String?
+
+  /// WHO logged the share, taken from the session and never from the client.
+  ///
+  /// "This brief reached the Ministry" is a materially weaker record than "Ama
+  /// sent this brief to the Ministry on 4 August", and the Impact Tracker traces
+  /// an influence event back through exactly this row. Nullable because the
+  /// column was added after the table existed and rows written before it have no
+  /// honest answer — inventing one would be worse than a null. `SetNull` on
+  /// delete for the same reason: a departed colleague does not erase the share.
+  sharedById String?    @map("shared_by_id")
+  sharedBy   StaffUser? @relation(fields: [sharedById], references: [id], onDelete: SetNull)
 
   stakeholder Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
   brief       Brief       @relation(fields: [briefId], references: [id], onDelete: Cascade)

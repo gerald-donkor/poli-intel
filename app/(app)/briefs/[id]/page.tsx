@@ -10,9 +10,15 @@ import {
   canEditBrief,
   canExportBrief,
   canGenerateBrief,
+  canManageStakeholders,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
-import { findBriefDetail, isEditableStatus } from "@/lib/db";
+import {
+  findBriefDetail,
+  isEditableStatus,
+  listSharesForBrief,
+  listStakeholderOptions,
+} from "@/lib/db";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
@@ -21,6 +27,7 @@ import { BriefBody } from "./brief-body";
 import { CitationList } from "./citation-list";
 import { FlagPanel } from "./flag-panel";
 import { ReviewPanel } from "./review-panel";
+import { SharePanel } from "./share-panel";
 import { StatusHistory } from "./status-history";
 
 export const metadata = {
@@ -84,6 +91,16 @@ export default async function BriefPage({
   const openFlagCount = brief.flags.filter(
     (flag) => flag.status === FlagStatus.open,
   ).length;
+
+  // The CRM's own role reading (§10.3, §10.5): reading who a brief reached and
+  // logging another share are the same right, so a role that cannot keep the
+  // contact records does not see the panel and its rows are not fetched at all.
+  // The action authorises independently regardless (§10.1).
+  const mayLogShare = canManageStakeholders(staffUser.role);
+
+  const [shares, contacts] = mayLogShare
+    ? await Promise.all([listSharesForBrief(brief.id), listStakeholderOptions()])
+    : [[], []];
 
   return (
     <>
@@ -158,6 +175,14 @@ export default async function BriefPage({
               />
             ) : null}
             <StatusHistory events={brief.statusHistory} />
+            {mayLogShare ? (
+              <SharePanel
+                briefId={brief.id}
+                shares={shares}
+                contacts={contacts}
+                canLog
+              />
+            ) : null}
             <Origin signal={brief.signal} />
             <CitationList evidence={brief.evidence} />
             <GenerationProvenance

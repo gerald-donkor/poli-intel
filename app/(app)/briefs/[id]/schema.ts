@@ -15,6 +15,13 @@ import { z } from "zod";
  * the action both enforce, and it says nothing about who may send anything back.
  */
 
+/**
+ * The share-log form's shape is NOT here. It lives with the CRM it belongs to,
+ * in `app/(app)/stakeholders/schema.ts`, and both the panel on this route and
+ * `logBriefShareAction` import it from there — one home, no second copy to
+ * drift.
+ */
+
 /** Reasons are staff-authored free text, rendered back to staff as text. */
 const reason = z.string().trim().min(3, "Say briefly why.").max(500);
 

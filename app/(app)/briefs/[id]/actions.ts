@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   canApproveOrRejectBrief,
   canDismissFlag,
+  canManageStakeholders,
   canSubmitOrPublishBrief,
   unauthorised,
 } from "@/lib/auth/authorize";
@@ -14,12 +15,14 @@ import { getCurrentStaffUser } from "@/lib/auth/session";
 import {
   changeBriefStatus,
   findFlagForResolution,
+  recordBriefShare,
   resolveHallucinationFlag,
   type FlagForResolution,
 } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
 import type { StaffUser } from "@/lib/generated/prisma/client";
 
+import { logShareSchema, type LogShareInput } from "../../stakeholders/schema";
 import {
   briefTransitionNameSchema,
   changeBriefStatusSchema,
@@ -203,6 +206,96 @@ export async function changeBriefStatusAction(
   revalidatePath("/briefs");
 
   return { ok: true, status: result.status };
+}
+
+export type LogBriefShareActionResult =
+  | { ok: true; outcome: "created" | "updated" }
+  | { ok: false; refusal: ActionRefusal };
+
+/**
+ * Record that a person sent this brief to a contact.
+ *
+ * NOT A STATUS TRANSITION, and it must never become one. §8.2–8.3 reserve
+ * `submitted` and `published` for an explicit Programme Director action, so
+ * this writes one join row and touches nothing else — no `Brief.status`, no
+ * status-change audit row, no job. The copy says "logged", never "sent" by the
+ * product and never "submitted".
+ *
+ * NOT GATED ON FLAG STATE either. An unresolved flag blocks Programme Director
+ * approval and nothing else (§9.5); inventing a second thing a flag blocks
+ * would quietly change the guard's contract.
+ *
+ * NOT GATED ON BRIEF STATUS. A draft is exactly what someone circulates for
+ * comment — the same reasoning `canExportBrief` already records — and refusing
+ * to log a real share would make the record less true, not the product safer.
+ *
+ * `sharedById` comes from the session. There is no client-supplied path to it.
+ */
+export async function logBriefShareAction(
+  input: LogShareInput,
+): Promise<LogBriefShareActionResult> {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) {
+    return { ok: false, refusal: unauthorised("Sign in to log a share.") };
+  }
+
+  if (!canManageStakeholders(staffUser.role)) {
+    return {
+      ok: false,
+      refusal: unauthorised(
+        "Logging who a brief went to is the Policy & Advocacy Officer's and the Programme Director's work.",
+      ),
+    };
+  }
+
+  const parsed = logShareSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return { ok: false, refusal: toInvalid(parsed.error) };
+  }
+
+  const result = await recordBriefShare({
+    briefId: parsed.data.briefId,
+    stakeholderId: parsed.data.stakeholderId,
+    sharedById: staffUser.id,
+    // Midday local time, so the stored instant lands on the chosen day
+    // whichever side of UTC the reader is on.
+    sharedAt: new Date(`${parsed.data.sharedAt}T12:00:00`),
+    note: parsed.data.note?.trim() || null,
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      refusal: {
+        kind: "invalid",
+        fieldErrors: {
+          [result.reason === "brief_not_found" ? "form" : "stakeholderId"]: [
+            result.reason === "brief_not_found"
+              ? "That brief no longer exists."
+              : "That contact no longer exists.",
+          ],
+        },
+      },
+    };
+  }
+
+  // Ids and the outcome only. Never a contact's name, organisation, or the
+  // note — a named person at a named ministry is exactly the record that must
+  // not reach third-party telemetry (§7.6).
+  console.info("brief.share.logged", {
+    briefId: parsed.data.briefId,
+    stakeholderId: parsed.data.stakeholderId,
+    actorId: staffUser.id,
+    outcome: result.outcome,
+  });
+
+  revalidatePath(`/briefs/${parsed.data.briefId}`);
+  revalidatePath("/stakeholders");
+  revalidatePath(`/stakeholders/${parsed.data.stakeholderId}`);
+
+  return { ok: true, outcome: result.outcome };
 }
 
 /* -------------------------------------------------------------------------
