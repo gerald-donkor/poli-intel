@@ -70,6 +70,15 @@ export {
   type SaveBriefVersionResult,
 } from "./briefs";
 export {
+  findBriefForTranslation,
+  findLatestTranslationForBrief,
+  saveTranslation,
+  type BriefForTranslation,
+  type BriefTranslationMessage,
+  type BriefTranslationView,
+  type SaveTranslationInput,
+} from "./brief-translations";
+export {
   createBriefGeneration,
   discardBriefGeneration,
   failBriefGeneration,

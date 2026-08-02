@@ -3,20 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { TRANSLATION_LANGUAGE } from "@/lib/ai/config";
+import { gateEvidenceForGeneration } from "@/lib/ai/evidence-context";
+import { translateKeyMessages } from "@/lib/ai/translate";
 import {
   canApproveOrRejectBrief,
   canDismissFlag,
+  canGenerateBrief,
   canManageStakeholders,
   canSubmitOrPublishBrief,
   unauthorised,
 } from "@/lib/auth/authorize";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
+import { extractKeyMessages } from "@/lib/briefs/key-messages";
 import {
   changeBriefStatus,
+  findBriefForTranslation,
   findFlagForResolution,
+  loadEvidenceForGenerationContext,
   recordBriefShare,
   resolveHallucinationFlag,
+  saveTranslation,
+  type BriefTranslationView,
   type FlagForResolution,
 } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
@@ -296,6 +305,167 @@ export async function logBriefShareAction(
   revalidatePath(`/stakeholders/${parsed.data.stakeholderId}`);
 
   return { ok: true, outcome: result.outcome };
+}
+
+/* -------------------------------------------------------------------------
+ * Translation assist (§16.6)
+ * ---------------------------------------------------------------------- */
+
+export type TranslateKeyMessagesActionResult =
+  | { ok: true; translation: BriefTranslationView }
+  | { ok: false; refusal: ActionRefusal };
+
+/**
+ * Render this brief's key messages into Twi, on demand.
+ *
+ * ORDER, NO EXCEPTIONS: session → role → parse the id → read the brief version
+ * and its evidence set → GATE → call → save.
+ *
+ * THE GATE RUNS EVEN THOUGH NO EVIDENCE TEXT IS SENT. What travels to the model
+ * is the brief's own prose — but that prose is derived from this evidence, and
+ * being cleared once when the brief was written does not clear the evidence
+ * forever (§7.8, and `lib/ai/translate.ts` for the argument in full). An item
+ * reclassified since refuses the WHOLE run; there is no partial translation.
+ *
+ * IT IS NOT GATED ON FLAG STATE OR STATUS. An open flag blocks Programme
+ * Director approval and nothing else (§9.5) — the panel carries the notice
+ * instead, exactly as the Word export does (§16.8). A draft is precisely what
+ * gets discussed with a community before it is finalised, so status does not
+ * gate it either; the panel shows both beside the Twi.
+ *
+ * NO CLIENT TEXT REACHES THE MODEL: this takes a brief id, and the messages are
+ * extracted server-side from the stored `bodyText`.
+ *
+ * LOGGING: ids, counts, model, outcome. Never the English, never the Twi (§7.6).
+ */
+export async function translateKeyMessagesAction(
+  briefId: string,
+): Promise<TranslateKeyMessagesActionResult> {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) {
+    return { ok: false, refusal: unauthorised("Sign in to translate a brief.") };
+  }
+
+  // A translation IS a generation — it spends a free-tier request and produces
+  // model prose — so it is the generation matrix rather than a tenth predicate
+  // declared here. A Research Officer is refused for the same reason they are
+  // refused a reframe; a Field Officer reaches no brief surface at all (§10.5).
+  if (!canGenerateBrief(staffUser.role)) {
+    return {
+      ok: false,
+      refusal: unauthorised(
+        "Only a Policy & Advocacy Officer or the Programme Director can run the translation assist.",
+      ),
+    };
+  }
+
+  const id = idSchema.safeParse(briefId);
+
+  if (!id.success) {
+    return { ok: false, refusal: unauthorised("That brief is not available.") };
+  }
+
+  const brief = await findBriefForTranslation(id.data);
+
+  if (!brief) {
+    return { ok: false, refusal: unauthorised("That brief is not available.") };
+  }
+
+  const { messages } = extractKeyMessages(brief.bodyText);
+
+  if (messages.length === 0) {
+    return {
+      ok: false,
+      refusal: {
+        kind: "generation-failed",
+        message:
+          "This brief has no executive summary or recommendations to translate, so nothing was sent.",
+      },
+    };
+  }
+
+  // THE GATE. Re-read from the database, then partitioned.
+  const rows = await loadEvidenceForGenerationContext(brief.evidenceItemIds);
+  const gated = gateEvidenceForGeneration(rows);
+
+  if (!gated.ok) {
+    const byId = new Map(rows.map((row) => [row.id, row.title]));
+
+    console.info("brief.translation.refused", {
+      briefId: brief.id,
+      refusedCount: gated.refused.length,
+      classifications: gated.refused.map((refusal) => refusal.classification),
+    });
+
+    return {
+      ok: false,
+      refusal: {
+        kind: "refused-ineligible-classification",
+        items: gated.refused.map((refusal) => ({
+          id: refusal.id,
+          title: byId.get(refusal.id) ?? "An evidence item",
+          classification: refusal.classification,
+        })),
+      },
+    };
+  }
+
+  const rendered = await translateKeyMessages({
+    messages,
+    context: gated.context,
+  });
+
+  if (!rendered.ok) {
+    if (rendered.failure.reason === "rate_limited") {
+      return {
+        ok: false,
+        refusal: {
+          kind: "rate-limited",
+          retryAfterMs: rendered.failure.retryAfterMs,
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      refusal: {
+        kind: "generation-failed",
+        message:
+          rendered.failure.reason === "invalid_output"
+            ? "The translation did not come back with one rendering per message, twice. Nothing was saved. Try again."
+            : rendered.failure.reason === "missing_api_key"
+              ? "The translation assist is not configured on this deployment."
+              : "The translation request did not complete. Nothing was saved.",
+      },
+    };
+  }
+
+  const translation = await saveTranslation({
+    briefVersionId: brief.versionId,
+    language: TRANSLATION_LANGUAGE,
+    messages: messages.map((message, index) => ({
+      kind: message.kind,
+      heading: message.heading,
+      english: message.text,
+      twi: rendered.translations[index] ?? "",
+    })),
+    generatingModel: rendered.generatingModel,
+    promptVersion: rendered.promptVersion,
+    translatedById: staffUser.id,
+  });
+
+  console.info("brief.translation.saved", {
+    briefId: brief.id,
+    version: brief.versionNumber,
+    actorId: staffUser.id,
+    messageCount: messages.length,
+    model: rendered.generatingModel,
+  });
+
+  revalidatePath(`/briefs/${brief.id}`);
+
+  return { ok: true, translation };
 }
 
 /* -------------------------------------------------------------------------

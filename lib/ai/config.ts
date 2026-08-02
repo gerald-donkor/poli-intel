@@ -181,6 +181,26 @@ export const GENERATION_EVIDENCE_EXCERPT_CHARS = 4000;
 export const GENERATION_INVALID_OUTPUT_RETRIES = 1;
 
 /* ---------------------------------------------------------------------------
+ * Translation assist (§16.6)
+ *
+ * NO NEW MODEL ID. Rendering a finished brief's key messages into Twi is a
+ * constrained reading-and-writing task over supplied text, which is what
+ * GENERATION_MODEL at GENERATION_TEMPERATURE is for — the same judgement signal
+ * classification and the Matcher's rerank already make. Token cap and retry
+ * count are reused too.
+ *
+ * Re-exported rather than declared here for the same reason as
+ * GENERATION_EVIDENCE_CONTEXT_SIZE above: this module is server-only, and both
+ * numbers are also read by the key-message extraction and the panel that renders
+ * the result. See `lib/briefs/translation-limits.ts`.
+ * ------------------------------------------------------------------------- */
+
+export {
+  TRANSLATION_LANGUAGE,
+  TRANSLATION_MAX_MESSAGES,
+} from "@/lib/briefs/translation-limits";
+
+/* ---------------------------------------------------------------------------
  * Policy Radar
  *
  * Signal classification reuses GENERATION_MODEL and GENERATION_TEMPERATURE

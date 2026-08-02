@@ -265,6 +265,7 @@ model StaffUser {
   briefsCreated           Brief[]                     @relation("BriefCreatedBy")
   briefsReviewed          Brief[]                     @relation("BriefReviewedBy")
   briefVersionsCreated    BriefVersion[]
+  briefTranslationsRun    BriefTranslation[]
   evidenceIngested        EvidenceItem[]
   flagsResolved           HallucinationFlag[]
   briefStatusChanges      BriefStatusChange[]
@@ -603,7 +604,8 @@ model BriefVersion {
   brief     Brief      @relation(fields: [briefId], references: [id], onDelete: Cascade)
   createdBy StaffUser? @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
-  flags HallucinationFlag[]
+  flags        HallucinationFlag[]
+  translations BriefTranslation[]
 
   @@unique([briefId, version])
   @@index([createdById])
@@ -728,6 +730,54 @@ model HallucinationFlag {
   @@index([briefVersionId, status])
   @@index([resolvedById])
   @@map("hallucination_flag")
+}
+
+/// A Twi rendering of ONE VERSION's key messages — the translation assist of
+/// AGENTS.md §16.6 / spec §3.4's "translated to Twi where needed".
+///
+/// IT HANGS OFF BriefVersion, NOT Brief, and that is the whole point. Editing a
+/// brief produces version N+1, and showing version N's Twi text beside version
+/// N+1's English would put a community in front of something the brief no longer
+/// says. A new version simply has no translation until someone asks for one.
+///
+/// ONE ROW PER (version, language). Re-running the assist REPLACES that row: it
+/// is the same version's same messages, and a pile of alternate Twi renderings
+/// of identical English serves nobody. This is not §8.7 versioning — §8.7
+/// governs the brief's own document, which is still never overwritten; this is a
+/// derived rendering of a version that is itself immutable.
+///
+/// `translatedById` / `translatedAt` rather than createdBy/createdAt because the
+/// row is replaced in place: what has to stay knowable is who ran the LAST
+/// translation and when, which is what a community-facing text was taken from.
+///
+/// `messagesJson` holds the English that was sent alongside the Twi that came
+/// back, Zod-validated on the way in and on the way back out. Both are the
+/// brief's OWN prose. No evidence body text is stored here, and none is sent to
+/// produce it (AGENTS.md §7.6).
+model BriefTranslation {
+  id             String @id @default(uuid())
+  briefVersionId String @map("brief_version_id")
+
+  /// Free text, matching `Stakeholder.preferredLanguage`. Only TRANSLATION_LANGUAGE
+  /// is written today; the column exists so a second language is a row, not a
+  /// migration.
+  language String
+
+  /// [{ kind, heading, english, twi }] — see lib/db/brief-translations.ts.
+  messagesJson Json @map("messages_json")
+
+  generatingModel String @map("generating_model")
+  promptVersion   String @map("prompt_version")
+
+  translatedById String?  @map("translated_by_id")
+  translatedAt   DateTime @default(now()) @map("translated_at")
+
+  briefVersion BriefVersion @relation(fields: [briefVersionId], references: [id], onDelete: Cascade)
+  translatedBy StaffUser?   @relation(fields: [translatedById], references: [id], onDelete: SetNull)
+
+  @@unique([briefVersionId, language])
+  @@index([translatedById])
+  @@map("brief_translation")
 }
 
 // ---------------------------------------------------------------------------

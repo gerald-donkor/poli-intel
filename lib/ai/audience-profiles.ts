@@ -54,9 +54,12 @@ export const AUDIENCE_PROFILES: Record<BriefAudience, AudienceProfile> = {
     framingEmphasis:
       "Rights, local benefit-sharing, what the policy change means for daily life and livelihood decisions",
     // Spec §3.4 adds "translated to Twi where needed" here. That is the
-    // translation assist (§16.6) — a separate, on-demand Gemini call over the
-    // finished brief, not an instruction to the generator to write in Twi. It
-    // returns to this row when that feature ships.
+    // translation assist (§16.6), and it has SHIPPED: a separate, on-demand
+    // Gemini call that renders the finished brief's key messages into Twi —
+    // `lib/ai/translate.ts`, surfaced as the "Twi key messages" panel on
+    // /briefs/[id]. It is deliberately NOT an instruction to the generator to
+    // write in Twi, so the tone below still governs the English the brief is
+    // drafted in, whichever reader it is for.
     tone: "Plain language, local context. Avoid jargon.",
   },
 };

@@ -13,8 +13,11 @@ import {
   canManageStakeholders,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
+import { extractKeyMessages } from "@/lib/briefs/key-messages";
+import { TRANSLATION_LANGUAGE } from "@/lib/briefs/translation-limits";
 import {
   findBriefDetail,
+  findLatestTranslationForBrief,
   isEditableStatus,
   listSharesForBrief,
   listStakeholderOptions,
@@ -29,6 +32,7 @@ import { FlagPanel } from "./flag-panel";
 import { ReviewPanel } from "./review-panel";
 import { SharePanel } from "./share-panel";
 import { StatusHistory } from "./status-history";
+import { TranslationPanel } from "./translation-panel";
 
 export const metadata = {
   title: "Brief · EviBrief",
@@ -101,6 +105,22 @@ export default async function BriefPage({
   const [shares, contacts] = mayLogShare
     ? await Promise.all([listSharesForBrief(brief.id), listStakeholderOptions()])
     : [[], []];
+
+  // A translation IS a generation — it spends a free-tier request and produces
+  // model prose — so it is the generation matrix, not the export one. Reading an
+  // existing translation is open to anyone who can already read the brief: it is
+  // the brief's own content. Presentation only; the action authorises (§10.1).
+  const mayTranslate = canGenerateBrief(staffUser.role);
+
+  // The key messages of the CURRENT version, extracted from the stored body. The
+  // stored translation may render an older one — the panel compares the two and
+  // never shows stale Twi beside fresh English.
+  const keyMessages = extractKeyMessages(brief.bodyText);
+
+  const translation = await findLatestTranslationForBrief({
+    briefId: brief.id,
+    language: TRANSLATION_LANGUAGE,
+  });
 
   return (
     <>
@@ -183,6 +203,19 @@ export default async function BriefPage({
                 canLog
               />
             ) : null}
+            {/* After the share panel and never above a governance surface: this
+                is an assist, not a control on the brief's state. */}
+            <TranslationPanel
+              briefId={brief.id}
+              currentVersion={brief.version}
+              statusLabel={BRIEF_STATUS_LABELS[brief.status]}
+              messages={keyMessages.messages}
+              omitted={keyMessages.omitted}
+              translation={translation}
+              openFlagCount={openFlagCount}
+              canTranslate={mayTranslate}
+              unavailableReason="Running the translation assist is the Policy & Advocacy Officer's and the Programme Director's work."
+            />
             <Origin signal={brief.signal} />
             <CitationList evidence={brief.evidence} />
             <GenerationProvenance
