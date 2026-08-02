@@ -407,3 +407,26 @@ export const MATCHER_RPM_ALLOCATION = 8;
  * control, never a sleep inside a step (`inngest-jobs`).
  */
 export const MATCHER_RUNS_PER_MINUTE = MATCHER_RPM_ALLOCATION;
+
+/* ---------------------------------------------------------------------------
+ * Signal board
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Signals the board loads, newest first, across all four urgency columns.
+ *
+ * Bounded for the same reason `EVIDENCE_BROWSE_MAX_ITEMS` is: an unbounded
+ * listing is a page that gets slower every week without anyone deciding it
+ * should. The board says so when the ceiling bites rather than presenting a
+ * truncated set as the whole picture.
+ */
+export const SIGNAL_BOARD_MAX_ITEMS = 200;
+
+/**
+ * How much of a matched item's chunk the signal detail quotes.
+ *
+ * Enough to recognise the passage, short enough not to reproduce the document —
+ * the same judgement as `EVIDENCE_SEARCH_EXCERPT_CHARS`, and the same number,
+ * because they are the same act on the same screen-sized surface.
+ */
+export const SIGNAL_MATCH_EXCERPT_CHARS = 400;

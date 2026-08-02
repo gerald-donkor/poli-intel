@@ -7,6 +7,7 @@ import {
 import { matchEvidenceForSignal } from "./functions/match-evidence";
 import { fetchRadarSource } from "./functions/radar-fetch";
 import { scheduleRadarSources } from "./functions/radar-schedule";
+import { rematchEvidenceForSignal } from "./functions/rematch-evidence";
 import { sweepUnembeddedEvidence } from "./functions/sweep-unembedded";
 
 /**
@@ -23,6 +24,7 @@ export const inngestFunctions = [
   scheduleRadarSources,
   fetchRadarSource,
   matchEvidenceForSignal,
+  rematchEvidenceForSignal,
 ];
 
 export { inngest } from "./client";

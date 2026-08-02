@@ -95,6 +95,18 @@ export {
   type SignalForMatching,
 } from "./evidence-matches";
 export {
+  findSignalDetail,
+  listSignalBoard,
+  reclassifySignalUrgency,
+  type ReclassifySignalUrgencyResult,
+  type SignalBoardCard,
+  type SignalBoardPage,
+  type SignalDetail,
+  type SignalEvidenceMatchView,
+  type SignalMatchRunView,
+  type SignalReclassificationView,
+} from "./signal-board";
+export {
   createClassifiedSignal,
   findRecentSignalsForDedup,
   recordRadarRun,

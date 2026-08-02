@@ -144,6 +144,46 @@ export function canDismissFlag(
   return roleMayDismiss && brief.createdById !== actorStaffUserId;
 }
 
+/**
+ * Move a signal to a different urgency on the board (§8.6, §10.3).
+ *
+ * The Policy & Advocacy Officer monitors signals (§10.3) and the Programme
+ * Director has everything (§10.2). A Research Officer is deliberately not here:
+ * their classification authority is over EVIDENCE (§10.4, §10.8), which is a
+ * different taxonomy answering a different question, and a Field Officer has no
+ * signal surface at all (§10.5).
+ *
+ * Whoever passes here, the change is written with actor and timestamp — the
+ * predicate says who may, the audit row says who did (§8.6).
+ */
+export function canReclassifySignal(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/**
+ * Ask the Evidence Matcher to run again on a signal (§10.3, §10.4).
+ *
+ * WIDER THAN `canReclassifySignal`, and not a reuse of it. Re-matching changes
+ * no classification and asserts nothing — it re-runs retrieval — and §10.4 gives
+ * the Research Officer exactly this work: validating evidence matches and
+ * annotating gaps. Sharing a predicate with reclassification would deny them the
+ * one control their role is described by. A Field Officer is still refused
+ * (§10.5).
+ *
+ * It costs a free-tier Gemini request, so the throttle on the job is the second
+ * half of this rule (`inngest-jobs`, §13.3).
+ */
+export function canRequestEvidenceRematch(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer ||
+    role === StaffRole.research_officer
+  );
+}
+
 /** Submit a field observation — open to all four roles (§10.5). */
 export function canSubmitFieldObservation(role: StaffRole): boolean {
   return (
@@ -158,9 +198,7 @@ export function canSubmitFieldObservation(role: StaffRole): boolean {
  * The typed result a Server Action returns instead of throwing across the
  * action boundary (AGENTS.md §18).
  *
- * Each variant ships with the feature that can actually produce it. `gap` is
- * still absent, because the Evidence Matcher is not built — shaping it
- * speculatively is over-engineering.
+ * Each variant ships with the feature that can actually produce it.
  */
 export type ActionRefusal =
   | { kind: "unauthorised"; message: string }
@@ -197,6 +235,20 @@ export type ActionRefusal =
    * of this — two officers in the same brief must both keep their text (§8.7).
    */
   | { kind: "version-conflict"; currentVersion: number }
+  /**
+   * The Evidence Matcher found nothing above the confidence threshold.
+   *
+   * A REAL OUTCOME, NOT AN ERROR (`evidence-matcher` rule 4). It carries the
+   * signal so the caller can send the person somewhere useful — the gap empty
+   * state and its next steps live on the signal detail — because "an empty panel
+   * is never the answer" is the whole rule.
+   *
+   * The scheduled matcher does not return this: it runs in a job and records the
+   * gap as an `EvidenceMatchRun` row, which is what the detail panel reads. This
+   * variant is for the actions that ask for a match set and cannot proceed
+   * without one.
+   */
+  | { kind: "gap"; signalId: string }
   /** A generation attempt that ended without a brief. Recorded, not swallowed. */
   | { kind: "generation-failed"; message: string };
 

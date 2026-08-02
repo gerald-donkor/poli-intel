@@ -66,14 +66,31 @@ export const radarSourceFetchRequested = eventType(
  *
  * THE EVIDENCE MATCHER SUBSCRIBES TO THIS. The Brief Generator does not, and
  * must not: detection triggers the Matcher and stops there, and generation is
- * on demand only (AGENTS.md §8.4, §14.8). Nothing subscribes yet, which is
- * correct — the Matcher is a later prompt.
+ * on demand only (AGENTS.md §8.4, §14.8).
  *
  * Carries the signal id and nothing else. Not `summaryText`, not the title, not
  * the source document: the standing rule at the top of this file is not being
  * weakened for the one payload where the text would have been convenient.
  */
 export const signalDetected = eventType("signal/detected", {
+  schema: staticSchema<{ signalId: string }>(),
+});
+
+/**
+ * A person asked for the Evidence Matcher to run again on a signal.
+ *
+ * A SEPARATE EVENT FROM `signal/detected`, deliberately. That one is idempotent
+ * on the signal id for 24 hours, which is right for a replayed detection and
+ * wrong for a deliberate re-run — an officer who has just classified more
+ * evidence and presses Re-match means it. Re-emitting detection would have the
+ * request silently dropped, which looks identical to a matcher that found
+ * nothing.
+ *
+ * Carries the signal id and nothing else, exactly like its sibling. Not who
+ * asked: the run row records the outcome, and an actor in a payload is one more
+ * copy of staff identity in third-party storage for no gain.
+ */
+export const signalRematchRequested = eventType("signal/rematch.requested", {
   schema: staticSchema<{ signalId: string }>(),
 });
 
@@ -105,5 +122,31 @@ export async function sendEvidenceClassificationChanged(
     console.warn(
       `[jobs] classification event could not be sent; the daily sweep will pick this up: evidenceItemId=${evidenceItemId}`,
     );
+  }
+}
+
+/**
+ * Queues a re-match, and says whether it was actually queued.
+ *
+ * REPORTED, NOT SWALLOWED — and unlike the classification event above there is
+ * no sweep to catch a failed send, so the caller must be able to tell the person
+ * that nothing was queued rather than showing them a confirmation for work that
+ * will never run (`server-actions`: no silent catches, no lost outcomes).
+ */
+export async function sendSignalRematchRequested(
+  signalId: string,
+): Promise<boolean> {
+  try {
+    await inngest.send(signalRematchRequested.create({ signalId }));
+
+    return true;
+  } catch {
+    // An id and the fact of the failure. Nothing about the signal's content
+    // belongs in a log line (§7.6).
+    console.warn(
+      `[jobs] re-match could not be queued: signalId=${signalId}`,
+    );
+
+    return false;
   }
 }
