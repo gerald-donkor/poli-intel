@@ -115,6 +115,11 @@ enum GenerationStage {
   verifying
   complete
   failed
+  /// A run that produced a verified draft the officer chose NOT to take up —
+  /// the audience switcher's discard. Distinct from `failed`, which means the
+  /// run did not produce one: a discarded reframe is a record that two Gemini
+  /// requests were spent and a person decided against the result (§8).
+  discarded
 
   @@map("generation_stage")
 }
@@ -537,7 +542,9 @@ model Brief {
   reviewedBy StaffUser?    @relation("BriefReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   versions         BriefVersion[]
-  generation       BriefGeneration?
+  /// A LIST, not one. The first generation produced this brief; every audience
+  /// switch after it is another real attempt against the same brief.
+  generations      BriefGeneration[]
   /// The FINAL evidence set after officer add/remove — the set the fact-check
   /// pass verifies against, not raw matcher output (AGENTS.md §15.5).
   evidenceSet      BriefEvidence[]
@@ -572,6 +579,16 @@ model BriefVersion {
   id      String @id @default(uuid())
   briefId String @map("brief_id")
   version Int
+
+  /// The reader THIS version was written for.
+  ///
+  /// `Brief.audience` is the CURRENT audience — what the header and the brief
+  /// list read. Once an audience switch can produce version N+1 for a different
+  /// reader, that single column can no longer say who version 3 was written for,
+  /// and `brief-output` rule 5 requires a brief to record its audience alongside
+  /// its version. Backfilled from `Brief.audience` in the migration, so no
+  /// version is ever ambiguous.
+  audience        BriefAudience
 
   bodyText        String  @map("body_text")
   /// Tiptap document JSON for this version.
@@ -635,9 +652,32 @@ model BriefGeneration {
   generatingModel String? @map("generating_model")
   promptVersion   String? @map("prompt_version")
 
-  /// Set only by the stage-3 transaction, so its presence IS the record that the
-  /// fact-check pass ran.
-  briefId String? @unique @map("brief_id")
+  /// The stage-3 fact-check verdicts, held here for the same reason `draftJson`
+  /// is: an audience switch shows the officer a diff and waits for a human
+  /// decision before anything is written (§8.3), so the pass has returned but
+  /// its flags have nowhere to live yet. Storing them means the flags the
+  /// officer reviewed are the flags that land — re-running the pass at commit
+  /// would spend another free-tier request AND could produce a different set,
+  /// which would make the review a record of something else.
+  ///
+  /// Zod-validated on the way back out, exactly like `draftJson`. A first
+  /// generation persists in the same request and leaves this null.
+  factCheckJson   Json?   @map("fact_check_json")
+
+  /// The brief this attempt belongs to.
+  ///
+  /// TWO WAYS IT IS SET, and they are different facts:
+  ///   - a FIRST generation has no brief until the stage-3 transaction creates
+  ///     one, so this is written there, at the end;
+  ///   - an AUDIENCE SWITCH names the brief being reframed and is written at
+  ///     creation, because the attempt reads its policy text and evidence set
+  ///     from that brief's own records.
+  ///
+  /// So this is no longer the record that the fact-check pass ran — `stage` is
+  /// (`complete` is reachable only after the pass returned). Not unique: a brief
+  /// reframed twice has three attempts, and each is a real record of a real
+  /// generation.
+  briefId String? @map("brief_id")
 
   startedAt DateTime @default(now()) @map("started_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -648,6 +688,7 @@ model BriefGeneration {
 
   @@index([createdById, startedAt])
   @@index([signalId])
+  @@index([briefId])
   @@map("brief_generation")
 }
 

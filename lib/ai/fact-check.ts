@@ -113,6 +113,33 @@ export async function factCheckDraft({
 }
 
 /**
+ * The pass's result as it is held on an attempt row between the guard returning
+ * and a person deciding what to do with the draft (the audience switcher).
+ *
+ * RE-VALIDATED ON THE WAY BACK OUT, exactly as `parseStoredDraft` re-validates
+ * the draft. A JSON column is not a type, and the flags this yields are written
+ * straight into `hallucination_flag` rows.
+ */
+const storedFactCheckSchema = z.object({
+  claimsChecked: z.number().int().min(0),
+  unsupported: z.array(
+    z.object({
+      claimText: z.string().min(1),
+      reason: z.enum(FlagReason),
+      checkedEvidenceItemIds: z.array(z.string()),
+    }),
+  ),
+});
+
+export type StoredFactCheck = z.infer<typeof storedFactCheckSchema>;
+
+export function parseStoredFactCheck(value: unknown): StoredFactCheck | null {
+  const parsed = storedFactCheckSchema.safeParse(value);
+
+  return parsed.success ? parsed.data : null;
+}
+
+/**
  * Where a flag sits in `bodyText`.
  *
  * ANCHORS ARE CHARACTER OFFSETS INTO `bodyText` IN THIS PROMPT, and

@@ -3,19 +3,20 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { audienceLabel } from "@/lib/ai/audience-profiles";
 import { briefTypeLabel } from "@/lib/ai/brief-types";
 import {
   canApproveOrRejectBrief,
   canDismissFlag,
   canEditBrief,
   canExportBrief,
+  canGenerateBrief,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { findBriefDetail, isEditableStatus } from "@/lib/db";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
+import { AudienceSwitcher } from "./audience-switcher";
 import { BriefBody } from "./brief-body";
 import { CitationList } from "./citation-list";
 import { FlagPanel } from "./flag-panel";
@@ -69,6 +70,12 @@ export default async function BriefPage({
 
   const mayReview = canApproveOrRejectBrief(staffUser.role);
 
+  // A reframe IS a generation, so it is the generation matrix — not the editing
+  // one (decision 8). Presentation only, twice over: the route authorises and so
+  // does every stage of the run.
+  const mayReframe =
+    canGenerateBrief(staffUser.role) && isEditableStatus(brief.status);
+
   // Presentation only, and NOT gated on flag state or status: an open flag
   // blocks approval and nothing else, and the exported file carries the notice
   // with it rather than the download being withheld (§16.8).
@@ -83,8 +90,9 @@ export default async function BriefPage({
       <PageHeader
         title={briefTypeLabel(brief.briefType)}
         subtitle={
+          // The audience has moved out of this line and into the switcher
+          // below — it is a control now, not a label.
           <>
-            For {audienceLabel(brief.audience)} ·{" "}
             {BRIEF_STATUS_LABELS[brief.status]} · version{" "}
             <span className="font-mono">{brief.version}</span> ·{" "}
             {formatGeneratedAt(brief.generatedAt)}
@@ -159,12 +167,26 @@ export default async function BriefPage({
           </div>
 
           <div className="flex min-w-0 flex-col gap-4 laptop:order-1">
+            <AudienceSwitcher
+              briefId={brief.id}
+              audience={brief.audience}
+              evidence={brief.evidence.map((item) => ({
+                id: item.id,
+                citationKey: item.citationKey,
+              }))}
+              canReframe={mayReframe}
+              unavailableReason={
+                canGenerateBrief(staffUser.role)
+                  ? `This brief has been ${BRIEF_STATUS_LABELS[brief.status].toLowerCase()}, so it is no longer reframed in place. Ask the Programme Director to send it back if it needs a different reader.`
+                  : "Reframing a brief for a different reader is the Policy & Advocacy Officer's and the Programme Director's work."
+              }
+            />
             <BriefBody bodyText={brief.bodyText} />
             <p className="text-ink-3 max-w-[70ch] text-[12.5px]">
               A downloaded copy carries this brief&rsquo;s status, its evidence
-              set, and any claim still being checked. Audience switching arrives
-              with its own screen. Every move this brief makes is a
-              person&rsquo;s decision, recorded with their name and the time.
+              set, and any claim still being checked. Every move this brief makes
+              is a person&rsquo;s decision, recorded with their name and the
+              time.
             </p>
           </div>
         </div>

@@ -36,6 +36,15 @@ export type CreateBriefGenerationInput = {
    * draft, which is the only other way in.
    */
   signalId: string | null;
+  /**
+   * The brief being REFRAMED, for an audience switch. Null for a first
+   * generation, which has no brief until its stage-3 transaction creates one.
+   *
+   * Set at creation for a reframe because the attempt's `policyText` and
+   * `evidenceItemIds` are read off that brief's own records, so the association
+   * exists before the run does.
+   */
+  briefId?: string | null;
 };
 
 export async function createBriefGeneration(
@@ -86,10 +95,52 @@ export function findOwnedBriefGeneration({
       signalId: true,
       stage: true,
       draftJson: true,
+      factCheckJson: true,
       generatingModel: true,
       promptVersion: true,
       briefId: true,
     },
+  });
+}
+
+/**
+ * Stage 3's output, held on the attempt for the same reason stage 2's is.
+ *
+ * ONLY THE AUDIENCE SWITCHER USES THIS. A first generation fact-checks and
+ * persists in one request, so its verdicts never need a home. A reframe shows
+ * the officer a diff and waits, so the flags they reviewed must be the flags
+ * that land — re-running the pass at commit would spend another free-tier
+ * request and could return a different set (§9.1, §13.3).
+ *
+ * The stage stays `verifying`: the pass has returned but nothing is committed,
+ * and that is exactly what `verifying` means until a person decides.
+ */
+export async function recordBriefFactCheck({
+  generationId,
+  factCheck,
+}: {
+  generationId: string;
+  factCheck: Prisma.InputJsonValue;
+}): Promise<void> {
+  await prisma.briefGeneration.update({
+    where: { id: generationId },
+    data: { factCheckJson: factCheck },
+  });
+}
+
+/**
+ * A verified draft the officer chose not to take up.
+ *
+ * NOT `failed`. The run did produce a draft, two Gemini requests were spent, and
+ * a person decided against the result — recording that as a failure would lose
+ * the only fact worth keeping about it. The brief is left exactly as it was.
+ */
+export async function discardBriefGeneration(
+  generationId: string,
+): Promise<void> {
+  await prisma.briefGeneration.update({
+    where: { id: generationId },
+    data: { stage: GenerationStage.discarded },
   });
 }
 

@@ -104,6 +104,10 @@ export async function persistGeneratedBrief(
       data: {
         briefId: brief.id,
         version: 1,
+        // The reader this version was written for. Identical to `Brief.audience`
+        // here and only here: version 1 is by definition the audience the brief
+        // was generated for. They diverge the moment an audience switch lands.
+        audience: input.audience,
         bodyText: input.bodyText,
         // A flag's anchors are character offsets into `bodyText`
         // (`anchorClaim` in lib/ai/fact-check.ts). The editor maps them onto
@@ -701,6 +705,10 @@ export async function saveBriefVersion(
         briefId_version: { briefId: brief.id, version: brief.currentVersion },
       },
       select: {
+        // Carried forward unchanged. An edit does not change who the brief is
+        // written for — only an audience switch does, and that does not come
+        // through here.
+        audience: true,
         flags: {
           select: {
             id: true,
@@ -726,6 +734,7 @@ export async function saveBriefVersion(
       data: {
         briefId: brief.id,
         version: nextVersion,
+        audience: previous.audience,
         bodyText: input.bodyText,
         documentJson: toJson(input.document),
         createdById: input.createdById,
@@ -763,6 +772,204 @@ export async function saveBriefVersion(
     await tx.brief.update({
       where: { id: brief.id },
       data: { currentVersion: nextVersion },
+    });
+
+    return { ok: true, version: nextVersion };
+  });
+}
+
+/* -------------------------------------------------------------------------
+ * The audience switcher
+ * ---------------------------------------------------------------------- */
+
+export type BriefForReframe = {
+  id: string;
+  status: BriefStatus;
+  briefType: BriefType;
+  /** The CURRENT audience — the one the switcher shows selected. */
+  audience: BriefAudience;
+  signalId: string | null;
+  createdById: string | null;
+  /** The version a reframe diffs against, and the one the commit must match. */
+  version: number;
+  bodyText: string;
+  /** The brief's RECORDED evidence set. Ids only — the gate re-reads the rows. */
+  evidenceItemIds: string[];
+  /**
+   * The pasted policy document from this brief's FIRST generation attempt.
+   *
+   * Null where no attempt row survives, which is a real state — a brief whose
+   * attempt was deleted cannot be reframed, because the reframe would then be
+   * answering a different policy document than the brief does.
+   */
+  policyText: string | null;
+};
+
+/**
+ * Everything an audience switch needs, read SERVER-SIDE from the brief's own
+ * records.
+ *
+ * Nothing about what reaches the model comes from the browser: the client sends
+ * a brief id and an audience, and the policy text and evidence set are read
+ * here. Evidence is returned as IDS, not rows — `gateEvidenceForGeneration` does
+ * its own fresh read, so an item downgraded since the brief was written is
+ * caught there rather than being carried past the gate by this one (§7.8).
+ */
+export async function findBriefForReframe(
+  briefId: string,
+): Promise<BriefForReframe | null> {
+  const brief = await prisma.brief.findUnique({
+    where: { id: briefId },
+    select: {
+      id: true,
+      status: true,
+      briefType: true,
+      audience: true,
+      signalId: true,
+      createdById: true,
+      versions: {
+        orderBy: { version: "desc" },
+        take: 1,
+        select: { version: true, bodyText: true },
+      },
+      evidenceSet: {
+        orderBy: { addedAt: "asc" },
+        select: { evidenceItemId: true },
+      },
+      // The FIRST attempt, which is the one that carries the policy document the
+      // brief answers. A later reframe's attempt carries a copy of the same
+      // text, so ordering by `startedAt` keeps the original authoritative.
+      generations: {
+        orderBy: { startedAt: "asc" },
+        take: 1,
+        select: { policyText: true },
+      },
+    },
+  });
+
+  const version = brief?.versions[0];
+
+  if (!brief || !version) return null;
+
+  return {
+    id: brief.id,
+    status: brief.status,
+    briefType: brief.briefType,
+    audience: brief.audience,
+    signalId: brief.signalId,
+    createdById: brief.createdById,
+    version: version.version,
+    bodyText: version.bodyText,
+    evidenceItemIds: brief.evidenceSet.map((row) => row.evidenceItemId),
+    policyText: brief.generations[0]?.policyText ?? null,
+  };
+}
+
+export type PersistReframedVersionInput = {
+  generationId: string;
+  briefId: string;
+  /** The version the officer read the diff against. A stale one is refused. */
+  fromVersion: number;
+  createdById: string;
+  audience: BriefAudience;
+  bodyText: string;
+  documentJson: BriefDocument;
+  generatingModel: string;
+  promptVersion: string;
+  flags: GeneratedFlag[];
+};
+
+export type PersistReframedVersionResult =
+  | { ok: true; version: number }
+  | { ok: false; reason: "not-found" }
+  | { ok: false; reason: "not-editable"; status: BriefStatus }
+  | { ok: false; reason: "conflict"; currentVersion: number };
+
+/**
+ * A reframed draft, committed as version N+1 by an explicit human action.
+ *
+ * NEW OUTPUT, NEW PASS, NEW FLAGS — and the previous version's cleared flag
+ * state is deliberately NOT inherited. This is the one place that behaves
+ * differently from `saveBriefVersion`, which carries flags forward with their
+ * resolutions intact, and the difference is the whole point: a resolved flag
+ * records that a person checked a specific sentence against a specific source.
+ * Reframed prose is not that sentence. Carrying the resolution forward would
+ * silently transfer a human judgement onto text no human has read. Both
+ * behaviours are correct for their own case and the two must not be unified.
+ *
+ * The previous version KEEPS its flags — it is not touched. Nothing is
+ * overwritten in place (§8.7).
+ *
+ * `Brief.audience` moves here and only here: it is the CURRENT audience, and it
+ * is now current. `BriefVersion.audience` records which reader each version was
+ * written for, so version 1 still says what it always said.
+ *
+ * NO STATUS CHANGE and no `BriefStatusChange` row. Choosing a different reader
+ * is not a status decision (§8.3, decision 10).
+ *
+ * One transaction, with both object-level checks re-read INSIDE it — the same
+ * two `saveBriefVersion` makes, for the same reason: the window between reading
+ * the diff and pressing the button is exactly where a Director approves the
+ * brief or another officer saves over it.
+ */
+export async function persistReframedVersion(
+  input: PersistReframedVersionInput,
+): Promise<PersistReframedVersionResult> {
+  return prisma.$transaction(async (tx) => {
+    const brief = await tx.brief.findUnique({
+      where: { id: input.briefId },
+      select: { id: true, status: true, currentVersion: true },
+    });
+
+    if (!brief) return { ok: false, reason: "not-found" };
+
+    if (!isEditableStatus(brief.status)) {
+      return { ok: false, reason: "not-editable", status: brief.status };
+    }
+
+    if (brief.currentVersion !== input.fromVersion) {
+      return { ok: false, reason: "conflict", currentVersion: brief.currentVersion };
+    }
+
+    const nextVersion = brief.currentVersion + 1;
+
+    const version = await tx.briefVersion.create({
+      data: {
+        briefId: brief.id,
+        version: nextVersion,
+        audience: input.audience,
+        bodyText: input.bodyText,
+        documentJson: toJson(input.documentJson),
+        generatingModel: input.generatingModel,
+        promptVersion: input.promptVersion,
+        createdById: input.createdById,
+      },
+      select: { id: true },
+    });
+
+    if (input.flags.length > 0) {
+      await tx.hallucinationFlag.createMany({
+        data: input.flags.map((flag) => ({
+          briefVersionId: version.id,
+          claimText: flag.claimText,
+          reason: flag.reason,
+          checkedEvidenceItemIds: flag.checkedEvidenceItemIds,
+          anchorFrom: flag.anchorFrom,
+          anchorTo: flag.anchorTo,
+          // `status` is left to the schema default (`open`). Nobody has read
+          // this prose yet, so approval is blocked again — correctly (§9.5).
+        })),
+      });
+    }
+
+    await tx.brief.update({
+      where: { id: brief.id },
+      data: { currentVersion: nextVersion, audience: input.audience },
+    });
+
+    await tx.briefGeneration.update({
+      where: { id: input.generationId },
+      data: { stage: GenerationStage.complete },
     });
 
     return { ok: true, version: nextVersion };
