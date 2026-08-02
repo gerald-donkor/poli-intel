@@ -121,6 +121,15 @@ export {
   type RecordRadarRunInput,
 } from "./signals";
 export {
+  listDigestRecipients,
+  readDigestWindow,
+  type DigestBrief,
+  type DigestRadarSummary,
+  type DigestRecipient,
+  type DigestSignal,
+  type DigestWindowReads,
+} from "./digest";
+export {
   recordEmbeddingRun,
   recordIngestionFailure,
   recordIngestionSuccess,

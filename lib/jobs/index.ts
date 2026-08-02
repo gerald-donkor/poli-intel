@@ -5,6 +5,7 @@ import {
   embedEvidenceOnClassification,
 } from "./functions/embed-evidence";
 import { matchEvidenceForSignal } from "./functions/match-evidence";
+import { sendMorningDigest } from "./functions/morning-digest";
 import { fetchRadarSource } from "./functions/radar-fetch";
 import { scheduleRadarSources } from "./functions/radar-schedule";
 import { rematchEvidenceForSignal } from "./functions/rematch-evidence";
@@ -25,6 +26,7 @@ export const inngestFunctions = [
   fetchRadarSource,
   matchEvidenceForSignal,
   rematchEvidenceForSignal,
+  sendMorningDigest,
 ];
 
 export { inngest } from "./client";

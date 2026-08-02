@@ -1012,7 +1012,13 @@ export async function changeBriefStatus(
   });
 }
 
-function firstLine(text: string): string {
+/**
+ * A brief has no title column — its title is the current version's first line.
+ *
+ * Exported so the morning digest names a brief exactly as the brief list does.
+ * Two copies of this rule would be two titles for one brief.
+ */
+export function firstLine(text: string): string {
   return text.split("\n", 1)[0]?.trim() ?? "";
 }
 

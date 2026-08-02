@@ -506,6 +506,7 @@ Scripts that currently exist in `package.json`:
 - `npm run lint` — ESLint
 - `npm run typecheck` — `tsc --noEmit`
 - `npm run inngest:dev` — the Inngest dev server (`npx inngest-cli@latest dev`), alongside `npm run dev`. It auto-discovers the serve endpoint at `/api/inngest` and gives you the run UI at <http://localhost:8288> for triggering jobs, replaying events, and reading step traces. Local runs need no keys: the client sets `isDev` from `NODE_ENV`, so `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are production-only.
+- `npm run email` — the React Email preview server for `emails/`, at <http://localhost:3100> (port 3100 so it can run alongside `npm run dev`). Renders each template against its `PreviewProps` with no `RESEND_API_KEY` and no delivery, which is how the morning digest is checked at 320px and desktop without sending anything.
 - `npm run db:generate` — `prisma generate`; writes the client to `lib/generated/prisma` (gitignored). Also runs automatically as `postinstall`.
 - `npm run db:migrate:new -- <snake_case_name>` — author a migration from the live-database diff, for review. Writes a file; applies nothing.
 - `npm run db:migrate` — `prisma migrate deploy && prisma generate`; applies pending migrations. Same command in dev, CI, and production. Needs `DIRECT_URL`.
