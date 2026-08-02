@@ -150,6 +150,7 @@ export default async function BriefPage({
               />
             ) : null}
             <StatusHistory events={brief.statusHistory} />
+            <Origin signal={brief.signal} />
             <CitationList evidence={brief.evidence} />
             <GenerationProvenance
               generatingModel={brief.generatingModel}
@@ -169,6 +170,46 @@ export default async function BriefPage({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Where this brief came from.
+ *
+ * A manual draft says so IN WORDS rather than rendering an empty row: "no signal
+ * recorded" beside a blank field would read as missing data, and the two are
+ * different facts. The link back is the other half of the pair the Impact
+ * Tracker will follow — signal → brief → outcome.
+ */
+function Origin({
+  signal,
+}: {
+  signal: { id: string; title: string; sourceName: string } | null;
+}) {
+  return (
+    <section className="bg-card border-line rounded-card flex flex-col gap-1.5 border p-4">
+      <h2 className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+        Drafted from
+      </h2>
+      {signal === null ? (
+        <p className="text-ink-3 text-[12.5px]">
+          No signal — this brief was drafted manually from a pasted policy
+          document.
+        </p>
+      ) : (
+        <>
+          <Link
+            href={`/signals/${signal.id}`}
+            className="text-primary-ink focus-visible:ring-accent focus-visible:ring-offset-card rounded-[3px] text-[13px] leading-snug font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            {signal.title}
+          </Link>
+          <p className="text-ink-3 text-[12.5px]">
+            Picked up from {signal.sourceName} by the Policy Radar.
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 

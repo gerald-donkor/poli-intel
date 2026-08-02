@@ -176,6 +176,48 @@ export function describeMatchFailure(reason: string | null): string {
   return reason;
 }
 
+/**
+ * What generating a brief from this signal would start from — said in one
+ * sentence, from the RUN ROW, never inferred from an empty join.
+ *
+ * One function so the control on the signal detail and the banner on the
+ * generation surface cannot promise different things. A gap and a matcher that
+ * has not run are different facts and stay different sentences
+ * (`evidence-matcher` rule 4).
+ *
+ * NOTHING HERE IMPLIES THE SYSTEM CHOSE THE EVIDENCE OR DECIDED A BRIEF IS
+ * WARRANTED (§8.8). Retrieval returned a starting set; pressing Generate is a
+ * person's decision.
+ */
+export function describeSignalPrefill({
+  outcome,
+  matchedCount,
+}: {
+  outcome: EvidenceMatchOutcome | null;
+  matchedCount: number;
+}): string {
+  if (outcome === null) {
+    return "The Evidence Matcher has not run for this signal, so nothing is selected for you.";
+  }
+
+  if (matchedCount > 0) {
+    return `${matchedCount} matched ${matchedCount === 1 ? "item is" : "items are"} selected to start from. You can remove any of them and add your own.`;
+  }
+
+  if (outcome === EvidenceMatchOutcome.failed) {
+    return "The last match did not complete, so nothing is selected for you. You can choose the evidence yourself.";
+  }
+
+  if (outcome === EvidenceMatchOutcome.gap) {
+    return "No evidence cleared the threshold, so nothing is selected for you. You will be choosing the evidence yourself.";
+  }
+
+  // `matched`, yet nothing eligible survives the gate: the corpus does hold
+  // something, it is held at the classification queue. Saying "nothing was close
+  // enough" would send an officer looking for evidence that already exists.
+  return "Every matched item is awaiting re-classification, so nothing is selected for you.";
+}
+
 export function formatSignalDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",

@@ -34,9 +34,17 @@ export type GeneratedFlag = {
 export type PersistGeneratedBriefInput = {
   generationId: string;
   createdById: string;
+  /** The signal this brief was drafted from, or null for a manual draft. */
+  signalId: string | null;
   briefType: BriefType;
   audience: BriefAudience;
   evidenceItemIds: string[];
+  /**
+   * Rerank score by evidence item id, for the items that came from this
+   * signal's stored match set. An item the officer added by hand is absent and
+   * stays absent — see the note on the transaction below.
+   */
+  relevanceScores: ReadonlyMap<string, number>;
   bodyText: string;
   /**
    * The Tiptap document for version 1, built from the same draft as `bodyText`
@@ -58,9 +66,16 @@ export type PersistGeneratedBriefInput = {
  * whose flags did not land reads as a clean draft, and a Director could approve
  * it. So either all of it exists or none of it does.
  *
- * `relevanceScore` is left null on every row. Manual selection produces no
- * score, and inventing one would put a number in front of a reader that nothing
- * computed (AGENTS.md §15.5).
+ * `relevanceScore` IS WRITTEN ONLY WHERE SOMETHING COMPUTED ONE — the stored
+ * rerank score of an item that came from this signal's match set. An item the
+ * officer picked by hand keeps a null score permanently, because manual
+ * selection produces no score and inventing one would put a number in front of a
+ * reader that nothing computed (AGENTS.md §15.5). The two cases are genuinely
+ * different and collapsing them would be the fabrication, not the honesty.
+ *
+ * `signalId` is the other half of the same record: the brief carries its signal,
+ * its evidence set, its audience, its version and its generating model
+ * (`brief-output` rule 5), all written in this one transaction.
  */
 export async function persistGeneratedBrief(
   input: PersistGeneratedBriefInput,
@@ -68,6 +83,7 @@ export async function persistGeneratedBrief(
   return prisma.$transaction(async (tx) => {
     const brief = await tx.brief.create({
       data: {
+        signalId: input.signalId,
         briefType: input.briefType,
         audience: input.audience,
         status: BriefStatus.draft,
@@ -77,6 +93,7 @@ export async function persistGeneratedBrief(
         evidenceSet: {
           create: input.evidenceItemIds.map((evidenceItemId) => ({
             evidenceItemId,
+            relevanceScore: input.relevanceScores.get(evidenceItemId) ?? null,
           })),
         },
       },
@@ -265,6 +282,11 @@ export type BriefDetail = {
    */
   createdById: string | null;
   createdByName: string | null;
+  /**
+   * Where this brief came from. Null for a manual draft — said in words on the
+   * page rather than rendered as an empty row.
+   */
+  signal: { id: string; title: string; sourceName: string } | null;
   statusHistory: BriefStatusEvent[];
   version: number;
   bodyText: string;
@@ -303,6 +325,9 @@ export async function findBriefDetail(
       generatedAt: true,
       createdById: true,
       createdBy: { select: { name: true } },
+      // Provenance, not content: the signal's own title and source name, so the
+      // page can link back to where the draft came from.
+      signal: { select: { id: true, title: true, sourceName: true } },
       statusChanges: {
         orderBy: { changedAt: "desc" },
         select: {
@@ -362,6 +387,7 @@ export async function findBriefDetail(
     generatedAt: brief.generatedAt?.toISOString() ?? null,
     createdById: brief.createdById,
     createdByName: brief.createdBy?.name ?? null,
+    signal: brief.signal,
     statusHistory: brief.statusChanges.map((row) => ({
       id: row.id,
       actorName: row.actor?.name ?? null,

@@ -95,15 +95,21 @@ export {
   type SignalForMatching,
 } from "./evidence-matches";
 export {
+  findSignalBriefPrefill,
   findSignalDetail,
   listSignalBoard,
+  loadSignalMatchScores,
   reclassifySignalUrgency,
+  signalExists,
   type ReclassifySignalUrgencyResult,
   type SignalBoardCard,
   type SignalBoardPage,
+  type SignalBriefPrefill,
+  type SignalBriefView,
   type SignalDetail,
   type SignalEvidenceMatchView,
   type SignalMatchRunView,
+  type SignalPrefillMatch,
   type SignalReclassificationView,
 } from "./signal-board";
 export {

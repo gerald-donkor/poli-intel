@@ -37,6 +37,15 @@ export const generateBriefSchema = z.object({
       GENERATION_EVIDENCE_CONTEXT_SIZE,
       `Select at most ${GENERATION_EVIDENCE_CONTEXT_SIZE} evidence items.`,
     ),
+  /**
+   * The signal this draft answers, when the form was opened from one. Absent for
+   * a manual draft, which is why it is optional rather than nullable.
+   *
+   * SHAPE ONLY, like everything else here. That the value names a real signal is
+   * a database question `startBriefGeneration` answers server-side; this line
+   * only rejects a query parameter that could not name one.
+   */
+  signalId: z.uuid("That is not a signal.").optional(),
 });
 
 export type GenerateBriefInput = z.infer<typeof generateBriefSchema>;

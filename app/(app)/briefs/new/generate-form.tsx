@@ -33,6 +33,7 @@ import {
 import { EvidencePicker } from "./evidence-picker";
 import { GENERATION_STAGES, GenerationStepper } from "./generation-stepper";
 import { generateBriefSchema, type GenerateBriefInput } from "./schema";
+import { SignalContext, type SignalPrefill } from "./signal-context";
 
 /**
  * The generation form, and the client half of the three-stage sequence.
@@ -60,8 +61,11 @@ type Run =
 
 export function GenerateBriefForm({
   evidence,
+  prefill,
 }: {
   evidence: EvidenceListItem[];
+  /** Set when the form was opened from a signal; null for a manual draft. */
+  prefill: SignalPrefill | null;
 }) {
   const router = useRouter();
   const [run, setRun] = useState<Run>({ phase: "idle" });
@@ -70,8 +74,16 @@ export function GenerateBriefForm({
     resolver: zodResolver(generateBriefSchema),
     // `briefType` and `audience` have no safe default — a brief written for the
     // wrong audience is worse than one not yet started — so they open unchosen
-    // and the schema rejects until picked.
-    defaultValues: { policyText: "", evidenceItemIds: [] },
+    // and the schema rejects until picked. NEITHER IS PREFILLED FROM A SIGNAL
+    // for the same reason: the matcher scored evidence, it did not decide who
+    // the brief is for (§8.8).
+    defaultValues: {
+      policyText: prefill?.policyText ?? "",
+      evidenceItemIds: prefill?.matched.map((match) => match.item.id) ?? [],
+      // Carried as a form value rather than re-read from the URL at submit, so
+      // the association travels with the request the schema validates.
+      signalId: prefill?.signalId,
+    },
   });
 
   const busy = run.phase === "running";
@@ -156,6 +168,15 @@ export function GenerateBriefForm({
       noValidate
       className="flex min-w-0 flex-col gap-4"
     >
+      {prefill ? (
+        <SignalContext signal={prefill} matchedCount={prefill.matched.length} />
+      ) : null}
+
+      {/* `signalId` has no input of its own, so its refusal needs somewhere to
+          land. Stage 1 refuses rather than silently dropping the association,
+          and a refusal nobody can read would defeat that. */}
+      <FieldError errors={[form.formState.errors.signalId]} />
+
       {/* Single column on phones; the picker moves alongside the form at
           `laptop` (§11.15). No fixed pixel width anywhere. */}
       <div className="grid min-w-0 grid-cols-1 gap-4 laptop:grid-cols-[minmax(0,1fr)_minmax(0,420px)] laptop:items-start desktop:grid-cols-[minmax(0,1fr)_minmax(0,480px)]">
@@ -170,6 +191,27 @@ export function GenerateBriefForm({
                 an implementing act, a draft bill.
               </p>
             </div>
+
+            {/* Said plainly, because the difference matters: what is in the box
+                is the radar's own summary of the document, not the document.
+                The source link is beside it so the real text can be pasted
+                over. */}
+            {prefill ? (
+              <p className="text-ink-2 border-line rounded-card border border-dashed p-3 text-[12.5px] leading-[1.5]">
+                This is the radar&rsquo;s summary of the signal, not the source
+                document. Replace it with the passage the brief should respond
+                to if you have it —{" "}
+                <a
+                  href={prefill.sourceUrl}
+                  rel="noreferrer"
+                  target="_blank"
+                  className="text-primary-ink focus-visible:ring-accent focus-visible:ring-offset-card rounded-[3px] break-words underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                >
+                  open it at {prefill.sourceName}
+                </a>
+                .
+              </p>
+            ) : null}
 
             {/* Governance notice. The pasted text goes to Gemini as context, so
                 it must be public material. It is never stored as evidence, never
@@ -285,6 +327,7 @@ export function GenerateBriefForm({
         <div className="flex min-w-0 flex-col gap-4">
           <EvidencePicker
             evidence={evidence}
+            matched={prefill?.matched ?? []}
             selectedIds={selectedIds}
             onToggle={toggleEvidence}
             disabled={busy}

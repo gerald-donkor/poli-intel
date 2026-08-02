@@ -1,11 +1,15 @@
 import "server-only";
 
 import {
+  GENERATION_EVIDENCE_CONTEXT_SIZE,
   SIGNAL_BOARD_MAX_ITEMS,
   SIGNAL_MATCH_EXCERPT_CHARS,
 } from "@/lib/ai/config";
 import type {
   AudienceTarget,
+  BriefAudience,
+  BriefStatus,
+  BriefType,
   EvidenceMatchOutcome,
   Geography,
   ImpactArea,
@@ -191,6 +195,18 @@ export type SignalDetail = {
   /** Newest first. `[]` means the matcher has never run — a fourth state. */
   matchRuns: SignalMatchRunView[];
   reclassifications: SignalReclassificationView[];
+  /** What people have drafted from this signal, newest first. */
+  briefs: SignalBriefView[];
+};
+
+/** One brief drafted from this signal, as the detail page lists it. */
+export type SignalBriefView = {
+  id: string;
+  briefType: BriefType;
+  audience: BriefAudience;
+  status: BriefStatus;
+  version: number;
+  generatedAt: string | null;
 };
 
 /**
@@ -244,6 +260,20 @@ export async function findSignalDetail(
           reason: true,
           changedAt: true,
           actor: { select: { name: true } },
+        },
+      },
+      // Both directions of the link are rendered, so both are read (decision 9).
+      // Metadata only — no body text, and no flag state, which belongs to the
+      // brief's own screen.
+      briefs: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          briefType: true,
+          audience: true,
+          status: true,
+          currentVersion: true,
+          generatedAt: true,
         },
       },
       _count: { select: { evidenceMatches: true } },
@@ -320,7 +350,155 @@ export async function findSignalDetail(
       changedAt: change.changedAt.toISOString(),
       actorName: change.actor.name,
     })),
+    briefs: signal.briefs.map((brief) => ({
+      id: brief.id,
+      briefType: brief.briefType,
+      audience: brief.audience,
+      status: brief.status,
+      version: brief.currentVersion,
+      generatedAt: brief.generatedAt?.toISOString() ?? null,
+    })),
   };
+}
+
+/* -------------------------------------------------------------------------
+ * Generating a brief from a signal
+ * ---------------------------------------------------------------------- */
+
+/** One preselected item: which, in what order, and what the rerank scored it. */
+export type SignalPrefillMatch = {
+  evidenceItemId: string;
+  rank: number;
+  /** Null where the rerank omitted this candidate — "not scored", never a zero. */
+  rerankScore: number | null;
+};
+
+export type SignalBriefPrefill = {
+  id: string;
+  title: string;
+  /** Written by the classification pass — generated prose, so never the serif. */
+  summaryText: string;
+  sourceName: string;
+  /** External and untrusted: linked with `rel="noreferrer"`, never fetched. */
+  sourceUrl: string;
+  urgency: Urgency;
+  relevance: Relevance;
+  impactArea: ImpactArea;
+  /** `null` where the Evidence Matcher has never run for this signal. */
+  latestMatchOutcome: EvidenceMatchOutcome | null;
+  /** Eligible matched items, rank order, capped at the generator's context size. */
+  matches: SignalPrefillMatch[];
+};
+
+/**
+ * What the generation form opens with when it is reached from a signal.
+ *
+ * THE GATE, at read time. `ELIGIBLE_EVIDENCE_WHERE` is carried exactly as
+ * `findSignalDetail` carries it, so an item downgraded since the match was
+ * written is never offered as a default. Its absence is already surfaced on the
+ * signal detail as the awaiting-re-classification count.
+ *
+ * PRESELECTION IS PRESENTATION, not the control. `startBriefGeneration` re-reads
+ * every submitted id and puts it through the gate itself, exactly as it does for
+ * a hand-picked set (§7.1).
+ *
+ * Capped at `GENERATION_EVIDENCE_CONTEXT_SIZE` so the form cannot open in a
+ * state its own schema would reject.
+ */
+export async function findSignalBriefPrefill(
+  signalId: string,
+): Promise<SignalBriefPrefill | null> {
+  const signal = await prisma.policySignal.findUnique({
+    where: { id: signalId },
+    select: {
+      id: true,
+      title: true,
+      summaryText: true,
+      sourceName: true,
+      sourceUrl: true,
+      urgency: true,
+      relevance: true,
+      impactArea: true,
+      matchRuns: {
+        orderBy: { startedAt: "desc" },
+        take: 1,
+        select: { outcome: true },
+      },
+    },
+  });
+
+  if (!signal) return null;
+
+  const matches = await prisma.signalEvidenceMatch.findMany({
+    where: { signalId, evidenceItem: ELIGIBLE_EVIDENCE_WHERE },
+    orderBy: { rank: "asc" },
+    take: GENERATION_EVIDENCE_CONTEXT_SIZE,
+    select: { evidenceItemId: true, rank: true, rerankScore: true },
+  });
+
+  return {
+    id: signal.id,
+    title: signal.title,
+    summaryText: signal.summaryText,
+    sourceName: signal.sourceName,
+    sourceUrl: signal.sourceUrl,
+    urgency: signal.urgency,
+    relevance: signal.relevance,
+    impactArea: signal.impactArea,
+    latestMatchOutcome: signal.matchRuns[0]?.outcome ?? null,
+    matches,
+  };
+}
+
+/**
+ * Whether a signal id from a form submission names a real signal.
+ *
+ * IDS ONLY. Stage 1 needs to know the association can be stored, not what the
+ * signal says — a validation check has no business loading a summary (§7.6).
+ */
+export async function signalExists(signalId: string): Promise<boolean> {
+  const row = await prisma.policySignal.findUnique({
+    where: { id: signalId },
+    select: { id: true },
+  });
+
+  return row !== null;
+}
+
+/**
+ * The stored rerank scores for the items a brief is actually being generated
+ * from, so stage 3 can record a relevance score that something computed.
+ *
+ * Absent from the returned map means "no score", and the two ways that happens
+ * are both correct: the officer added the item by hand, so it was never in this
+ * signal's match set; or the rerank omitted it and the stored score is null.
+ * Neither becomes a zero.
+ *
+ * No eligibility filter here, deliberately: the ids arriving have already been
+ * re-read and re-gated by `resolveAttempt`, and a score is a number about a
+ * retrieval, not evidence content.
+ */
+export async function loadSignalMatchScores({
+  signalId,
+  evidenceItemIds,
+}: {
+  signalId: string;
+  evidenceItemIds: readonly string[];
+}): Promise<Map<string, number>> {
+  if (evidenceItemIds.length === 0) return new Map();
+
+  const rows = await prisma.signalEvidenceMatch.findMany({
+    where: { signalId, evidenceItemId: { in: [...evidenceItemIds] } },
+    select: { evidenceItemId: true, rerankScore: true },
+  });
+
+  const scores = new Map<string, number>();
+
+  for (const row of rows) {
+    if (row.rerankScore !== null) scores.set(row.evidenceItemId, row.rerankScore);
+  }
+
+  return scores;
 }
 
 /**

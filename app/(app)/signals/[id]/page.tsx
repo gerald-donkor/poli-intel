@@ -3,13 +3,21 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { canRequestEvidenceRematch } from "@/lib/auth/authorize";
+import { audienceLabel } from "@/lib/ai/audience-profiles";
+import { briefTypeLabel } from "@/lib/ai/brief-types";
+import {
+  canGenerateBrief,
+  canRequestEvidenceRematch,
+} from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
+import { GENERATION_EVIDENCE_CONTEXT_SIZE } from "@/lib/briefs/generation-limits";
 import { findSignalDetail, type SignalDetail } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
+import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../../briefs/labels";
 import {
   AUDIENCE_TARGET_LABELS,
+  describeSignalPrefill,
   formatSignalDate,
   formatSignalDateTime,
   GEOGRAPHY_LABELS,
@@ -32,9 +40,14 @@ export const metadata = {
  *
  * NOTHING ON THIS PAGE IMPLIES THE SYSTEM DECIDED ANYTHING (§8.8). The
  * classification is a suggestion from a model pass; the match set is what
- * retrieval returned; the reclassification history is a record of people. There
- * is no generate-from-signal control here — that changes the brief-generation
- * contract and is its own piece of work.
+ * retrieval returned; the reclassification history is a record of people.
+ *
+ * THE GENERATE CONTROL IS A LINK A PERSON PRESSES. Detection triggers the
+ * Evidence Matcher and stops there (§8.4); nothing on this path generates
+ * anything automatically, and no urgency makes it happen by itself. It is
+ * offered whatever the matcher found — a gap does not block generation, because
+ * blocking would be the system deciding — and its supporting line says plainly
+ * what the officer will be starting from.
  *
  * The DAL call, not the layout, is the check that matters (§10.1).
  */
@@ -53,6 +66,17 @@ export default async function SignalDetailPage({
   // Presentation only. The action authorises its own caller server-side (§10.1).
   const mayRematch = canRequestEvidenceRematch(staffUser.role);
 
+  // Also presentation only: the generation surface refuses a role that may not
+  // generate, and all three generation actions refuse again server-side.
+  const mayGenerate = canGenerateBrief(staffUser.role);
+
+  // What would actually be preselected — the generator's context size is the
+  // ceiling, so the line cannot promise more than the form will offer.
+  const preselectableCount = Math.min(
+    signal.matches.length,
+    GENERATION_EVIDENCE_CONTEXT_SIZE,
+  );
+
   const ramp = URGENCY_RAMP[signal.urgency];
 
   return (
@@ -68,6 +92,22 @@ export default async function SignalDetailPage({
         <Link href="/signals" className={buttonVariants({ variant: "outline" })}>
           Back to the board
         </Link>
+        {mayGenerate ? (
+          <span className="flex flex-col items-start gap-1 tablet:items-end">
+            <Link
+              href={`/briefs/new?signal=${signal.id}`}
+              className={buttonVariants({ variant: "default" })}
+            >
+              Draft a brief from this signal
+            </Link>
+            <span className="text-ink-3 max-w-[38ch] text-[12.5px] leading-snug tablet:text-right">
+              {describeSignalPrefill({
+                outcome: signal.matchRuns[0]?.outcome ?? null,
+                matchedCount: preselectableCount,
+              })}
+            </span>
+          </span>
+        ) : null}
       </PageHeader>
 
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-4 p-4 tablet:p-6">
@@ -125,6 +165,7 @@ export default async function SignalDetailPage({
 
           <div className="flex min-w-0 flex-col gap-4">
             <Classification signal={signal} />
+            <DraftedBriefs signal={signal} />
             <ReclassificationHistory signal={signal} />
             <MatchRunHistory signal={signal} />
           </div>
@@ -171,6 +212,48 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-ink-3 shrink-0 text-[12px]">{label}</dt>
       <dd className="text-ink-2 text-right">{value}</dd>
     </div>
+  );
+}
+
+/**
+ * What people have drafted from this signal.
+ *
+ * The evidence → brief half of the trail the Impact Tracker will read, rendered
+ * now rather than left as a stored relation nobody can see. Status is the
+ * brief's own, unchanged by anything here — a draft listed here is a draft, and
+ * nothing on this page moves it (§8.3).
+ */
+function DraftedBriefs({ signal }: { signal: SignalDetail }) {
+  return (
+    <section className="bg-card border-line rounded-card flex flex-col gap-3 border p-4">
+      <h2 className="text-ink-3 text-[10.5px] font-semibold tracking-[0.06em] uppercase">
+        Briefs from this signal
+      </h2>
+      {signal.briefs.length === 0 ? (
+        <p className="text-ink-3 text-[12.5px]">
+          Nothing has been drafted from this signal yet.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2.5">
+          {signal.briefs.map((brief) => (
+            <li key={brief.id} className="flex flex-col gap-0.5 text-[12.5px]">
+              <Link
+                href={`/briefs/${brief.id}`}
+                className="text-primary-ink focus-visible:ring-accent focus-visible:ring-offset-card rounded-[3px] font-medium underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+              >
+                {briefTypeLabel(brief.briefType)}
+              </Link>
+              <span className="text-ink-3 text-[11.5px]">
+                For {audienceLabel(brief.audience)} ·{" "}
+                {BRIEF_STATUS_LABELS[brief.status]} · version{" "}
+                <span className="font-mono">{brief.version}</span> ·{" "}
+                {formatGeneratedAt(brief.generatedAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

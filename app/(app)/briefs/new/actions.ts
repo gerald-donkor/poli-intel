@@ -22,9 +22,11 @@ import {
   failBriefGeneration,
   findOwnedBriefGeneration,
   loadEvidenceForGenerationContext,
+  loadSignalMatchScores,
   markBriefDrafting,
   persistGeneratedBrief,
   recordBriefDraft,
+  signalExists,
 } from "@/lib/db";
 import {
   GenerationFailureReason,
@@ -100,6 +102,27 @@ export async function startBriefGeneration(
 
   if (!parsed.success) return { ok: false, refusal: toInvalid(parsed.error.issues) };
 
+  const signalId = parsed.data.signalId ?? null;
+
+  // A signal id arrives from a query parameter, so it is untrusted input twice
+  // over: the schema says it could name a signal, and this says it does. A
+  // submission naming one that does not resolve is REFUSED, never quietly
+  // stripped — a brief silently detached from its signal would be a traceability
+  // record that lies by omission.
+  if (signalId !== null && !(await signalExists(signalId))) {
+    return {
+      ok: false,
+      refusal: {
+        kind: "invalid",
+        fieldErrors: {
+          signalId: [
+            "That signal is no longer available. Start again from the signal board, or draft this brief manually.",
+          ],
+        },
+      },
+    };
+  }
+
   // Re-read from the database. The ids came from the browser and the picker is
   // presentation; a classification changed between picking and pressing Generate
   // must be caught here, which is the only place it can be (§7.1).
@@ -145,10 +168,12 @@ export async function startBriefGeneration(
     audience: parsed.data.audience,
     policyText: parsed.data.policyText,
     evidenceItemIds: parsed.data.evidenceItemIds,
+    signalId,
   });
 
   console.info("brief.generation.started", {
     generationId,
+    signalId,
     briefType: parsed.data.briefType,
     audience: parsed.data.audience,
     evidenceItemCount: gated.context.length,
@@ -267,9 +292,23 @@ export async function verifyBriefAction(
     citationKeys: new Map(context.map((item) => [item.id, item.citationKey])),
   });
 
+  // The scores the matcher computed, for the items that came from this signal's
+  // match set. Read from the ATTEMPT's signal id, so a brief cannot pick up a
+  // score from a signal the officer merely happened to have open. Anything the
+  // officer added by hand is absent here and stays unscored, permanently.
+  const relevanceScores =
+    attempt.signalId === null
+      ? new Map<string, number>()
+      : await loadSignalMatchScores({
+          signalId: attempt.signalId,
+          evidenceItemIds: attempt.evidenceItemIds,
+        });
+
   const briefId = await persistGeneratedBrief({
     generationId,
     createdById: attempt.createdById,
+    signalId: attempt.signalId,
+    relevanceScores,
     briefType: attempt.briefType,
     audience: attempt.audience,
     evidenceItemIds: attempt.evidenceItemIds,
@@ -286,12 +325,20 @@ export async function verifyBriefAction(
   console.info("brief.generation.verified", {
     generationId,
     briefId,
+    signalId: attempt.signalId,
+    scoredEvidenceCount: relevanceScores.size,
     claimsChecked: checked.claimsChecked,
     flagCount: checked.unsupported.length,
     elapsedMs: Date.now() - started,
   });
 
   revalidatePath("/briefs");
+
+  // The signal detail lists what has been drafted from it, so it is stale the
+  // moment this commits.
+  if (attempt.signalId !== null) {
+    revalidatePath(`/signals/${attempt.signalId}`);
+  }
 
   return { ok: true, briefId, flagCount: checked.unsupported.length };
 }
@@ -304,6 +351,7 @@ type ResolvedAttempt = {
   ok: true;
   attempt: {
     createdById: string;
+    signalId: string | null;
     briefType: BriefType;
     audience: BriefAudience;
     policyText: string;

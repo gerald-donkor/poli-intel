@@ -30,6 +30,12 @@ export type CreateBriefGenerationInput = {
   audience: BriefAudience;
   policyText: string;
   evidenceItemIds: string[];
+  /**
+   * The signal the officer opened the form from, resolved against the database
+   * by stage 1 — never a query parameter taken on trust. Null for a manual
+   * draft, which is the only other way in.
+   */
+  signalId: string | null;
 };
 
 export async function createBriefGeneration(
@@ -75,6 +81,9 @@ export function findOwnedBriefGeneration({
       audience: true,
       policyText: true,
       evidenceItemIds: true,
+      // Read from the ROW, not re-derived from the URL the third request
+      // happened to arrive on.
+      signalId: true,
       stage: true,
       draftJson: true,
       generatingModel: true,

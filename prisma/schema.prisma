@@ -318,6 +318,7 @@ model PolicySignal {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   briefs            Brief[]
+  briefGenerations  BriefGeneration[]
   reclassifications SignalReclassification[]
   evidenceMatches   SignalEvidenceMatch[]
   matchRuns         EvidenceMatchRun[]
@@ -607,6 +608,18 @@ model BriefGeneration {
   briefType   BriefType     @map("brief_type")
   audience    BriefAudience
 
+  /// The signal this attempt was opened from, carried through to `Brief.signalId`
+  /// by the stage-3 transaction.
+  ///
+  /// ON THE ATTEMPT, not re-derived at stage 3. The three stages are three
+  /// separate requests minutes apart, so reading the association back off a query
+  /// parameter would mean trusting the browser for a stored relation.
+  ///
+  /// Nullable because the manual generator is not going away: staff paste a
+  /// policy document with no signal record behind it, exactly as `Brief.signalId`
+  /// already allows.
+  signalId String? @map("signal_id")
+
   /// The pasted policy document, capped by BRIEF_POLICY_TEXT_MAX_CHARS.
   policyText String @map("policy_text")
   /// The evidence set the officer chose, gated at stage 1 and re-gated nowhere
@@ -629,10 +642,12 @@ model BriefGeneration {
   startedAt DateTime @default(now()) @map("started_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  createdBy StaffUser @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  brief     Brief?    @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  createdBy StaffUser     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  brief     Brief?        @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  signal    PolicySignal? @relation(fields: [signalId], references: [id], onDelete: SetNull)
 
   @@index([createdById, startedAt])
+  @@index([signalId])
   @@map("brief_generation")
 }
 
