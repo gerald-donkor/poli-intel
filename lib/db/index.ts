@@ -85,6 +85,16 @@ export {
   type UnembeddedChunk,
 } from "./evidence-vectors";
 export {
+  findEvidenceMatchCandidates,
+  findSignalForMatching,
+  recordEvidenceMatchRun,
+  replaceSignalEvidenceMatches,
+  type EvidenceMatchCandidate,
+  type RecordEvidenceMatchRunInput,
+  type SignalEvidenceMatchInput,
+  type SignalForMatching,
+} from "./evidence-matches";
+export {
   createClassifiedSignal,
   findRecentSignalsForDedup,
   recordRadarRun,

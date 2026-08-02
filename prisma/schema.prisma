@@ -225,6 +225,21 @@ enum RadarOutcome {
   @@map("radar_outcome")
 }
 
+/// What one Evidence Matcher attempt produced.
+///
+/// `gap` is a RESULT, not a failure: nothing cleared the threshold, and that is
+/// a stored fact rather than an absence somebody has to notice
+/// (AGENTS.md §15, `evidence-matcher` rule 4). `failed` means the attempt could
+/// not be completed — the signal had no vector, or the rerank could not be
+/// obtained.
+enum EvidenceMatchOutcome {
+  matched
+  gap
+  failed
+
+  @@map("evidence_match_outcome")
+}
+
 // ---------------------------------------------------------------------------
 // Actors
 // ---------------------------------------------------------------------------
@@ -304,6 +319,8 @@ model PolicySignal {
 
   briefs            Brief[]
   reclassifications SignalReclassification[]
+  evidenceMatches   SignalEvidenceMatch[]
+  matchRuns         EvidenceMatchRun[]
 
   @@index([status])
   @@index([urgency])
@@ -345,6 +362,80 @@ model RadarRun {
   @@map("radar_run")
 }
 
+/// One Evidence Matcher attempt against one signal — RadarRun's counterpart for
+/// retrieval, and for the same reason.
+///
+/// EVERY attempt writes exactly one row, including the ones that matched
+/// nothing and the ones that failed. That is what makes the gap DATA: the
+/// weekly gap analysis and the signal board read `outcome` rather than
+/// inferring "no evidence" from an empty join, which cannot tell "we looked and
+/// found nothing" apart from "we never looked" (`evidence-matcher` rule 4).
+///
+/// Ids, counts, outcomes and short machine reasons ONLY — the same rule as
+/// RadarRun and IngestionLog. Never a signal summary, never a candidate
+/// excerpt, never a caught error's message (§7.6, §13.9).
+model EvidenceMatchRun {
+  id       String @id @default(uuid())
+  signalId String @map("signal_id")
+
+  outcome EvidenceMatchOutcome
+
+  /// Items that cleared MATCHER_MIN_SIMILARITY and entered the rerank.
+  candidateCount Int @default(0) @map("candidate_count")
+  /// Items stored as matches. At most MATCHER_MATCH_SET_SIZE.
+  matchedCount   Int @default(0) @map("matched_count")
+  /// Candidates dropped because the item was reclassified between the query and
+  /// the rerank call. A COUNT ONLY — never the ids' titles or text (§7.6).
+  refusedCount   Int @default(0) @map("refused_count")
+
+  /// Short machine reason, never an excerpt or an error message.
+  failureReason String? @map("failure_reason")
+
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  signal PolicySignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+
+  /// The one query the gap analysis and the signal board run: recent runs for a
+  /// signal. Nothing speculative alongside it (AGENTS.md §12.5).
+  @@index([signalId, startedAt])
+  @@map("evidence_match_run")
+}
+
+/// A signal's CURRENT match set — one row per matched evidence item.
+///
+/// Run rows accumulate; these do not. A re-match replaces the whole set in one
+/// transaction, so the board never renders half of it.
+///
+/// This is NOT the evidence set a brief was generated from. That is
+/// `BriefEvidence`, written from the officer's final selection after add and
+/// remove, and it is what the fact-check pass verifies against
+/// (`evidence-matcher` rule 5).
+model SignalEvidenceMatch {
+  signalId       String @map("signal_id")
+  evidenceItemId String @map("evidence_item_id")
+
+  /// Cosine similarity of the item's closest chunk, `1 - distance`.
+  similarity   Float
+  /// The rerank's 0–1 score. NULL where the model omitted this candidate from
+  /// its response — kept at its retrieval rank rather than silently deleted.
+  rerankScore  Float? @map("rerank_score")
+  /// Position in the stored set, 1-based, after the rerank.
+  rank         Int
+  /// Which chunk matched, so the passage can be quoted without re-running
+  /// retrieval.
+  chunkOrdinal Int    @map("chunk_ordinal")
+
+  matchedAt DateTime @default(now()) @map("matched_at")
+
+  signal       PolicySignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Restrict)
+
+  @@id([signalId, evidenceItemId])
+  @@index([evidenceItemId])
+  @@map("signal_evidence_match")
+}
+
 // ---------------------------------------------------------------------------
 // Evidence library
 // ---------------------------------------------------------------------------
@@ -381,6 +472,7 @@ model EvidenceItem {
   briefEvidence         BriefEvidence[]
   ingestionLogs         IngestionLog[]
   classificationChanges EvidenceClassificationChange[]
+  signalMatches         SignalEvidenceMatch[]
 
   @@index([classification])
   @@index([impactArea])

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { GENERATION_EVIDENCE_CONTEXT_SIZE } from "@/lib/briefs/generation-limits";
 import { CHARS_PER_TOKEN_APPROX } from "@/lib/ingestion/config";
 
 /**
@@ -310,3 +311,99 @@ export const EVIDENCE_SEARCH_MIN_SIMILARITY = 0.35;
  * recognise the passage, short enough not to reproduce the document.
  */
 export const EVIDENCE_SEARCH_EXCERPT_CHARS = 400;
+
+/* ---------------------------------------------------------------------------
+ * Evidence Matcher
+ *
+ * The OTHER retrieval path, and a different contract from the library search
+ * above: a fixed order — signal vector → cosine similarity over eligible chunks
+ * → top 20 candidate items → rerank → top 8 (`evidence-matcher` rule 1). No
+ * step is optional and none may be reordered.
+ *
+ * These numbers are the Matcher's own. The block above says in terms not to
+ * read the library's numbers into here, and this block says the reverse: the
+ * library is a person typing into a filter rail and can afford a loose
+ * threshold, whereas these figures decide what a brief may later be generated
+ * from.
+ *
+ * Model and temperature are NOT redeclared — the rerank is a constrained
+ * reading task over supplied text and reuses GENERATION_MODEL at
+ * GENERATION_TEMPERATURE, for the same reason signal classification does.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Chunks the candidate query retrieves before collapsing to one row per item.
+ *
+ * Over-fetches for the same two reasons the library search does — a long
+ * document contributes many chunks that collapse into one row, and the
+ * classification join sits in the same `WHERE` as the similarity ordering, so
+ * Postgres may post-filter the HNSW result set. Higher than the library's 60
+ * because this path must reliably fill 20 items, not 20 rows of a page.
+ */
+export const MATCHER_CANDIDATE_CHUNKS = 120;
+
+/** The fixed "top 20 candidates" of the retrieval order. Not a preference. */
+export const MATCHER_CANDIDATE_ITEMS = 20;
+
+/**
+ * The fixed "top 8" the rerank narrows to.
+ *
+ * Deliberately the same one fact as GENERATION_EVIDENCE_CONTEXT_SIZE rather
+ * than a second 8 that could drift: spec §3.3 step 4's top 8 is the generation
+ * context, and this set is what will fill it when an officer generates from a
+ * signal.
+ */
+export const MATCHER_MATCH_SET_SIZE = GENERATION_EVIDENCE_CONTEXT_SIZE;
+
+/**
+ * Cosine similarity a chunk must clear to become a CANDIDATE at all.
+ *
+ * A STARTING VALUE with no corpus behind it, exactly as
+ * EVIDENCE_SEARCH_MIN_SIMILARITY is. Revisit when the library holds a real body
+ * of evidence and a Research Officer can say whether it admits noise or hides
+ * matches. A run where nothing clears this is a `gap` — a normal, recorded
+ * result, not a failure.
+ */
+export const MATCHER_MIN_SIMILARITY = 0.35;
+
+/**
+ * Rerank score a candidate must clear to enter the STORED match set.
+ *
+ * A second threshold at a different meaning: the one above asks "is this
+ * passage semantically near the signal?", this asks "having read both, is this
+ * item actually usable evidence for it?". Also a starting value.
+ *
+ * A candidate the model omitted from its response has no score and is judged by
+ * its retrieval rank instead — never dropped for the model's silence.
+ */
+export const MATCHER_MIN_RELEVANCE = 0.4;
+
+/**
+ * How much of each candidate's matched chunk travels to the rerank call.
+ *
+ * "Never pass unbounded context" (§13.7) binds here harder than anywhere else
+ * in the codebase: this is 20 excerpts in one request, not 8. 20 × 1,200 chars
+ * ≈ 6,000 tokens, which leaves the response cap room and keeps one rerank well
+ * inside a single request.
+ */
+export const MATCHER_RERANK_EXCERPT_CHARS = 1200;
+
+/**
+ * The share of the RPM ceiling the Matcher may occupy.
+ *
+ * Below GEMINI_RPM_BUDGET for the same reason EMBEDDING_RPM_ALLOCATION and
+ * RADAR_RPM_ALLOCATION are: a radar fan-out that detects a page of new notices
+ * fires a matcher run per signal, and that burst must not push an officer's
+ * interactive generation into a 429.
+ */
+export const MATCHER_RPM_ALLOCATION = 8;
+
+/**
+ * Matcher runs Inngest may START per minute.
+ *
+ * One run makes at most one Gemini request (the rerank; retrieval is SQL and
+ * the signal's vector already exists), so throttling run starts throttles
+ * requests one-for-one — the `embedEvidenceBatch` pattern. Pacing is flow
+ * control, never a sleep inside a step (`inngest-jobs`).
+ */
+export const MATCHER_RUNS_PER_MINUTE = MATCHER_RPM_ALLOCATION;
