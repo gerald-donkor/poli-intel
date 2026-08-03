@@ -14,11 +14,22 @@ export {
   provisionStaffUser,
 } from "./staff";
 export {
+  findFieldSubmissionForNotice,
+  readFieldDigest,
+  type FieldBriefCard,
+  type FieldSubmissionNotice,
+  type FieldDigestPayload,
+  type FieldSignalCard,
+} from "./field";
+export {
   classifyEvidenceItem,
   completeEvidenceExtraction,
   countPendingClassification,
   createEvidenceShell,
+  createFieldSubmission,
   deleteEvidenceItem,
+  fieldSubmissionCitationKey,
+  listFieldSubmissionsByStaffUser,
   findEvidenceItemForEmbedding,
   findEvidenceItemForIngestion,
   listEligibleEvidence,
@@ -30,6 +41,9 @@ export {
   type ClassifyEvidenceResult,
   type CreateEvidenceShellInput,
   type CreateEvidenceShellResult,
+  type CreateFieldSubmissionInput,
+  type CreateFieldSubmissionResult,
+  type FieldSubmissionSummary,
   type EvidenceFacets,
   type EvidenceFilters,
   type EvidenceKeywordQuery,

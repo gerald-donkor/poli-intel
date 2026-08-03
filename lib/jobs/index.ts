@@ -10,6 +10,7 @@ import {
 } from "./functions/impact-detect";
 import { matchEvidenceForSignal } from "./functions/match-evidence";
 import { sendMorningDigest } from "./functions/morning-digest";
+import { notifyFieldSubmission } from "./functions/notify-field-submission";
 import { fetchRadarSource } from "./functions/radar-fetch";
 import { scheduleRadarSources } from "./functions/radar-schedule";
 import { rematchEvidenceForSignal } from "./functions/rematch-evidence";
@@ -33,6 +34,7 @@ export const inngestFunctions = [
   sendMorningDigest,
   scheduleImpactDetection,
   detectBriefInfluence,
+  notifyFieldSubmission,
 ];
 
 export { inngest } from "./client";

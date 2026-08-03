@@ -517,6 +517,26 @@ model EvidenceItem {
   ingestedAt           DateTime  @default(now()) @map("ingested_at")
   extractionCompletedAt DateTime? @map("extraction_completed_at")
 
+  /// Field-submission provenance. NULL on every upload-path row.
+  ///
+  /// `submissionKey` is generated on the OFFICER'S DEVICE at compose time and
+  /// travels with the observation, so a submission queued offline and replayed
+  /// over a flaky connection lands once. UNIQUE, because the database is the
+  /// only place that can decide that without a race — a read-then-create in the
+  /// action would let two replays a few milliseconds apart both see nothing.
+  /// Nullable rather than defaulted: Postgres treats NULLs as distinct in a
+  /// unique index, so the thousands of upload rows that will never have one do
+  /// not collide with each other.
+  submissionKey String?   @unique @map("submission_key")
+  /// When the officer SAW the thing, which is not when they submitted it — an
+  /// observation made in a valley with no signal may be sent two days later.
+  observedAt    DateTime? @map("observed_at")
+  /// The landscape the observation came from, in the officer's own words.
+  /// Free text, not the `Geography` enum: "the eastern edge of Juabeso-Bia" is
+  /// the specificity that distinguishes Tropenbos from a desk-research outfit
+  /// (AGENTS.md §1.0), and an enum would round it off to "Cocoa Belt".
+  locationNote  String?   @map("location_note")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

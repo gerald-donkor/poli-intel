@@ -1,3 +1,11 @@
+import Link from "next/link";
+
+import { BriefDigestCard, SignalDigestCard } from "@/components/field/digest-card";
+import { OfflineBanner } from "@/components/field/offline-banner";
+import { FieldServiceWorker } from "@/components/field/sw-register";
+import { requireStaffUser } from "@/lib/auth/session";
+import { readFieldDigest } from "@/lib/db";
+
 // Its own description, so the root layout's — which uses internal vocabulary —
 // is not inherited into this surface's document head.
 export const metadata = {
@@ -5,9 +13,34 @@ export const metadata = {
   description: "Your weekly update from the office, saved for offline reading.",
 };
 
-export default function FieldPage() {
+/**
+ * The Field Officer digest.
+ *
+ * A SERVER COMPONENT READING THE DATABASE DIRECTLY (§5.3). The service worker
+ * caches the rendered navigation, so what an officer reads with no connection is
+ * the last version of this page they loaded with one — the same words, not a
+ * degraded client-rendered stand-in.
+ *
+ * SINGLE COLUMN AT EVERY WIDTH. The layout caps at 480px and this page never
+ * introduces a `tablet:` or `laptop:` variant — a Field Officer on a laptop
+ * still gets the digest (§11.14, design-system.md's closing rule).
+ *
+ * ONE MESSAGE PER CARD, PLAIN LANGUAGE ONLY (§11.12). Every label comes from
+ * `lib/field/plain-language.ts`.
+ *
+ * It re-resolves the caller rather than trusting the layout: Next's own
+ * authentication guidance is that layouts do not re-render on navigation.
+ */
+export default async function FieldPage() {
+  await requireStaffUser();
+
+  const digest = await readFieldDigest();
+  const empty = digest.signals.length === 0 && digest.briefs.length === 0;
+
   return (
     <>
+      <FieldServiceWorker />
+
       <header className="bg-primary flex flex-col gap-3 px-5 pt-6 pb-5">
         <div className="flex items-center gap-2">
           <span
@@ -26,38 +59,63 @@ export default function FieldPage() {
         </div>
       </header>
 
-      {/* Offline state is shown, never silent (AGENTS.md §17.2, §17.4). Wired to
-          real connectivity in the field-officer prompt; static chrome for now. */}
-      <div className="bg-stone border-line flex items-center gap-2 border-b px-5 py-3">
-        <span
-          aria-hidden="true"
-          className="bg-ink-disabled size-2 shrink-0 rounded-full"
-        />
-        <p className="text-ink-2 text-[14px]">
-          Showing saved updates when you are offline.
-        </p>
+      <OfflineBanner savedAt={digest.generatedAt} />
+
+      <div className="flex flex-1 flex-col gap-5 px-5 py-5">
+        {empty ? (
+          /*
+            The designed empty state, not a blank column (§17.6). It says what
+            will appear and gives the one thing the officer can do right now.
+          */
+          <div className="bg-card border-line rounded-card border p-4">
+            <h2 className="text-ink text-[16px] font-semibold">
+              Nothing new yet
+            </h2>
+            <p className="text-ink-2 mt-2 text-[14px] leading-relaxed">
+              When the office has something to pass on, it will appear here, one
+              message per card. You can still send an update from the field at
+              any time.
+            </p>
+          </div>
+        ) : null}
+
+        {digest.signals.length > 0 ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-ink-3 text-[12px] font-semibold tracking-[0.06em] uppercase">
+              Worth knowing
+            </h2>
+            {digest.signals.map((signal) => (
+              <SignalDigestCard key={signal.id} signal={signal} />
+            ))}
+          </section>
+        ) : null}
+
+        {digest.briefs.length > 0 ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-ink-3 text-[12px] font-semibold tracking-[0.06em] uppercase">
+              What the office has sent out
+            </h2>
+            {digest.briefs.map((brief) => (
+              <BriefDigestCard key={brief.id} brief={brief} />
+            ))}
+          </section>
+        ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 px-5 py-5">
-        <div className="bg-card border-line rounded-card border p-4">
-          <p className="text-ink text-[14px] leading-relaxed">
-            Your updates and the things to act on will appear here as cards, one
-            message each.
-          </p>
-          <p className="text-ink-3 mt-2 font-mono text-[11.5px]">
-            Built by the field-officer prompt
-          </p>
-        </div>
-      </div>
-
-      <footer className="border-line flex flex-col gap-2 border-t px-4 py-4">
-        <button
-          type="button"
-          disabled
-          className="bg-primary rounded-card min-h-[48px] w-full px-4 text-[16px] font-semibold text-white disabled:opacity-60"
+      {/* 48px tap targets, no icon-only controls (design-system.md, §11.12). */}
+      <footer className="border-line flex flex-col gap-3 border-t px-4 py-4">
+        <Link
+          href="/field/submit"
+          className="bg-primary hover:bg-primary-hover rounded-card flex min-h-[48px] w-full items-center justify-center px-4 text-[16px] font-semibold text-white"
         >
           Send an update from the field
-        </button>
+        </Link>
+        <Link
+          href="/field/sent"
+          className="border-line text-ink rounded-card flex min-h-[48px] w-full items-center justify-center border px-4 text-[16px] font-medium hover:underline"
+        >
+          Updates you have sent
+        </Link>
         <p className="text-ink-3 text-center text-[14px]">
           Works offline — sends when you are back online.
         </p>

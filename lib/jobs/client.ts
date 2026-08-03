@@ -114,6 +114,20 @@ export const impactDetectionRequested = eventType(
   { schema: staticSchema<{ briefId: string; dueOn: string }>() },
 );
 
+/**
+ * A Field Officer submitted an observation, and a Research Officer needs to know
+ * (AGENTS.md §17.3, §12.8).
+ *
+ * Carries the evidence item id and nothing else — not the title, and above all
+ * not a word of the observation. The rule at the top of this file is not being
+ * weakened for the one payload where the text is the whole point: the notifier
+ * re-reads the title from the database, and the observation itself is read in
+ * the app, behind auth.
+ */
+export const evidenceFieldSubmitted = eventType("evidence/field.submitted", {
+  schema: staticSchema<{ evidenceItemId: string }>(),
+});
+
 export const inngest = new Inngest({
   id: "evibrief",
   // v4 defaults to Cloud mode, which requires a signing key. Scoped to
@@ -142,6 +156,33 @@ export async function sendEvidenceClassificationChanged(
     console.warn(
       `[jobs] classification event could not be sent; the daily sweep will pick this up: evidenceItemId=${evidenceItemId}`,
     );
+  }
+}
+
+/**
+ * Announces a field submission, and says whether the announcement was queued.
+ *
+ * REPORTED, NOT SWALLOWED, AND NEVER FATAL TO THE SUBMISSION. The observation is
+ * already committed and already in the classification queue by the time this
+ * runs, so a failed send costs a notification, not the officer's work — and the
+ * officer, who may be about to lose signal again, must not be told their
+ * submission failed when it did not. The caller surfaces the difference.
+ */
+export async function sendEvidenceFieldSubmitted(
+  evidenceItemId: string,
+): Promise<boolean> {
+  try {
+    await inngest.send(evidenceFieldSubmitted.create({ evidenceItemId }));
+
+    return true;
+  } catch {
+    // An id and the fact of the failure. Nothing about the observation belongs
+    // in a log line (§7.6).
+    console.warn(
+      `[jobs] field-submission notice could not be queued: evidenceItemId=${evidenceItemId}`,
+    );
+
+    return false;
   }
 }
 

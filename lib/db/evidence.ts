@@ -1,14 +1,16 @@
 import "server-only";
 
 import { EVIDENCE_BROWSE_MAX_ITEMS } from "@/lib/ai/config";
+import { FIELD_SUBMISSION_COUNTRY } from "@/lib/field/config";
 import { ELIGIBLE_EVIDENCE_WHERE, PENDING_CLASSIFICATION } from "@/lib/governance/gate";
 import { Prisma } from "@/lib/generated/prisma/client";
+import { EvidenceSourceType as EvidenceSourceTypeEnum } from "@/lib/generated/prisma/enums";
 import type {
   Classification,
   EvidenceSourceType,
   ImpactArea,
 } from "@/lib/generated/prisma/enums";
-import type { TextChunk } from "@/lib/ingestion/chunk";
+import { chunkDocument, type TextChunk } from "@/lib/ingestion/chunk";
 
 import { prisma } from "./client";
 import { countEmbeddedChunksByItem } from "./evidence-vectors";
@@ -493,6 +495,189 @@ export function findEvidenceItemForEmbedding(evidenceItemId: string) {
       extractionCompletedAt: true,
     },
   });
+}
+
+export type CreateFieldSubmissionInput = {
+  /** Generated on the officer's device at compose time. The idempotency key. */
+  submissionKey: string;
+  title: string;
+  /** The observation itself. Becomes `fullText` and is chunked in place. */
+  observation: string;
+  locationNote: string | null;
+  observedAt: Date | null;
+  ingestedById: string;
+};
+
+export type CreateFieldSubmissionResult = {
+  evidenceItemId: string;
+  /** True when this key had already landed — a replay, not a second item. */
+  deduped: boolean;
+  /** Chunks written. 0 on a replay, which wrote nothing. */
+  chunkCount: number;
+};
+
+/**
+ * The citation key for a field submission, derived from its submission key.
+ *
+ * DERIVED RATHER THAN RANDOM, because both unique columns must collide together
+ * on a replay. If this were random, the second attempt at the same observation
+ * would trip `submission_key` (handled, deduped) on one code path and
+ * `citation_key` (a different, unhandled shape) on another depending on which
+ * index Postgres reported first. One deterministic value keeps the replay a
+ * single, predictable outcome.
+ *
+ * The upload path takes its key from the Research Officer, who is transcribing
+ * a real bibliographic reference. A field observation has no such reference, so
+ * it gets a synthetic one that reads as what it is.
+ */
+export function fieldSubmissionCitationKey(submissionKey: string): string {
+  return `field-${submissionKey.replace(/-/g, "").slice(0, 12)}`;
+}
+
+/**
+ * Records a field observation as an `EvidenceItem`.
+ *
+ * `classification` IS ABSENT AND IS NOT AN ARGUMENT, exactly as
+ * `createEvidenceShell` is: the schema default holds the row at
+ * `unpublished_internal` until a Research Officer tags it, and there is no
+ * auto-classification by source — an observation is not trusted into
+ * eligibility by virtue of coming from a Tropenbos officer (§7.3).
+ *
+ * `extractionCompletedAt` IS SET HERE, unlike the upload path, and the reason is
+ * that there is nothing to extract: the officer typed the text, so it is
+ * complete the moment it arrives. That is what puts the row in the
+ * classification queue rather than leaving it looking like an upload that never
+ * finished.
+ *
+ * CHUNKS ARE WRITTEN, WITH NO VECTORS. Chunking is local text splitting and
+ * makes no model call, so it is outside the gate entirely — and it is what the
+ * upload path already does for an item at the same classification
+ * (`completeEvidenceExtraction`). Without it a field observation classified
+ * `public_published` later would have nothing for the embedding pass to embed
+ * and could never enter retrieval. `embedding` stays null; only classification
+ * to `public_published` starts an embedding run.
+ *
+ * The replay case is decided by the DATABASE, not by a read-then-create: two
+ * replays milliseconds apart would both see nothing and both insert.
+ */
+export async function createFieldSubmission(
+  input: CreateFieldSubmissionInput,
+): Promise<CreateFieldSubmissionResult> {
+  const chunks = chunkDocument(input.observation, null);
+
+  try {
+    const item = await prisma.evidenceItem.create({
+      data: {
+        title: input.title,
+        authors: [],
+        year: null,
+        sourceType: EvidenceSourceTypeEnum.field_data,
+        country: FIELD_SUBMISSION_COUNTRY,
+        impactArea: null,
+        citationKey: fieldSubmissionCitationKey(input.submissionKey),
+        submissionKey: input.submissionKey,
+        locationNote: input.locationNote,
+        observedAt: input.observedAt,
+        fullText: input.observation,
+        extractionCompletedAt: new Date(),
+        ingestedById: input.ingestedById,
+        chunks: {
+          create: chunks.map((chunk) => ({
+            ordinal: chunk.ordinal,
+            chunkText: chunk.text,
+            charStart: chunk.charStart,
+            charEnd: chunk.charEnd,
+            sourcePage: chunk.sourcePage,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    return {
+      evidenceItemId: item.id,
+      deduped: false,
+      chunkCount: chunks.length,
+    };
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.evidenceItem.findUnique({
+        where: { submissionKey: input.submissionKey },
+        select: { id: true },
+      });
+
+      // A unique violation that is NOT this key is not a replay and must not be
+      // reported as one. Nothing else can realistically collide — the citation
+      // key is derived from the same uuid — so this is a genuine surprise and
+      // is rethrown rather than swallowed.
+      if (existing) {
+        return { evidenceItemId: existing.id, deduped: true, chunkCount: 0 };
+      }
+    }
+
+    throw error;
+  }
+}
+
+/** Where a field submission has got to, in the submitting officer's own view. */
+export type FieldSubmissionSummary = {
+  id: string;
+  submissionKey: string;
+  title: string;
+  locationNote: string | null;
+  observedAt: string | null;
+  submittedAt: string;
+  /** True once a Research Officer has moved it off the schema default. */
+  reviewed: boolean;
+};
+
+/**
+ * The officer's own recent submissions, for `/field/sent`.
+ *
+ * SCOPED TO THE CALLER, always — this takes a staff user id rather than
+ * offering an "all submissions" mode, so there is no shape here through which a
+ * Field Officer could read somebody else's observation.
+ *
+ * `reviewed` is derived from the classification rather than exposing it: §11.12
+ * forbids internal taxonomy vocabulary on this surface, and "waiting for review"
+ * is the honest plain-language rendering of `unpublished_internal` here. No
+ * observation text is selected at all.
+ */
+export async function listFieldSubmissionsByStaffUser(
+  staffUserId: string,
+  limit: number,
+): Promise<FieldSubmissionSummary[]> {
+  const rows = await prisma.evidenceItem.findMany({
+    where: {
+      ingestedById: staffUserId,
+      submissionKey: { not: null },
+    },
+    orderBy: { ingestedAt: "desc" },
+    take: limit,
+    select: {
+      id: true,
+      submissionKey: true,
+      title: true,
+      locationNote: true,
+      observedAt: true,
+      ingestedAt: true,
+      classification: true,
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    // Non-null by the `where` above; Prisma's type cannot express that.
+    submissionKey: row.submissionKey ?? "",
+    title: row.title,
+    locationNote: row.locationNote,
+    observedAt: row.observedAt?.toISOString() ?? null,
+    submittedAt: row.ingestedAt.toISOString(),
+    reviewed: row.classification !== PENDING_CLASSIFICATION,
+  }));
 }
 
 export type ClassifyEvidenceResult =
