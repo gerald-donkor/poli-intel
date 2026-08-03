@@ -2,7 +2,6 @@ import "server-only";
 
 import { cron } from "inngest";
 
-import { recordRadarRun } from "@/lib/db";
 import { dueSourcesOn, toIsoDate } from "@/lib/radar/sources";
 
 import { inngest, radarSourceFetchRequested } from "../client";
@@ -41,28 +40,16 @@ export const scheduleRadarSources = inngest.createFunction(
     const plan = await step.run("resolve-due-sources", async () => {
       const due = dueSourcesOn(new Date(`${dueOn}T00:00:00Z`));
 
-      // A `grounded` source is DECLARED in the registry but has no
-      // implementation yet, so it records `not_implemented` rather than being
-      // skipped in silence. The distinction is the whole point: the gap
-      // analysis must read "not yet monitored", never "a quiet week" (§14.7).
-      const notImplemented = due.filter((source) => source.method === "grounded");
-
-      for (const source of notImplemented) {
-        await recordRadarRun({
-          sourceId: source.id,
-          sourceName: source.name,
-          outcome: "not_implemented",
-          startedAt: new Date(),
-          failureReason: "retrieval_method_not_implemented:grounded",
-        });
-      }
-
-      return {
-        fetchable: due
-          .filter((source) => source.method !== "grounded")
-          .map((source) => source.id),
-        notImplemented: notImplemented.length,
-      };
+      // EVERY DECLARED METHOD NOW HAS AN IMPLEMENTATION, so nothing is split
+      // out of the fan-out here: RSS, scrape and grounded sources all fan out
+      // on their declared cadence and all fail alone (§14.5).
+      //
+      // `not_implemented` is NOT gone as an outcome. It remains what a future
+      // declared-but-unbuilt method records, and `fetchSource` still returns it
+      // through `radar-fetch.ts` — the gap analysis's "not yet monitored"
+      // versus "a quiet week" distinction depends on it (§14.7). What is gone
+      // is the assumption that grounded is that method.
+      return { fetchable: due.map((source) => source.id) };
     });
 
     if (plan.fetchable.length > 0) {
@@ -74,10 +61,6 @@ export const scheduleRadarSources = inngest.createFunction(
       );
     }
 
-    return {
-      dueOn,
-      requested: plan.fetchable.length,
-      notImplemented: plan.notImplemented,
-    };
+    return { dueOn, requested: plan.fetchable.length };
   },
 );

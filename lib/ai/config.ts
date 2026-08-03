@@ -239,6 +239,34 @@ export const RADAR_MAX_ITEMS_PER_RUN = 5;
 export const RADAR_GEMINI_CALLS_PER_ITEM = 2;
 
 /**
+ * Requests a GROUNDED source spends before a single item exists.
+ *
+ * Two, and deliberately not one: the grounded call carries the Google Search
+ * tool and takes back prose, and a second `callStructured` pass turns that prose
+ * into validated candidates. Whether grounding may be combined with
+ * `responseJsonSchema` in ONE request is undocumented and could not be settled
+ * live (the free-tier daily quota was exhausted on 2026-08-03), and betting the
+ * radar's seventh source on an undocumented combination is the wrong risk.
+ * Collapsing the two is a legitimate optimisation ONCE VERIFIED — not before.
+ *
+ * This is a FIXED cost, paid whether or not the search finds anything, which is
+ * why it sits outside RADAR_GEMINI_CALLS_PER_ITEM rather than inside it.
+ */
+export const RADAR_GROUNDED_CALLS_PER_RUN = 2;
+
+/**
+ * How far back a grounded search looks.
+ *
+ * A daily cadence with an UNBOUNDED search re-reports last year's stories every
+ * morning, which dedup would suppress but only after spending the classification
+ * budget on them. Seven days rather than one: the run is daily, but a missed day,
+ * a failed retry, or a story a search engine indexes late would otherwise fall
+ * through the gap permanently. Re-surfaced stories inside the window are what
+ * `lib/radar/dedup.ts` is for.
+ */
+export const RADAR_GROUNDED_RECENCY_DAYS = 7;
+
+/**
  * The share of the RPM ceiling the radar may occupy.
  *
  * Below GEMINI_RPM_BUDGET for the same reason EMBEDDING_RPM_ALLOCATION is: a
@@ -252,19 +280,31 @@ export const RADAR_RPM_ALLOCATION = 10;
  * rather than guessed.
  *
  * One run classifies and embeds up to RADAR_MAX_ITEMS_PER_RUN items, so its
- * worst case is that many × RADAR_GEMINI_CALLS_PER_ITEM requests. Dividing the
- * allocation by that worst case is what keeps the radar inside its share even
- * when every source returns a full page of new notices. Pacing is flow control,
- * never a sleep inside a step (`inngest-jobs`, `gemini-integration`).
+ * worst case is that many × RADAR_GEMINI_CALLS_PER_ITEM requests, PLUS — on a
+ * grounded source — the two requests spent before any item exists. The worst
+ * case is taken across all three retrieval methods rather than per method: one
+ * throttle governs every fetch run, so it must be sized for the most expensive
+ * of them. Dividing the allocation by that worst case is what keeps the radar
+ * inside its share even when every source returns a full page of new notices.
+ * Pacing is flow control, never a sleep inside a step (`inngest-jobs`,
+ * `gemini-integration`).
  *
  * Floored at 1: the radar always makes progress, and a 429 that still lands is
- * a handled, recorded outcome rather than a crash (§13.3).
+ * a handled, recorded outcome rather than a crash (§13.3). The floor is doing
+ * real work here — 10 / 12 rounds to zero — which is the honest reading of a
+ * worst case that no longer fits the allocation. A run that spends 12 requests
+ * in a minute overruns RADAR_RPM_ALLOCATION by 2 and is caught by the 429 path
+ * in `radar-fetch.ts`, which reschedules through Inngest with the retry timing
+ * intact. That is the designed degradation, not an oversight: throttling below
+ * one run per minute would stall the radar to make a rare worst case tidy.
  */
+export const RADAR_WORST_CASE_REQUESTS_PER_RUN =
+  RADAR_GROUNDED_CALLS_PER_RUN +
+  RADAR_MAX_ITEMS_PER_RUN * RADAR_GEMINI_CALLS_PER_ITEM;
+
 export const RADAR_FETCH_RUNS_PER_MINUTE = Math.max(
   1,
-  Math.floor(
-    RADAR_RPM_ALLOCATION / (RADAR_MAX_ITEMS_PER_RUN * RADAR_GEMINI_CALLS_PER_ITEM),
-  ),
+  Math.floor(RADAR_RPM_ALLOCATION / RADAR_WORST_CASE_REQUESTS_PER_RUN),
 );
 
 /* ---------------------------------------------------------------------------

@@ -69,6 +69,17 @@ export type RadarSource = {
   /** Spec §3.2's "signal type" column — what this source is monitored FOR. */
   signalTypes: string;
   /**
+   * Topic terms a GROUNDED search is built from. Grounded sources only.
+   *
+   * THE SEARCH QUERY IS ASSEMBLED FROM THIS REGISTRY AND NOTHING ELSE — not
+   * from a signal, not from an evidence item, not from anything a member of
+   * staff typed. That is what keeps the grounded path free of an evidence data
+   * path (§7), and it is why these terms are static config rather than
+   * something derived at run time. See the module comment in `grounded.ts`
+   * before widening what feeds the query.
+   */
+  topicTerms?: readonly string[];
+  /**
    * CSS selector for the anchors that are this source's listing entries.
    *
    * Scrape sources only. Every URL in this registry was verified live on
@@ -167,17 +178,49 @@ export const RADAR_SOURCES: readonly RadarSource[] = [
   {
     id: "news-ghana-forestry",
     name: "Reuters / AllAfrica — Ghana forest policy",
-    // Grounded search has no feed to fetch. The URL records where a person
-    // would go to read the same material by hand.
+    // Grounded search fetches nothing from this URL. It records where a person
+    // would go to read the same material by hand, and it is the source's
+    // human-readable home — NOT the search's scope. What the search actually
+    // looks for is `topicTerms` below, and the results come back from wherever
+    // Google Search finds them, which is the point of monitoring a beat rather
+    // than a site.
     url: "https://allafrica.com/ghana/",
     method: "grounded",
     cadence: "daily",
     signalTypes: "Political signals, minister statements",
+    // The beat, in the terms a search engine answers to. Ghana-specific on
+    // purpose: "forest policy" alone returns the world's forest policy, and a
+    // board filled with Indonesian concession news is a board nobody reads.
+    topicTerms: [
+      "Ghana forest policy",
+      "Ghana Forestry Commission",
+      "Ghana tree tenure",
+      "Ghana cocoa sustainability Cocobod",
+      "Ghana EU deforestation regulation EUDR",
+      "Ghana illegal logging galamsey forest reserve",
+    ],
   },
 ];
 
 export function findRadarSource(sourceId: string): RadarSource | undefined {
   return RADAR_SOURCES.find((source) => source.id === sourceId);
+}
+
+/**
+ * The registry row behind a stored signal, looked up by the name the signal
+ * carries.
+ *
+ * By NAME rather than by id because `policy_signal.source_name` is what a
+ * signal stores, and adding a source id to the signal table to serve one line
+ * of provenance copy would be a schema change in the wrong direction — the
+ * registry is already the one place that knows how a source is monitored. A
+ * signal from a renamed or retired source simply resolves to `undefined`, and
+ * the caller says nothing rather than guessing.
+ */
+export function findRadarSourceByName(
+  sourceName: string,
+): RadarSource | undefined {
+  return RADAR_SOURCES.find((source) => source.name === sourceName);
 }
 
 /**

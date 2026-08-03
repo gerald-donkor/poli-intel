@@ -5,14 +5,16 @@ import { RADAR_MAX_DOCUMENT_CHARS, RADAR_MAX_ITEMS_PER_RUN } from "@/lib/ai/conf
 import type { RadarSource } from "./sources";
 
 /**
- * Fetching and extraction — RSS polling and Playwright scraping, reduced to one
- * common `DetectedItem` shape so the rest of the pipeline never branches on
- * where an item came from (spec §3.2, AGENTS.md §14.3).
+ * Fetching and extraction — RSS polling, Playwright scraping, and Gemini
+ * grounded search, reduced to one common `DetectedItem` shape so the rest of
+ * the pipeline never branches on where an item came from (spec §3.2,
+ * AGENTS.md §14.3).
  *
  * SERVER-ONLY, AND JOBS ONLY. Scraping and radar processing never run in
  * browser code and never inside a request handler (§18, §14.1).
  *
- * EVERYTHING HERE FETCHES UNTRUSTED REMOTE PAGES, so every path is bounded:
+ * EVERY PATH HERE TAKES UNTRUSTED REMOTE INPUT — a fetched page, or a model's
+ * report of what it found on the web — so every path is bounded:
  *   - a hard navigation / request timeout, so a hanging host cannot park a run;
  *   - a response-size cap, so a hostile or broken feed cannot exhaust memory;
  *   - a character cap per item, so one enormous page cannot become one enormous
@@ -44,10 +46,33 @@ export type DetectedItem = {
 export type FetchFailure = {
   /** Short machine reason. Never a caught error's message. */
   reason: string;
+  /**
+   * Present only on `rate_limited`, and only from the grounded path — it is the
+   * one retrieval method that spends a Gemini request before an item exists.
+   *
+   * It is carried rather than dropped so the caller can reschedule on the
+   * model's own timing instead of a generic retry that walks into the same
+   * ceiling (§13.3, §13.4).
+   */
+  retryAfterMs?: number;
 };
 
 export type FetchResult =
-  | { ok: true; items: DetectedItem[] }
+  | {
+      ok: true;
+      items: DetectedItem[];
+      /**
+       * Candidates a method saw and could not turn into an item — currently
+       * only grounded search, where the model names a story the grounding
+       * metadata cannot source (`grounded.ts`, decision 5).
+       *
+       * It exists so a drop is COUNTED rather than silent: the caller folds it
+       * into the run record's `itemsSeen`, so `itemsSeen - signalsCreated -
+       * duplicatesSuppressed` accounts for it. A dedicated column would be the
+       * tidier home and is a schema change this task does not make.
+       */
+      droppedItems?: number;
+    }
   | { ok: false; failure: FetchFailure };
 
 /** A slow host is a failed source, not a stalled radar. */
@@ -62,11 +87,13 @@ const PAGE_TIMEOUT_MS = 30_000;
 /**
  * Fetch one source by its declared retrieval method.
  *
- * `grounded` is rejected here as a typed failure rather than silently returning
- * nothing: Gemini grounded-search detection is a different mechanism with
- * different failure modes and it is not implemented yet. The caller turns this
- * into a `not_implemented` run record so the gap analysis reads "not yet
- * monitored" and never "a quiet week" (§14.7).
+ * `grounded` is loaded on demand, for the same reason Playwright is: it is the
+ * only path that pulls the AI layer into the module graph, and an RSS poll has
+ * no business importing a Gemini client to read a feed.
+ *
+ * There is no branch here for a method that has none. A retrieval method
+ * declared in the registry with nothing behind it would fail to compile at this
+ * switch, which is a better place to find out than a run record.
  */
 export async function fetchSource(source: RadarSource): Promise<FetchResult> {
   switch (source.method) {
@@ -74,8 +101,11 @@ export async function fetchSource(source: RadarSource): Promise<FetchResult> {
       return fetchRssSource(source);
     case "scrape":
       return scrapeSource(source);
-    case "grounded":
-      return { ok: false, failure: { reason: "not_implemented:grounded" } };
+    case "grounded": {
+      const { fetchGroundedSource } = await import("./grounded");
+
+      return fetchGroundedSource(source);
+    }
   }
 }
 

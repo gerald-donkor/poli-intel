@@ -134,6 +134,22 @@ export const fetchRadarSource = inngest.createFunction(
             });
           }
 
+          // A FETCH can now hit the free-tier ceiling too: grounded search
+          // spends a Gemini request before any item exists, so the rate-limit
+          // contract that already governs classification and embedding has to
+          // start one stage earlier. Rescheduling on the model's own timing
+          // rather than a generic retry is the whole point — a generic backoff
+          // walks straight back into the same ceiling (§13.3, §13.4).
+          if (
+            fetched.failure.reason === "rate_limited" &&
+            fetched.failure.retryAfterMs !== undefined
+          ) {
+            throw new RetryAfterError(
+              `Gemini rate limit reached while fetching a source: sourceId=${source.id}`,
+              fetched.failure.retryAfterMs,
+            );
+          }
+
           // The machine reason and the source id. Never the URL's response body
           // and never a caught error's message (§7.6, §13.9).
           throw new Error(
@@ -142,6 +158,14 @@ export const fetchRadarSource = inngest.createFunction(
         }
 
         const items = fetched.items;
+
+        // Candidates the method saw and could not use — a grounded search
+        // naming a story its grounding metadata cannot source (`grounded.ts`).
+        // Counted into `itemsSeen` so a drop is visible in the run record
+        // rather than silent: a run that saw four and created one did not have
+        // a quiet day (§14.7, decision 5).
+        const droppedItems = fetched.droppedItems ?? 0;
+        const itemsSeen = items.length + droppedItems;
 
         const since = new Date(
           startedAt.getTime() - DEDUP_RECENCY_DAYS * 24 * 60 * 60 * 1000,
@@ -174,7 +198,7 @@ export const fetchRadarSource = inngest.createFunction(
               sourceName: source.name,
               outcome: "failed",
               startedAt,
-              itemsSeen: items.length,
+              itemsSeen,
               signalsCreated: createdIds.length,
               duplicatesSuppressed,
               failureReason: `${stage}:rate_limited`,
@@ -287,7 +311,7 @@ export const fetchRadarSource = inngest.createFunction(
           sourceName: source.name,
           outcome,
           startedAt,
-          itemsSeen: items.length,
+          itemsSeen,
           signalsCreated: createdIds.length,
           duplicatesSuppressed,
           failureReason: failureReason ?? undefined,
@@ -295,7 +319,7 @@ export const fetchRadarSource = inngest.createFunction(
 
         return {
           outcome,
-          itemsSeen: items.length,
+          itemsSeen,
           signalsCreated: createdIds.length,
           duplicatesSuppressed,
           failureReason,

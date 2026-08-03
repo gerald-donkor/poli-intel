@@ -12,6 +12,7 @@ import {
 import { requireStaffUser } from "@/lib/auth/session";
 import { GENERATION_EVIDENCE_CONTEXT_SIZE } from "@/lib/briefs/generation-limits";
 import { findSignalDetail, type SignalDetail } from "@/lib/db";
+import { findRadarSourceByName } from "@/lib/radar/sources";
 import { cn } from "@/lib/utils";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../../briefs/labels";
@@ -79,6 +80,14 @@ export default async function SignalDetailPage({
 
   const ramp = URGENCY_RAMP[signal.urgency];
 
+  // HOW this signal was found, from the registry that decides it. A grounded
+  // source has no feed and no page: a model searched, and what it reported is
+  // what the classification pass then read. That provenance has to be on the
+  // page, because the summary looks identical to one derived from a notice the
+  // radar fetched in full, and it is not the same thing (§8.8).
+  const foundBySearch =
+    findRadarSourceByName(signal.sourceName)?.method === "grounded";
+
   return (
     <>
       <PageHeader
@@ -145,6 +154,18 @@ export default async function SignalDetailPage({
               <p className="text-ink max-w-[70ch] text-[14px] leading-[1.55]">
                 {signal.summaryText}
               </p>
+
+              {/* Also generated prose, and also the sans. The serif is for
+                  material a source actually wrote (§11.6) — there is none here,
+                  which is exactly what this line says. */}
+              {foundBySearch ? (
+                <p className="text-ink-3 max-w-[70ch] text-[12.5px] leading-[1.5]">
+                  This source is monitored by search rather than read from a feed
+                  or a page. The summary above was written from search results,
+                  not quoted from the publication — open the source to read what
+                  it says.
+                </p>
+              ) : null}
 
               <p className="text-ink-3 text-[12.5px]">
                 Urgency and relevance were suggested by the classification pass.
