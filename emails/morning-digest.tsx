@@ -69,6 +69,20 @@ export type DigestBriefView = {
   openFlagCount: number;
 };
 
+/**
+ * One new influence event. TITLES AND LABELS ONLY — no description, and above
+ * all no quoted line from a citing document. The section says something happened
+ * and links to the screen where it can be read (§7.6).
+ */
+export type DigestInfluenceView = {
+  id: string;
+  briefId: string;
+  briefTitle: string;
+  eventTypeLabel: string;
+  detectionMethodLabel: string;
+  verified: boolean;
+};
+
 export type MorningDigestProps = {
   recipientName: string;
   /** "the 24 hours to 06:30 UTC on 2 August 2026" — the window, said plainly. */
@@ -83,6 +97,9 @@ export type MorningDigestProps = {
   briefsTruncated: boolean;
   /** `null` where this recipient's role does not receive the section. */
   classificationQueueCount: number | null;
+  /** `null` where this recipient's role does not receive the section. */
+  influence: DigestInfluenceView[] | null;
+  influenceTruncated: boolean;
 };
 
 /**
@@ -155,6 +172,8 @@ export default function MorningDigest({
   briefs,
   briefsTruncated,
   classificationQueueCount,
+  influence,
+  influenceTruncated,
 }: MorningDigestProps) {
   return (
     <Html lang="en">
@@ -167,7 +186,12 @@ export default function MorningDigest({
             second `<title>` in `Head` would only be a duplicate that says less.
           */}
           <Preview>
-            {previewLine(signalCount, briefs, classificationQueueCount)}
+            {previewLine(
+              signalCount,
+              briefs,
+              classificationQueueCount,
+              influence,
+            )}
           </Preview>
 
           <Container className="mx-auto w-full max-w-[600px] p-[16px]">
@@ -307,6 +331,70 @@ export default function MorningDigest({
               </>
             ) : null}
 
+            {influence !== null && influence.length > 0 ? (
+              <>
+                <Hr style={RULE_STYLE} className="m-0 mb-[16px] border-0" />
+
+                <Section className="mb-[8px]">
+                  <Heading
+                    as="h2"
+                    className="text-ink m-0 text-[16px] leading-[1.4] font-semibold"
+                  >
+                    {influenceHeading(influence.length)}
+                  </Heading>
+                  <Text className="text-ink-3 m-0 mt-[4px] text-[12px] leading-[1.5]">
+                    Nothing here has been established as influence. Each entry is
+                    a record waiting to be read and confirmed.
+                  </Text>
+                </Section>
+
+                {influence.map((event) => (
+                  <Section
+                    key={event.id}
+                    className="bg-card border-line mb-[8px] rounded-[6px] border border-solid p-[12px]"
+                  >
+                    <Text className="m-0 text-[15px] leading-[1.4] font-semibold">
+                      <Link
+                        href={`${appUrl}/briefs/${event.briefId}`}
+                        className="text-primary-ink no-underline"
+                      >
+                        {event.briefTitle}
+                      </Link>
+                    </Text>
+                    <Text className="text-ink-3 m-0 mt-[6px] text-[12px] leading-[1.4]">
+                      {event.eventTypeLabel} · {event.detectionMethodLabel}
+                    </Text>
+                    {/* SHAPE AND WORDS, NOT COLOUR (§11.13). A lozenge, filled
+                        or hollow, so it is neither the guard flag's circle nor
+                        the classification hold's square (§11.7) — and no urgency
+                        ramp, because an influence event has no urgency. */}
+                    <Text
+                      className={`m-0 mt-[8px] text-[12px] leading-[1.4] ${event.verified ? "text-primary-ink" : "text-ink-3"}`}
+                    >
+                      {event.verified
+                        ? "◆ Confirmed by a person"
+                        : "◇ Not yet confirmed"}
+                    </Text>
+                  </Section>
+                ))}
+
+                {influenceTruncated ? (
+                  <Text className="text-ink-3 m-0 mb-[8px] text-[12px] leading-[1.5]">
+                    More were recorded than are listed here.
+                  </Text>
+                ) : null}
+
+                <Section className="mb-[16px]">
+                  <Link
+                    href={`${appUrl}/impact`}
+                    className="text-primary text-[14px] underline"
+                  >
+                    Open the impact record
+                  </Link>
+                </Section>
+              </>
+            ) : null}
+
             {classificationQueueCount !== null ? (
               <>
                 <Hr style={RULE_STYLE} className="m-0 mb-[16px] border-0" />
@@ -394,11 +482,21 @@ function flagLine(openFlagCount: number): string {
   return `● Waiting on checks — ${openFlagCount} claim${openFlagCount === 1 ? "" : "s"} still to be looked at before this can be approved.`;
 }
 
+/**
+ * What was RECORDED, never what was achieved (§8.8). "Recorded" is the honest
+ * verb: nothing in the section has been established as influence, and the
+ * subheading under it says so.
+ */
+function influenceHeading(count: number): string {
+  return `${count} influence record${count === 1 ? " was" : "s were"} added`;
+}
+
 /** The inbox preview line — what the morning holds, not the subject again. */
 function previewLine(
   signalCount: number,
   briefs: DigestBriefView[] | null,
   classificationQueueCount: number | null,
+  influence: DigestInfluenceView[] | null,
 ): string {
   const parts: string[] = [
     signalCount === 0
@@ -409,6 +507,12 @@ function previewLine(
   if (briefs !== null && briefs.length > 0) {
     parts.push(
       `${briefs.length} brief${briefs.length === 1 ? "" : "s"} awaiting a decision`,
+    );
+  }
+
+  if (influence !== null && influence.length > 0) {
+    parts.push(
+      `${influence.length} influence record${influence.length === 1 ? "" : "s"}`,
     );
   }
 
@@ -501,6 +605,25 @@ MorningDigest.PreviewProps = {
   ],
   briefsTruncated: false,
   classificationQueueCount: 7,
+  influence: [
+    {
+      id: "66666666-6666-6666-6666-666666666666",
+      briefId: "44444444-4444-4444-4444-444444444444",
+      briefTitle: "Tree tenure reform and cocoa agroforestry uptake",
+      eventTypeLabel: "Cited in a policy document",
+      detectionMethodLabel: "Found by the weekly search",
+      verified: false,
+    },
+    {
+      id: "77777777-7777-7777-7777-777777777777",
+      briefId: "55555555-5555-5555-5555-555555555555",
+      briefTitle: "Smallholder geolocation readiness in Juabeso-Bia",
+      eventTypeLabel: "Dialogue outcome",
+      detectionMethodLabel: "Logged by a person",
+      verified: true,
+    },
+  ],
+  influenceTruncated: false,
 } satisfies MorningDigestProps;
 
 export { MorningDigest };

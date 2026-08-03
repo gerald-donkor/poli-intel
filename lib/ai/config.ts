@@ -308,6 +308,116 @@ export const RADAR_FETCH_RUNS_PER_MINUTE = Math.max(
 );
 
 /* ---------------------------------------------------------------------------
+ * Impact Tracker
+ *
+ * The weekly citation search reuses GENERATION_MODEL and GENERATION_TEMPERATURE
+ * for the same reason signal classification and the rerank do: it is a
+ * constrained reading task over supplied text, and a second model ID would be a
+ * second thing to keep in step (AGENTS.md §13.1). NO NEW MODEL ID.
+ *
+ * What IS impact-specific is the size and the SHAPE of the work. This is the job
+ * most likely to eat the daily budget as the corpus of submitted briefs grows —
+ * unlike the radar, whose cost is bounded by a fixed source registry, this one
+ * scales with everything Tropenbos has ever published. That is why it carries a
+ * per-run brief cap and a detection window as well as an RPM allocation.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The share of the RPM ceiling the Impact Tracker may occupy.
+ *
+ * The LOWEST of the four allocations, deliberately. This job runs once a week
+ * with nobody waiting on it, so every other consumer — an officer's interactive
+ * generation, a radar fan-out, an ingest — has a better claim on the minute than
+ * it does. Backing off costs the tracker an hour on a Monday morning; backing
+ * off the generator costs a person their draft (§13.4).
+ */
+export const IMPACT_RPM_ALLOCATION = 4;
+
+/**
+ * Requests one brief's detection spends: the grounded search, then the
+ * structured extraction over its prose.
+ *
+ * The same pair, for the same undocumented-combination reason, as
+ * RADAR_GROUNDED_CALLS_PER_RUN. It is a FIXED cost, paid whether or not the
+ * search finds anything.
+ */
+export const IMPACT_GROUNDED_CALLS_PER_BRIEF = 2;
+
+/**
+ * Detection runs Inngest may START per minute — derived, not guessed.
+ *
+ * One run is one brief and therefore exactly IMPACT_GROUNDED_CALLS_PER_BRIEF
+ * requests, so dividing the allocation by that pair converts an RPM budget into
+ * a run-start throttle one-for-one. Pacing is flow control, never a sleep inside
+ * a step (`inngest-jobs`, `gemini-integration`).
+ *
+ * Floored at 1 for the same reason the radar's throttle is: the tracker always
+ * makes progress, and a 429 that still lands is a recorded, reschedulable
+ * outcome rather than a crash (§13.3).
+ */
+export const IMPACT_DETECTION_RUNS_PER_MINUTE = Math.max(
+  1,
+  Math.floor(IMPACT_RPM_ALLOCATION / IMPACT_GROUNDED_CALLS_PER_BRIEF),
+);
+
+/**
+ * Briefs one weekly run will check.
+ *
+ * A CEILING, NOT A TARGET, and the main defence against this job's cost growing
+ * without anybody deciding it should. Twelve briefs × two requests is 24 of the
+ * ~1,500 daily budget. Briefs are taken oldest-unchecked first, so a backlog
+ * drains over consecutive weeks rather than one brief being checked every Monday
+ * while another is never checked at all.
+ */
+export const IMPACT_MAX_BRIEFS_PER_RUN = 12;
+
+/**
+ * How long after a brief went out it stays under weekly observation.
+ *
+ * A brief submitted three years ago does not need a search every Monday: policy
+ * citation follows publication within a policy cycle or not at all, and an
+ * unbounded window means the weekly cost rises forever while the hit rate falls
+ * to nothing. Eighteen months covers a Ghanaian policy cycle and an EU
+ * consultation-to-implementation arc with room to spare.
+ *
+ * A brief that falls out of the window is NOT beyond recording — a person can
+ * still log an influence event against it by hand, forever. What lapses is the
+ * automatic search, not the claim.
+ */
+export const IMPACT_DETECTION_WINDOW_DAYS = 548;
+
+/**
+ * How far back one search looks.
+ *
+ * Wider than the radar's seven days because the cadence is weekly rather than
+ * daily and a citation is not news: a Forestry Commission notice citing a brief
+ * may be indexed weeks after it is published. Overlapping windows re-surface the
+ * same citation, which is exactly what the dedup key is for.
+ */
+export const IMPACT_SEARCH_RECENCY_DAYS = 90;
+
+/**
+ * Events one brief's detection may create in one run.
+ *
+ * Low on purpose. A run returning eight "citations" for one brief is far likelier
+ * to be a model padding than a policy breakthrough, and every row it creates is a
+ * row a Programme Director has to read before verifying.
+ */
+export const IMPACT_MAX_EVENTS_PER_BRIEF = 3;
+
+/**
+ * Caps on what is stored from a detection candidate.
+ *
+ * Everything the model returns is untrusted text written into a row a donor
+ * report may later quote, so each field is bounded before it is stored — the
+ * same rule the radar applies to a fetched document.
+ */
+export const IMPACT_MAX_PROSE_CHARS = 6000;
+export const IMPACT_MAX_DESCRIPTION_CHARS = 600;
+export const IMPACT_MAX_QUOTE_CHARS = 400;
+export const IMPACT_MAX_TITLE_CHARS = 300;
+
+/* ---------------------------------------------------------------------------
  * Evidence Library search
  *
  * These size the LIBRARY SEARCH path — a person typing into the filter rail on

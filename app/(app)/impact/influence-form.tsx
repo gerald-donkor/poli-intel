@@ -1,0 +1,304 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+
+import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import type { BriefOption } from "@/lib/db";
+import { InfluenceEventType } from "@/lib/generated/prisma/enums";
+
+import { logInfluenceEventAction } from "./actions";
+import {
+  INFLUENCE_EVENT_TYPE_HINTS,
+  INFLUENCE_EVENT_TYPE_LABELS,
+  INFLUENCE_EVENT_TYPE_ORDER,
+} from "./labels";
+import {
+  logInfluenceEventSchema,
+  type LogInfluenceEventInput,
+} from "./schema";
+
+/**
+ * Recording that a brief reached something.
+ *
+ * NO OPTIMISTIC UPDATE, and that is a rule rather than a preference. This action
+ * is offered to two roles and still authorises server-side, so a refusal is
+ * possible — and `server-actions` is explicit that optimism is only for
+ * operations already known to be permitted. Nothing here is latency-sensitive
+ * enough to earn the risk of showing a donor-facing claim as recorded before the
+ * server agreed. The page re-reads on success instead.
+ *
+ * NO RED, in any state. `--destructive` is unmapped and validation messages are
+ * `FieldError`, which is the watch ramp, never an alarm (§11.4).
+ *
+ * THE QUOTED LINE IS THE ONLY SERIF FIELD, and the label says why: it is material
+ * the citing document's author wrote, not something the product or this member of
+ * staff did (§11.6).
+ */
+
+function todayInUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+const emptyValues = (): LogInfluenceEventInput => ({
+  briefId: "",
+  eventType: "policy_citation",
+  description: "",
+  sourceDocument: "",
+  sourceTitle: "",
+  quotedText: "",
+  detectedAt: todayInUtc(),
+});
+
+export function InfluenceForm({
+  briefs,
+  onSaved,
+}: {
+  briefs: BriefOption[];
+  onSaved?: () => void;
+}) {
+  const router = useRouter();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const form = useForm<LogInfluenceEventInput>({
+    resolver: zodResolver(logInfluenceEventSchema),
+    defaultValues: emptyValues(),
+  });
+
+  const busy = form.formState.isSubmitting;
+
+  /**
+   * The select's own value, mirrored so the hint under it can change.
+   *
+   * NOT `form.watch`. `watch` returns a value React Compiler cannot memoize, and
+   * it makes the compiler skip this whole component — which `npm run lint`
+   * reports. A registered `onChange` chained onto RHF's own costs one line and
+   * keeps the component compiled. The form's value is still RHF's; this is only
+   * what the hint reads.
+   */
+  const [eventType, setEventType] = useState<InfluenceEventType>(
+    InfluenceEventType.policy_citation,
+  );
+
+  const eventTypeField = form.register("eventType");
+
+  const submit = async (values: LogInfluenceEventInput) => {
+    setFormError(null);
+    setSaved(false);
+
+    const result = await logInfluenceEventAction(values);
+
+    if (!result.ok) {
+      const refusal = result.refusal;
+
+      if (refusal.kind === "unauthorised") {
+        setFormError(refusal.message);
+        return;
+      }
+
+      // `ActionRefusal` carries variants this action cannot produce — the
+      // governance and rate-limit refusals belong to the generation path — so
+      // the invalid case is named rather than assumed.
+      if (refusal.kind !== "invalid") {
+        setFormError("That could not be recorded.");
+        return;
+      }
+
+      for (const [field, messages] of Object.entries(refusal.fieldErrors)) {
+        if (field === "form") {
+          setFormError(messages[0] ?? "That could not be recorded.");
+          continue;
+        }
+
+        form.setError(field as keyof LogInfluenceEventInput, {
+          message: messages[0],
+        });
+      }
+
+      return;
+    }
+
+    form.reset(emptyValues());
+    setEventType(InfluenceEventType.policy_citation);
+    setSaved(true);
+    router.refresh();
+    onSaved?.();
+  };
+
+  return (
+    <form onSubmit={form.handleSubmit(submit)} noValidate className="min-w-0">
+      <FieldGroup className="gap-4">
+        {formError ? (
+          <p
+            role="status"
+            className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3 py-2 text-[13px]"
+          >
+            {formError}
+          </p>
+        ) : null}
+
+        <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="influence-brief">Brief</FieldLabel>
+            <NativeSelect
+              className="w-full"
+              id="influence-brief"
+              disabled={busy}
+              {...form.register("briefId")}
+            >
+              <NativeSelectOption value="">Choose a brief</NativeSelectOption>
+              {briefs.map((brief) => (
+                <NativeSelectOption key={brief.id} value={brief.id}>
+                  {brief.title}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldError errors={[form.formState.errors.briefId]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="influence-type">Kind of record</FieldLabel>
+            <NativeSelect
+              className="w-full"
+              id="influence-type"
+              disabled={busy}
+              {...eventTypeField}
+              onChange={(event) => {
+                void eventTypeField.onChange(event);
+                setEventType(event.target.value as InfluenceEventType);
+              }}
+            >
+              {INFLUENCE_EVENT_TYPE_ORDER.map((value) => (
+                <NativeSelectOption key={value} value={value}>
+                  {INFLUENCE_EVENT_TYPE_LABELS[value]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldDescription>
+              {INFLUENCE_EVENT_TYPE_HINTS[eventType] ?? ""}
+            </FieldDescription>
+            <FieldError errors={[form.formState.errors.eventType]} />
+          </Field>
+        </div>
+
+        <Field>
+          <FieldLabel htmlFor="influence-description">
+            What happened
+          </FieldLabel>
+          <Textarea
+            id="influence-description"
+            rows={3}
+            disabled={busy}
+            className="bg-card"
+            placeholder="e.g. The Forestry Commission's consultation response refers to the brief's recommendation on tree registration."
+            {...form.register("description")}
+          />
+          <FieldDescription>
+            Your own account of it. This is not treated as established influence
+            until the Programme Director confirms the record.
+          </FieldDescription>
+          <FieldError errors={[form.formState.errors.description]} />
+        </Field>
+
+        <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="influence-source">
+              Link to the document
+            </FieldLabel>
+            <Input
+              id="influence-source"
+              inputMode="url"
+              autoComplete="off"
+              disabled={busy}
+              className="bg-card"
+              placeholder="https://"
+              {...form.register("sourceDocument")}
+            />
+            <FieldDescription>
+              Optional. Some real influence has no link — a dialogue outcome you
+              were in the room for is still a record.
+            </FieldDescription>
+            <FieldError errors={[form.formState.errors.sourceDocument]} />
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="influence-source-title">
+              Document title
+            </FieldLabel>
+            <Input
+              id="influence-source-title"
+              autoComplete="off"
+              disabled={busy}
+              className="bg-card"
+              {...form.register("sourceTitle")}
+            />
+            <FieldError errors={[form.formState.errors.sourceTitle]} />
+          </Field>
+        </div>
+
+        <Field>
+          <FieldLabel htmlFor="influence-quote">
+            The line from that document
+          </FieldLabel>
+          <Textarea
+            id="influence-quote"
+            rows={2}
+            disabled={busy}
+            className="bg-card font-serif text-[15px] leading-[1.55]"
+            {...form.register("quotedText")}
+          />
+          <FieldDescription>
+            Optional, and copied word for word. It is set in the serif everywhere
+            it appears, because it is the document&rsquo;s own words rather than
+            ours.
+          </FieldDescription>
+          <FieldError errors={[form.formState.errors.quotedText]} />
+        </Field>
+
+        <Field className="tablet:max-w-[240px]">
+          <FieldLabel htmlFor="influence-date">Date</FieldLabel>
+          <Input
+            id="influence-date"
+            type="date"
+            max={todayInUtc()}
+            disabled={busy}
+            className="bg-card"
+            {...form.register("detectedAt")}
+          />
+          <FieldError errors={[form.formState.errors.detectedAt]} />
+        </Field>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="submit"
+            disabled={busy}
+            className="h-11 justify-center tablet:h-8"
+          >
+            Add to the record
+          </Button>
+          {saved ? (
+            <span role="status" className="text-ink-3 text-[13px]">
+              Recorded. It is waiting to be confirmed.
+            </span>
+          ) : null}
+        </div>
+      </FieldGroup>
+    </form>
+  );
+}

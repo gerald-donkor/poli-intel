@@ -230,6 +230,49 @@ enum RadarOutcome {
   @@map("radar_outcome")
 }
 
+/// The five kinds of influence spec §3.5 names, as an enum rather than the bare
+/// `String` the column carried before it was ever written to (AGENTS.md §12.7).
+///
+/// A string column here would have meant the quarterly report grouping donor
+/// claims by whatever spelling somebody typed. Never re-declared as a string
+/// union in UI code — the labels live in `app/(app)/impact/labels.ts` and are
+/// keyed off this enum.
+enum InfluenceEventType {
+  policy_citation
+  legislation_aligned
+  company_commitment
+  dialogue_outcome
+  national_strategy
+
+  @@map("influence_event_type")
+}
+
+/// Who made the claim — a person, or the weekly search pass.
+///
+/// These are DIFFERENT CLAIMS WITH DIFFERENT WEIGHT, and the quarterly report
+/// may only use verified ones (AGENTS.md §8). A detected event is a lead a
+/// person confirms; without this column a row cannot say which it is, and the
+/// verification workflow would be unable to tell the two apart.
+enum InfluenceDetectionMethod {
+  logged_by_person
+  detected_by_search
+
+  @@map("influence_detection_method")
+}
+
+/// How one weekly Impact Tracker detection attempt against one brief ended.
+///
+/// `empty` and `failed` are separate for exactly the reason `RadarOutcome`'s
+/// are: a pass that searched and found nothing is not a pass that broke, and
+/// silence is reported rather than assumed (AGENTS.md §14.7).
+enum ImpactDetectionOutcome {
+  found
+  empty
+  failed
+
+  @@map("impact_detection_outcome")
+}
+
 /// What one Evidence Matcher attempt produced.
 ///
 /// `gap` is a RESULT, not a failure: nothing cleared the threshold, and that is
@@ -272,6 +315,8 @@ model StaffUser {
   signalReclassifications SignalReclassification[]
   classificationChanges   EvidenceClassificationChange[]
   stakeholderSharesLogged StakeholderBrief[]
+  influenceEventsLogged   InfluenceEvent[]            @relation("InfluenceLoggedBy")
+  influenceEventsVerified InfluenceEvent[]            @relation("InfluenceVerifiedBy")
 
   @@map("staff_user")
 }
@@ -551,6 +596,7 @@ model Brief {
   /// pass verifies against, not raw matcher output (AGENTS.md §15.5).
   evidenceSet      BriefEvidence[]
   influenceEvents  InfluenceEvent[]
+  impactRuns       ImpactDetectionRun[]
   statusChanges    BriefStatusChange[]
   stakeholderShares StakeholderBrief[]
 
@@ -784,21 +830,108 @@ model BriefTranslation {
 // Impact
 // ---------------------------------------------------------------------------
 
+/// Where a brief reached something — a citing policy document, aligned
+/// legislation, a company commitment, a dialogue outcome, national strategy text
+/// (spec §3.5).
+///
+/// EVERY ROW IS A CLAIM ABOUT TROPENBOS'S OWN IMPACT, and some of them end up in
+/// a donor report. That is why this table carries more than spec §4.1's field
+/// list: who claimed it (`detectionMethod`), who confirmed it and when
+/// (`verifiedById` / `verifiedAt`, the §8.3 rule applied to a new transition),
+/// and something to deduplicate on (`sourceKey`) so a weekly search cannot
+/// re-file the same citation every Monday for a year (§14.4, one layer up).
+///
+/// `verified` STAYS THE COLUMN spec §4.1 names. The actor and timestamp sit
+/// beside it rather than replacing it, so the report's filter is one boolean.
 model InfluenceEvent {
-  id             String   @id @default(uuid())
-  briefId        String   @map("brief_id")
-  eventType      String   @map("event_type")
-  sourceDocument String?  @map("source_document")
-  detectedAt     DateTime @map("detected_at")
-  description    String
-  verified       Boolean  @default(false)
+  id              String                   @id @default(uuid())
+  briefId         String                   @map("brief_id")
+  eventType       InfluenceEventType       @map("event_type")
+  detectionMethod InfluenceDetectionMethod @map("detection_method")
+
+  /// The citing document's URL. Absolute http(s), validated on this side of the
+  /// network boundary before it is ever stored or rendered (§18).
+  sourceDocument  String?                  @map("source_document")
+  /// The citing document's title, where one is known.
+  sourceTitle     String?                  @map("source_title")
+
+  /// The normalised dedup key — see `influenceSourceKey` in lib/impact/dedup.ts.
+  ///
+  /// NULL for a person's log with no URL, and that is deliberate: Postgres
+  /// treats NULLs as distinct in a unique index, so two staff logs against the
+  /// same brief never collide, while two detections of the same citation do.
+  sourceKey       String?                  @map("source_key")
+
+  detectedAt      DateTime                 @map("detected_at")
+  /// Set every time detection re-finds an existing event, so a re-detection
+  /// touches the row rather than creating a second one.
+  lastSeenAt      DateTime?                @map("last_seen_at")
+
+  /// Prose ABOUT the event — a person's, or the detection pass's. The sans.
+  description     String
+  /// The verbatim line FROM the citing document. Material the product did not
+  /// author, so this is the one string on the impact screen set in the serif
+  /// (AGENTS.md §11.6).
+  quotedText      String?                  @map("quoted_text")
+
+  verified        Boolean                  @default(false)
+  verifiedById    String?                  @map("verified_by_id")
+  verifiedAt      DateTime?                @map("verified_at")
+
+  /// Who logged it. NULL on a detected row — nobody claimed it yet.
+  loggedById      String?                  @map("logged_by_id")
 
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  brief      Brief      @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  verifiedBy StaffUser? @relation("InfluenceVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  loggedBy   StaffUser? @relation("InfluenceLoggedBy", fields: [loggedById], references: [id], onDelete: SetNull)
+
+  /// The dedup constraint, enforced by the database rather than by a read the
+  /// next concurrent run could race.
+  @@unique([briefId, sourceKey])
+  @@index([briefId])
+  /// The two queries this table actually serves: the report's verified set, and
+  /// the digest's "what was found overnight". Nothing speculative (§12.5).
+  @@index([verified, detectedAt])
+  @@index([createdAt])
+  @@map("influence_event")
+}
+
+/// One weekly detection attempt against one brief — `RadarRun`'s counterpart for
+/// the Impact Tracker, and for the same reason.
+///
+/// EVERY attempt writes exactly one row, including the ones that found nothing.
+/// Without it, a brief with no influence events cannot say whether it was
+/// searched and came back quiet or was never searched at all (§14.7).
+///
+/// Ids, counts, outcomes and short machine reasons ONLY — never a query, never
+/// the model's prose, never a description (§7.6, §13.9).
+model ImpactDetectionRun {
+  id      String @id @default(uuid())
+  briefId String @map("brief_id")
+
+  outcome ImpactDetectionOutcome
+
+  /// Candidates the extraction returned.
+  candidatesSeen  Int @default(0) @map("candidates_seen")
+  /// Rows created. At most IMPACT_MAX_EVENTS_PER_BRIEF.
+  eventsCreated   Int @default(0) @map("events_created")
+  /// Existing rows touched instead of duplicated.
+  eventsMatched   Int @default(0) @map("events_matched")
+  /// Candidates dropped for having no resolvable source URL.
+  candidatesDropped Int @default(0) @map("candidates_dropped")
+
+  /// Short machine reason, never an error message.
+  failureReason String? @map("failure_reason")
+
+  startedAt DateTime @default(now()) @map("started_at")
 
   brief Brief @relation(fields: [briefId], references: [id], onDelete: Cascade)
 
-  @@index([briefId])
-  @@map("influence_event")
+  @@index([briefId, startedAt])
+  @@map("impact_detection_run")
 }
 
 // ---------------------------------------------------------------------------

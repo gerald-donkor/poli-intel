@@ -76,7 +76,8 @@ export const sendMorningDigest = inngest.createFunction(
     if (
       reads.signals.length === 0 &&
       reads.briefs.length === 0 &&
-      reads.pendingClassificationCount === 0
+      reads.pendingClassificationCount === 0 &&
+      reads.influence.length === 0
     ) {
       logger.info("[digest] nothing to report; no email sent", {
         isoDate,
@@ -85,6 +86,7 @@ export const sendMorningDigest = inngest.createFunction(
         signals: 0,
         briefsAwaitingDecision: 0,
         pendingClassification: 0,
+        influenceEvents: 0,
         sourcesChecked: reads.radar.sourcesChecked,
         sourcesFailed: reads.radar.sourcesFailed,
       });
@@ -155,6 +157,7 @@ export const sendMorningDigest = inngest.createFunction(
       signals: reads.signals.length,
       briefsAwaitingDecision: reads.briefs.length,
       pendingClassification: reads.pendingClassificationCount,
+      influenceEvents: reads.influence.length,
       sourcesChecked: reads.radar.sourcesChecked,
       sourcesFailed: reads.radar.sourcesFailed,
       recipients: recipients.length,

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { RADAR_MAX_DOCUMENT_CHARS, RADAR_MAX_ITEMS_PER_RUN } from "@/lib/ai/config";
+import { isHttpUrl } from "@/lib/net/url";
 
 import type { RadarSource } from "./sources";
 
@@ -406,16 +407,11 @@ async function scrapeSource(source: RadarSource): Promise<FetchResult> {
  * `sourceUrl` is stored and later rendered as a link, so it is validated as an
  * absolute http(s) URL before it is stored — never a `javascript:` or `data:`
  * URL from a page this project does not control.
+ *
+ * The check itself moved to `lib/net/url.ts` when the Impact Tracker's grounded
+ * search needed the same rule; it is imported above rather than kept in two
+ * places, because a URL-safety rule that exists twice is one that drifts.
  */
-export function isHttpUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function clamp(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;

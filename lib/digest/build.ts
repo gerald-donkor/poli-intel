@@ -1,5 +1,9 @@
 import { BRIEF_STATUS_LABELS } from "@/app/(app)/briefs/labels";
 import {
+  DETECTION_METHOD_LABELS,
+  INFLUENCE_EVENT_TYPE_LABELS,
+} from "@/app/(app)/impact/labels";
+import {
   formatSignalDate,
   RELEVANCE_LABELS,
   URGENCY_LABELS,
@@ -59,6 +63,16 @@ export function buildMorningDigest({
   const classificationQueueCount = sections.classificationQueue
     ? reads.pendingClassificationCount
     : null;
+  const influence = sections.influence
+    ? reads.influence.map((event) => ({
+        id: event.id,
+        briefId: event.briefId,
+        briefTitle: event.briefTitle,
+        eventTypeLabel: INFLUENCE_EVENT_TYPE_LABELS[event.eventType],
+        detectionMethodLabel: DETECTION_METHOD_LABELS[event.detectionMethod],
+        verified: event.verified,
+      }))
+    : null;
 
   const signalCount = signalGroups.reduce(
     (total, group) => total + group.signals.length,
@@ -72,7 +86,8 @@ export function buildMorningDigest({
   const hasContent =
     signalCount > 0 ||
     (briefs !== null && briefs.length > 0) ||
-    (classificationQueueCount !== null && classificationQueueCount > 0);
+    (classificationQueueCount !== null && classificationQueueCount > 0) ||
+    (influence !== null && influence.length > 0);
 
   if (!hasContent) return null;
 
@@ -87,6 +102,8 @@ export function buildMorningDigest({
     briefs,
     briefsTruncated: briefs !== null && reads.briefsTruncated,
     classificationQueueCount,
+    influence,
+    influenceTruncated: influence !== null && reads.influenceTruncated,
   };
 }
 

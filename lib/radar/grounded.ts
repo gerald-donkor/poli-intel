@@ -1,25 +1,22 @@
 import "server-only";
 
-import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 
 import {
-  GENERATION_MAX_OUTPUT_TOKENS,
-  GENERATION_MODEL,
-  GENERATION_TEMPERATURE,
   RADAR_GROUNDED_RECENCY_DAYS,
   RADAR_MAX_DOCUMENT_CHARS,
   RADAR_MAX_ITEMS_PER_RUN,
 } from "@/lib/ai/config";
-import { getGeminiClient, toGeminiRequestFailure } from "@/lib/ai/gemini";
-import { callStructured } from "@/lib/ai/structured";
-
 import {
-  isHttpUrl,
-  type DetectedItem,
-  type FetchFailure,
-  type FetchResult,
-} from "./extract";
+  clamp,
+  resolvePublisherUrl,
+  runGroundedSearch,
+  type GroundedSource,
+} from "@/lib/ai/grounded-search";
+import { callStructured } from "@/lib/ai/structured";
+import { describeHost } from "@/lib/net/url";
+
+import type { DetectedItem, FetchResult } from "./extract";
 import type { RadarSource } from "./sources";
 
 /**
@@ -29,6 +26,17 @@ import type { RadarSource } from "./sources";
  *
  * SERVER-ONLY, AND JOBS ONLY, exactly as the other two paths are (§18, §14.1).
  *
+ * ── What lives here, and what moved ───────────────────────────────────────
+ * The MODEL-FACING half of this module — the verified tool config, the
+ * second-granularity time filter, the grounding-redirect resolution and the 429
+ * mapping — now lives in `lib/ai/grounded-search.ts`, because the Impact
+ * Tracker's weekly citation search makes the same call. It was EXTRACTED, not
+ * copied: that call was verified against the live API and a second copy would
+ * drift from the one anybody has actually run.
+ *
+ * What stays here is everything radar-specific: the search and extraction
+ * prompts, the candidate schema, and the mapping into `DetectedItem`.
+ *
  * ── Two calls, not one ────────────────────────────────────────────────────
  * Step 1 issues the grounded call WITH the search tool and NO response schema,
  * and takes back prose plus grounding metadata. Step 2 puts that prose through
@@ -37,21 +45,6 @@ import type { RadarSource } from "./sources";
  * daily quota was exhausted on 2026-08-03 when this was written, so it could
  * not be settled live. Two verified requests beat one unverified one. See
  * RADAR_GROUNDED_CALLS_PER_RUN.
- *
- * ── The tool config shape, verified ───────────────────────────────────────
- * `tools: [{ googleSearch: {...} }]`, verified against the INSTALLED SDK
- * (`@google/genai` 2.15.0, `Tool.googleSearch?: GoogleSearch`) and against the
- * live API on 2026-08-03. Google's current docs page shows
- * `tools: [{ type: "google_search" }]` instead — that is the SDK's SEPARATE
- * `interactions` surface (`Tool_2` in the type definitions), not
- * `models.generateContent`, and it is not what this call path uses. Read the
- * installed types before changing this.
- *
- * `timeRangeFilter` IS supported here (the type notes it is unsupported on
- * Vertex AI, not on the Gemini API) and the live call confirmed it, with one
- * undocumented constraint found the hard way: timestamps must be SECOND
- * granularity. A plain `toISOString()` carries milliseconds and the API rejects
- * it with `[FIELD_INVALID] Granularity of nano is not supported`.
  *
  * ── What is transmitted, and what is not (§7) ─────────────────────────────
  * NO EVIDENCE DATA PATH. The query is assembled from the source registry's
@@ -94,32 +87,14 @@ import type { RadarSource } from "./sources";
  * grounded signal, and a fresh reading of the caching clause. Do not make that
  * change casually, and do not make it without revisiting this comment.
  *
+ * THE SAME READING GOVERNS THE IMPACT TRACKER, which makes the same call
+ * through the same shared module and likewise stores a publisher URL rather than
+ * the model's prose.
+ *
  * LOGGING: source id, counts, model, outcome — carried in the return value and
  * the run record, the way the other two paths carry theirs. NEVER the query,
  * never the returned prose, never a title (§7.6, §13.9).
  */
-
-/** A grounded call reaches an external service; a slow one is a failed source. */
-const GROUNDED_REQUEST_TIMEOUT_MS = 60_000;
-
-/** Resolving one redirect is a HEAD request, not a page load. */
-const REDIRECT_RESOLVE_TIMEOUT_MS = 10_000;
-
-/**
- * The host Gemini hands back instead of a publisher's own URL.
- *
- * Grounding metadata returns REDIRECT URIs on this host rather than the article
- * link, and those redirects expire. A signal whose source link 404s in a month,
- * or lands on an API endpoint today, is a signal an officer cannot verify —
- * which defeats the point of the row (decision 4, acceptance criterion 3).
- *
- * Only this host is ever resolved. A URI that already points at a publisher is
- * stored as it stands, and a URI on any other host is neither followed nor
- * rewritten.
- */
-const GROUNDING_REDIRECT_HOSTS = new Set([
-  "vertexaisearch.cloud.google.com",
-]);
 
 const SEARCH_SYSTEM_PROMPT = `You monitor public news coverage of forest and land-use policy in Ghana for Tropenbos Ghana, a forest-and-livelihoods research organisation in Kumasi.
 
@@ -151,12 +126,6 @@ const groundedItemsSchema = z.object({
     .max(RADAR_MAX_ITEMS_PER_RUN),
 });
 
-/** One source found by search, before any of it has been validated. */
-type GroundedSource = {
-  uri: string;
-  title: string;
-};
-
 /**
  * Fetch one grounded source.
  *
@@ -167,9 +136,27 @@ type GroundedSource = {
 export async function fetchGroundedSource(
   source: RadarSource,
 ): Promise<FetchResult> {
-  const searched = await runGroundedSearch(source);
+  const searched = await runGroundedSearch({
+    systemPrompt: SEARCH_SYSTEM_PROMPT,
+    query: buildSearchQuery(source),
+    recencyDays: RADAR_GROUNDED_RECENCY_DAYS,
+    maxProseChars: RADAR_MAX_DOCUMENT_CHARS,
+  });
 
-  if (!searched.ok) return searched;
+  if (!searched.ok) {
+    // The shared module's failure union, widened into the radar's own — the
+    // same two outcomes this file mapped before the extraction, with the retry
+    // timing preserved on a 429 (§13.3, §13.4).
+    return searched.failure.reason === "rate_limited"
+      ? {
+          ok: false,
+          failure: {
+            reason: "rate_limited",
+            retryAfterMs: searched.failure.retryAfterMs,
+          },
+        }
+      : { ok: false, failure: { reason: `grounded:${searched.failure.reason}` } };
+  }
 
   // Searched successfully and found nothing to work with. `empty`, not
   // `failed`: for a news beat that is the healthy steady state, not a fault
@@ -239,72 +226,6 @@ export async function fetchGroundedSource(
   return { ok: true, items, droppedItems };
 }
 
-/* -------------------------------------------------------------------------
- * Step 1 — the grounded call
- * ---------------------------------------------------------------------- */
-
-type GroundedSearchResult =
-  | { ok: true; prose: string; sources: GroundedSource[] }
-  | { ok: false; failure: FetchFailure };
-
-async function runGroundedSearch(
-  source: RadarSource,
-): Promise<GroundedSearchResult> {
-  const ai = getGeminiClient();
-
-  if (!ai) return { ok: false, failure: { reason: "grounded:missing_api_key" } };
-
-  const window = recencyWindow(new Date());
-
-  try {
-    const response = await ai.models.generateContent({
-      model: GENERATION_MODEL,
-      contents: [
-        { role: "user", parts: [{ text: buildSearchQuery(source) }] },
-      ],
-      config: {
-        systemInstruction: SEARCH_SYSTEM_PROMPT,
-        temperature: GENERATION_TEMPERATURE,
-        maxOutputTokens: GENERATION_MAX_OUTPUT_TOKENS,
-        // Verified shape — see the module comment. NO response schema on this
-        // call: the tool and the schema are not documented as combinable.
-        tools: [{ googleSearch: { timeRangeFilter: window } }],
-        // The token cap is shared with reasoning tokens on a thinking model,
-        // and this is a constrained reading-and-reporting task over search
-        // results — the same judgement `lib/ai/structured.ts` makes.
-        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
-        httpOptions: { timeout: GROUNDED_REQUEST_TIMEOUT_MS },
-      },
-    });
-
-    const metadata = response.candidates?.[0]?.groundingMetadata;
-
-    return {
-      ok: true,
-      // Bounded on the way OUT of the model as firmly as on the way in: this
-      // prose becomes the next call's input, and "never pass unbounded context"
-      // binds there too (§13.7).
-      prose: clamp((response.text ?? "").trim(), RADAR_MAX_DOCUMENT_CHARS),
-      sources: readGroundedSources(metadata?.groundingChunks),
-    };
-  } catch (error) {
-    // Mapped through the ONE existing 429 reading, so a rate limit arrives with
-    // its retry timing intact rather than as a second private mapping. The
-    // caller records it and Inngest reschedules (§13.3, §13.4).
-    const failure = toGeminiRequestFailure(error);
-
-    return failure.reason === "rate_limited"
-      ? {
-          ok: false,
-          failure: {
-            reason: "rate_limited",
-            retryAfterMs: failure.retryAfterMs,
-          },
-        }
-      : { ok: false, failure: { reason: "grounded:request_failed" } };
-  }
-}
-
 /**
  * The search query — assembled HERE, from the registry, and from nowhere else.
  *
@@ -322,48 +243,6 @@ function buildSearchQuery(source: RadarSource): string {
   ].join("\n");
 }
 
-/**
- * The recency bound, in the granularity the API accepts.
- *
- * `toISOString()` emits milliseconds and the API rejects that outright
- * (`Granularity of nano is not supported`, verified live 2026-08-03), so the
- * fractional seconds are stripped. This is not cosmetic: without it every
- * grounded run fails with a 400.
- */
-function recencyWindow(now: Date): { startTime: string; endTime: string } {
-  const from = new Date(
-    now.getTime() - RADAR_GROUNDED_RECENCY_DAYS * 24 * 60 * 60 * 1000,
-  );
-
-  return { startTime: toSecondPrecision(from), endTime: toSecondPrecision(now) };
-}
-
-function toSecondPrecision(date: Date): string {
-  return `${date.toISOString().slice(0, 19)}Z`;
-}
-
-function readGroundedSources(
-  chunks: { web?: { uri?: string; title?: string } }[] | undefined,
-): GroundedSource[] {
-  const sources: GroundedSource[] = [];
-
-  for (const chunk of chunks ?? []) {
-    const uri = chunk.web?.uri;
-
-    // Web chunks only. A grounding chunk with no URI is a source nobody can
-    // open, and it must not occupy an index the model may then cite.
-    if (!uri || !isHttpUrl(uri)) continue;
-
-    sources.push({ uri, title: (chunk.web?.title ?? "").trim() });
-  }
-
-  return sources;
-}
-
-/* -------------------------------------------------------------------------
- * Step 2 — extraction
- * ---------------------------------------------------------------------- */
-
 function buildExtractionPrompt(
   prose: string,
   sources: readonly GroundedSource[],
@@ -380,81 +259,4 @@ function buildExtractionPrompt(
         `${index + 1}. ${source.title.length > 0 ? source.title : "(untitled)"} — ${describeHost(source.uri)}`,
     ),
   ].join("\n");
-}
-
-function describeHost(uri: string): string {
-  try {
-    return new URL(uri).hostname;
-  } catch {
-    return "unknown source";
-  }
-}
-
-/* -------------------------------------------------------------------------
- * URLs
- * ---------------------------------------------------------------------- */
-
-/**
- * Turn a grounding URI into a link a person can actually open, or nothing.
- *
- * Grounding metadata hands back redirect URIs on Google's own host rather than
- * publisher links, and those redirects expire — so storing one gives an officer
- * a source link that is opaque today and dead later. This resolves ONLY that
- * host, with a HEAD request that follows redirects and reads where it landed.
- *
- * DELIBERATELY NARROW. This is not the scraper and must never become it: no
- * page is loaded, no body is read, no markup is parsed, and nothing but the
- * final URL leaves here. A URI on any other host is returned unchanged if it is
- * a valid absolute http(s) URL, and dropped if it is not — every URL this
- * module returns has been validated by `isHttpUrl`, on this side of the network
- * boundary, before it can be stored or rendered (§18).
- *
- * A resolution that fails returns null, and the caller drops and counts the
- * item. Storing the unresolved redirect instead would satisfy the type and
- * break acceptance criterion 3.
- */
-async function resolvePublisherUrl(uri: string): Promise<string | null> {
-  if (!isHttpUrl(uri)) return null;
-
-  let host: string;
-
-  try {
-    host = new URL(uri).hostname;
-  } catch {
-    return null;
-  }
-
-  if (!GROUNDING_REDIRECT_HOSTS.has(host)) return uri;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REDIRECT_RESOLVE_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(uri, {
-      method: "HEAD",
-      signal: controller.signal,
-      redirect: "follow",
-    });
-
-    const resolved = response.url;
-
-    // Resolved onto the same redirect host, or onto nothing usable: the link is
-    // no better than the one we started with.
-    if (!isHttpUrl(resolved)) return null;
-
-    return GROUNDING_REDIRECT_HOSTS.has(new URL(resolved).hostname)
-      ? null
-      : resolved;
-  } catch {
-    // The reason is not recorded and the error is not logged — an error body
-    // can echo the response back (§7.6). A source that cannot be resolved is a
-    // dropped item, which the run record counts.
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function clamp(value: string, max: number): string {
-  return value.length > max ? value.slice(0, max) : value;
 }

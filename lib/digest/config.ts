@@ -40,6 +40,7 @@ export const DIGEST_WINDOW_HOURS = 24;
 /** Caps, so one busy night cannot produce a 4,000-line email. */
 export const DIGEST_MAX_SIGNALS = 12;
 export const DIGEST_MAX_BRIEFS = 8;
+export const DIGEST_MAX_INFLUENCE_EVENTS = 8;
 
 /**
  * Who receives it.
@@ -65,30 +66,43 @@ export const DIGEST_RECIPIENT_ROLES: readonly StaffRole[] = [
  * classification backlog is a Research Officer's queue (§10.4), and the Director
  * sees it too because they hold full access and a governance backlog is the last
  * thing to hide from the person accountable for it (§7.5).
+ *
+ * NEW INFLUENCE EVENTS ARE THE PROGRAMME DIRECTOR'S, and spec §5.2 step 1 names
+ * them there. They are also the only role that can confirm one, so a section
+ * telling anybody else about a lead they cannot act on would be noise.
  */
 export const DIGEST_SECTIONS: Record<
   StaffRole,
-  { signals: boolean; drafts: boolean; classificationQueue: boolean }
+  {
+    signals: boolean;
+    drafts: boolean;
+    classificationQueue: boolean;
+    influence: boolean;
+  }
 > = {
   [StaffRole.programme_director]: {
     signals: true,
     drafts: true,
     classificationQueue: true,
+    influence: true,
   },
   [StaffRole.policy_advocacy_officer]: {
     signals: true,
     drafts: false,
     classificationQueue: false,
+    influence: false,
   },
   [StaffRole.research_officer]: {
     signals: true,
     drafts: false,
     classificationQueue: true,
+    influence: false,
   },
   [StaffRole.field_officer]: {
     signals: false,
     drafts: false,
     classificationQueue: false,
+    influence: false,
   },
 };
 

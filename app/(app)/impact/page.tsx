@@ -1,23 +1,181 @@
+import Link from "next/link";
+
 import { PageHeader } from "@/components/page-header";
 import { ScreenPlaceholder } from "@/components/screen-placeholder";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  canGenerateImpactReport,
+  canLogInfluenceEvent,
+  canVerifyInfluenceEvent,
+} from "@/lib/auth/authorize";
+import { requireStaffUser } from "@/lib/auth/session";
+import {
+  listBriefOptionsForInfluence,
+  listInfluenceEvents,
+  readQuarterlyImpactReport,
+} from "@/lib/db";
+import {
+  parseQuarterKey,
+  previousQuarter,
+  quarterFor,
+  recentQuarters,
+} from "@/lib/impact/config";
+
+import { InfluenceEventRail } from "./event-rail";
+import { LogInfluencePanel } from "./log-panel";
+import { QuarterlyReport } from "./quarterly-report";
 
 export const metadata = {
   title: "Impact · EviBrief",
 };
 
-export default function ImpactPage() {
+/**
+ * Where Tropenbos evidence has reached policy.
+ *
+ * WHO SEES THIS: `canLogInfluenceEvent` — Programme Director and Policy &
+ * Advocacy Officer. `/impact` is the Director's screen in spec §5.2's table, but
+ * the Policy & Advocacy Officer is who follows briefs into the world day to day.
+ * A Research Officer and a Field Officer are refused (§10.4, §10.5).
+ *
+ * This gate is the RENDER path. Every action authorises its own caller
+ * server-side regardless of what was rendered (§10.1).
+ *
+ * THE MAP IS NOT BUILT HERE. The GSAP evidence → brief → outcome line-drawing is
+ * the product's single GSAP surface and gets its own prompt — and a map can only
+ * draw paths that exist, which is what this screen is for. The placeholder stays
+ * and says so.
+ *
+ * ONLY A SERVER COMPONENT FETCHES THIS PAGE'S DATA (§5.3). Nothing below polls,
+ * and no client-side fetching library is involved.
+ */
+export default async function ImpactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ quarter?: string }>;
+}) {
+  const staffUser = await requireStaffUser();
+
+  if (!canLogInfluenceEvent(staffUser.role)) return <ImpactNotForYourRole />;
+
+  const showReport = canGenerateImpactReport(staffUser.role);
+  const { quarter: requestedQuarter } = await searchParams;
+
+  const now = new Date();
+  // The previous quarter by default: that is the one a donor report is written
+  // about. An unparseable or absent parameter falls back rather than guessing.
+  const quarter =
+    (requestedQuarter ? parseQuarterKey(requestedQuarter) : null) ??
+    previousQuarter(quarterFor(now));
+
+  const [events, briefs, report] = await Promise.all([
+    listInfluenceEvents(),
+    listBriefOptionsForInfluence(),
+    showReport
+      ? readQuarterlyImpactReport({ start: quarter.start, end: quarter.end })
+      : Promise.resolve(null),
+  ]);
+
   return (
     <>
       <PageHeader
         title="Impact"
-        subtitle="Where Tropenbos evidence has reached policy — logged influence events and the citation paths behind them."
+        subtitle="Where Tropenbos evidence has reached policy — records staff logged, leads the weekly search found, and the quarterly summary of what has been confirmed."
       />
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col">
+
+      <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-6 p-4 tablet:p-6">
+        <LogInfluencePanel briefs={briefs} defaultOpen={events.length === 0} />
+
+        {report !== null ? (
+          <QuarterlyReport
+            quarter={quarter}
+            quarters={recentQuarters(now)}
+            report={report}
+          />
+        ) : null}
+
+        <section
+          aria-labelledby="influence-record-heading"
+          className="flex min-w-0 flex-col gap-3"
+        >
+          <h2
+            id="influence-record-heading"
+            className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase"
+          >
+            The record{" "}
+            <span className="font-mono tabular-nums">({events.length})</span>
+          </h2>
+
+          {events.length === 0 ? (
+            <EmptyImpactState />
+          ) : (
+            <InfluenceEventRail
+              events={events}
+              canVerify={canVerifyInfluenceEvent(staffUser.role)}
+            />
+          )}
+        </section>
+
+        {/* The one thing this prompt deliberately does not build. */}
         <ScreenPlaceholder
           title="The impact map goes here"
-          description="An evidence → brief → outcome lattice with drawn citation paths, plus the influence-event rail and the quarterly report generator."
-          builtBy="impact-tracker prompt"
+          description="An evidence → brief → outcome lattice with drawn citation paths, over the records above. It is the product's only GSAP surface and gets its own prompt — and a map can only draw paths that already exist."
+          builtBy="impact-map prompt"
         />
+      </div>
+    </>
+  );
+}
+
+/**
+ * The honest steady state for a young record, with a real next step (§17.6).
+ *
+ * NOT AN ERROR AND NOT A BLANK PANEL. The step it names is already open above it,
+ * so this explains rather than repeats.
+ */
+function EmptyImpactState() {
+  return (
+    <div className="bg-card border-line rounded-card flex flex-col items-start gap-3 border p-6">
+      {/* Concentric contour rings — abstract structural mark, no icon asset. */}
+      <span
+        aria-hidden="true"
+        className="mx-4 mt-4 mb-5 size-3 rounded-full shadow-[0_0_0_6px_var(--color-surface-tint),0_0_0_7px_var(--color-surface-tint-border),0_0_0_15px_var(--color-paper),0_0_0_16px_var(--color-line)]"
+      />
+      <h3 className="text-ink text-[15px] font-semibold">Nothing logged yet</h3>
+      <p className="text-ink-3 max-w-[62ch] text-[13px]">
+        When a brief is cited, quoted, or acted on, record it here — the panel
+        above is open and takes a minute. Once a brief has been submitted or
+        published, a weekly search also looks for documents citing it and files
+        what it finds as unconfirmed leads for someone to read.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The calm refusal. A panel rather than a crash or a redirect loop: someone
+ * following a colleague's link should be told plainly what this area is. The
+ * actions refuse independently and server-side regardless (§10.1).
+ */
+function ImpactNotForYourRole() {
+  return (
+    <>
+      <PageHeader
+        title="Impact"
+        subtitle="Where Tropenbos evidence has reached policy."
+      />
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col p-4 tablet:p-6">
+        <div className="bg-card border-line rounded-card flex flex-col items-start gap-2 border p-6">
+          <h2 className="text-ink text-[15px] font-semibold">
+            This area is for the policy team
+          </h2>
+          <p className="text-ink-3 max-w-[62ch] text-[13px]">
+            The impact record is kept by the Policy &amp; Advocacy Officer and the
+            Programme Director.
+          </p>
+          <Link href="/briefs" className={buttonVariants({ variant: "outline" })}>
+            Back to the briefs
+          </Link>
+        </div>
       </div>
     </>
   );

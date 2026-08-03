@@ -4,6 +4,10 @@ import {
   embedEvidenceBatch,
   embedEvidenceOnClassification,
 } from "./functions/embed-evidence";
+import {
+  detectBriefInfluence,
+  scheduleImpactDetection,
+} from "./functions/impact-detect";
 import { matchEvidenceForSignal } from "./functions/match-evidence";
 import { sendMorningDigest } from "./functions/morning-digest";
 import { fetchRadarSource } from "./functions/radar-fetch";
@@ -27,6 +31,8 @@ export const inngestFunctions = [
   matchEvidenceForSignal,
   rematchEvidenceForSignal,
   sendMorningDigest,
+  scheduleImpactDetection,
+  detectBriefInfluence,
 ];
 
 export { inngest } from "./client";

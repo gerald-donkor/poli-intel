@@ -184,6 +184,62 @@ export function canRequestEvidenceRematch(role: StaffRole): boolean {
   );
 }
 
+/**
+ * See the impact record and log an influence event.
+ *
+ * `/impact` is the Programme Director's screen in spec §5.2's table, but the
+ * Policy & Advocacy Officer is who tracks outcomes day to day — they manage
+ * stakeholder relationships and follow briefs into the world (§10.3), so they
+ * are the role most likely to be told at a convening that a brief was cited.
+ *
+ * A Research Officer is refused: §10.4 is evidence and factual accuracy, and an
+ * influence record is neither. A Field Officer has no brief surface at all
+ * (§10.5).
+ *
+ * LOGGING IS NOT VERIFYING. This predicate admits a claim to the record; the one
+ * below decides whether it may go to a donor.
+ */
+export function canLogInfluenceEvent(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/**
+ * Confirm an influence event — Programme Director only.
+ *
+ * NARROWER THAN `canLogInfluenceEvent`, deliberately. Verification is the claim
+ * that goes into a donor report, and §10.2 gives the Programme Director the
+ * decisions that leave the organisation.
+ *
+ * ROLE-LEVEL, AND THE OBJECT-LEVEL QUESTION IS OPEN. §10.6's flag rule says
+ * nobody clears a flag on a brief they drafted, and the same argument can be made
+ * here: confirming an influence event on your own brief is self-attestation about
+ * your own impact. It is NOT implemented as an object-level block, because
+ * Tropenbos Ghana is a small organisation and a blanket rule could leave events
+ * unverifiable whenever the Director wrote the brief. Instead the screen shows
+ * who authored the brief on the confirmation control, so the reviewer can see
+ * what they are doing.
+ *
+ * IF TROPENBOS WANTS THE STRICTER RULE it is a one-predicate change here, taking
+ * the brief and the actor the way `canDismissFlag` does.
+ */
+export function canVerifyInfluenceEvent(role: StaffRole): boolean {
+  return role === StaffRole.programme_director;
+}
+
+/**
+ * Run the quarterly impact report — Programme Director only (§10.2).
+ *
+ * The report is donor-facing output about the organisation's own influence, so it
+ * belongs to the role accountable for what Tropenbos says about itself. It makes
+ * no Gemini call and asserts nothing beyond the rows a person already confirmed.
+ */
+export function canGenerateImpactReport(role: StaffRole): boolean {
+  return role === StaffRole.programme_director;
+}
+
 /** Submit a field observation — open to all four roles (§10.5). */
 export function canSubmitFieldObservation(role: StaffRole): boolean {
   return (

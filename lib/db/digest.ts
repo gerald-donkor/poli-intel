@@ -1,6 +1,10 @@
 import "server-only";
 
-import { DIGEST_MAX_BRIEFS, DIGEST_MAX_SIGNALS } from "@/lib/digest/config";
+import {
+  DIGEST_MAX_BRIEFS,
+  DIGEST_MAX_INFLUENCE_EVENTS,
+  DIGEST_MAX_SIGNALS,
+} from "@/lib/digest/config";
 import type {
   BriefAudience,
   BriefStatus,
@@ -19,6 +23,10 @@ import {
 import { firstLine } from "./briefs";
 import { prisma } from "./client";
 import { countPendingClassification } from "./evidence";
+import {
+  listInfluenceEventsRecordedIn,
+  type DigestInfluenceEvent,
+} from "./influence";
 
 /**
  * The morning digest's windowed reads.
@@ -85,6 +93,14 @@ export type DigestWindowReads = {
   briefsTruncated: boolean;
   pendingClassificationCount: number;
   radar: DigestRadarSummary;
+  /**
+   * Influence events recorded overnight — brief titles, kind, and whether a
+   * person has confirmed them. NO DESCRIPTION AND NO QUOTED DOCUMENT TEXT: an
+   * email leaves Tropenbos-controlled infrastructure, and a verbatim line from a
+   * third party's document is not something to put in one (§7.6).
+   */
+  influence: DigestInfluenceEvent[];
+  influenceTruncated: boolean;
 };
 
 /**
@@ -232,14 +248,14 @@ export async function readDigestWindow(
   start: Date,
   end: Date,
 ): Promise<DigestWindowReads> {
-  const [signals, briefs, pendingClassificationCount, radar] = await Promise.all(
-    [
+  const [signals, briefs, pendingClassificationCount, radar, influence] =
+    await Promise.all([
       listSignalsRecordedIn(start, end),
       listBriefsAwaitingDecision(),
       countPendingClassification(),
       summariseRadar(start, end),
-    ],
-  );
+      listInfluenceEventsRecordedIn(start, end, DIGEST_MAX_INFLUENCE_EVENTS),
+    ]);
 
   return {
     signals: signals.signals,
@@ -248,6 +264,8 @@ export async function readDigestWindow(
     briefsTruncated: briefs.truncated,
     pendingClassificationCount,
     radar,
+    influence: influence.events,
+    influenceTruncated: influence.truncated,
   };
 }
 

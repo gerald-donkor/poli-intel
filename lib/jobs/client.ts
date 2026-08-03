@@ -94,6 +94,26 @@ export const signalRematchRequested = eventType("signal/rematch.requested", {
   schema: staticSchema<{ signalId: string }>(),
 });
 
+/**
+ * One published brief is due its weekly citation search.
+ *
+ * Emitted by the Impact Tracker's scheduler, one per eligible brief, so each
+ * brief's detection is its own run with its own retries — the same failure
+ * isolation the radar's fan-out has (AGENTS.md §14.5).
+ *
+ * `dueOn` is the UTC date the scheduler decided for, and it is half of the
+ * idempotency key: a replayed or double-fired cron re-requests the same brief
+ * for the same week and Inngest drops it.
+ *
+ * Carries the brief id and nothing else. Not the title, not the audience, and
+ * above all not a line of the document — the rule at the top of this file holds
+ * here too, and the job re-reads what it needs at the moment it needs it.
+ */
+export const impactDetectionRequested = eventType(
+  "impact/detection.requested",
+  { schema: staticSchema<{ briefId: string; dueOn: string }>() },
+);
+
 export const inngest = new Inngest({
   id: "evibrief",
   // v4 defaults to Cloud mode, which requires a signing key. Scoped to
