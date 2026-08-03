@@ -11,7 +11,10 @@ export { checkEmbeddingDimensions, type EmbeddingCheck } from "./embedding";
 export {
   findStaffUserById,
   findStaffUserByEmail,
+  findStaffUserByWhatsappNumber,
+  listWhatsappRecipients,
   provisionStaffUser,
+  type WhatsappRecipient,
 } from "./staff";
 export {
   findFieldSubmissionForNotice,

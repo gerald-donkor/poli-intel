@@ -276,7 +276,7 @@ Use:
 - Zod + React Hook Form — shared validation
 - dnd-kit (kanban drag), cmdk (command palette), SWR (signal dashboard polling only)
 - Motion — UI micro-interactions; GSAP — the impact map only
-- WhatsApp Business API via Twilio or 360dialog; Africa's Talking USSD gateway
+- WhatsApp Business API on the **Cloud API** shape — Meta direct or 360dialog, which exposes the same surface; Africa's Talking USSD gateway
 - Vercel (hosting) + Supabase (managed database)
 - Sentry (error tracking) + PostHog (usage analytics, self-hosted)
 
@@ -291,6 +291,8 @@ Do not use:
 - red / amber / green as urgency or status colour (section 11)
 - a generic shadcn default theme, or any second design system
 - local JSON or filesystem app storage
+
+**The WhatsApp provider question is resolved: it is the Cloud API shape.** The spec's "Twilio or 360dialog" was an either/or between two incompatible request shapes, and `.env.example` had already answered it — `WHATSAPP_API_TOKEN` plus `WHATSAPP_PHONE_NUMBER_ID` is Cloud API naming, where Twilio would need an account SID and a `from` number. Taking that declaration as the decision cost no new send variable and no rename. It also leaves the real choice open at deployment time rather than baking it into code: 360dialog exposes the same Cloud API surface as Meta direct, so switching between them is a credential change. The transport lives in `lib/whatsapp/`, the Graph API version is pinned in `lib/whatsapp/config.ts`, and there is no vendor skill for it — read the provider's own current docs, which have changed across API versions.
 
 **No vendor skill exists for Auth.js, Tiptap, Motion, or Uploadthing.** They are approved stack items, but there is no skill to load for them, and none should be invented or claimed. Auth.js goes through the project's `server-actions` skill — use that trimmed, domain-restricted v5 setup rather than reconstructing the generic credentials-provider boilerplate this project deliberately excluded. Tiptap goes through the project's `tiptap-editor` skill. For Motion and Uploadthing, read the installed package's own docs.
 

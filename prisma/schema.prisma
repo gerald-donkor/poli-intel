@@ -297,12 +297,31 @@ enum EvidenceMatchOutcome {
 /// reference from every audit row (AGENTS.md §8.3, §8.6, §10.8) — role
 /// assignment must survive a session, so it is a row, not a JWT claim.
 model StaffUser {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  name      String
-  role      StaffRole
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id    String    @id @default(uuid())
+  email String    @unique
+  name  String
+  role  StaffRole
+
+  /// Where the weekly WhatsApp digest is sent, in digits-only international
+  /// form (`233241234567`) — no `+`, no spaces, which is the form the Cloud
+  /// API's inbound `messages[].from` uses.
+  ///
+  /// NULL MEANS NOT SUBSCRIBED, and null is the default state of every staff
+  /// user. There is no opt-in UI: the number is set in the database exactly as
+  /// `role` is (`lib/db/staff.ts`), because four staff at one organisation who
+  /// all asked for this is not a subscription-management problem.
+  ///
+  /// UNIQUE because one number is one person. Without it, a number recorded
+  /// against two rows would send one officer another's digest, and the inbound
+  /// webhook would have no principled way to decide whose digest to answer with.
+  ///
+  /// Extends the existing actor rather than forking a parallel subscription
+  /// table for the same concept (§12.1). Personal data: never logged, never in
+  /// a URL, never rendered outside an authenticated screen (§18).
+  whatsappNumber String? @unique @map("whatsapp_number")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   briefGenerations        BriefGeneration[]
   briefsCreated           Brief[]                     @relation("BriefCreatedBy")

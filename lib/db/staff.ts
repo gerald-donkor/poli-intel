@@ -2,6 +2,7 @@ import "server-only";
 
 import type { StaffUser } from "@/lib/generated/prisma/client";
 import { StaffRole } from "@/lib/generated/prisma/enums";
+import { normaliseWhatsappNumber } from "@/lib/whatsapp/config";
 
 import { prisma } from "./client";
 
@@ -47,5 +48,67 @@ export function provisionStaffUser({
     where: { email },
     update: { name },
     create: { email, name, role: StaffRole.field_officer },
+  });
+}
+
+/** One officer the weekly WhatsApp digest is sent to. */
+export type WhatsappRecipient = {
+  id: string;
+  role: StaffRole;
+  whatsappNumber: string;
+};
+
+/**
+ * Who the weekly WhatsApp digest goes to, resolved server-side from `StaffUser`.
+ *
+ * NO NUMBER EVER COMES FROM INPUT, a query parameter, or an event payload — the
+ * same rule `listDigestRecipients` states for addresses. A null
+ * `whatsappNumber` means not subscribed, so the `not: null` filter IS the
+ * subscription check; there is no second table and no active flag.
+ *
+ * NEITHER `name` NOR `email` IS SELECTED. The job logs a staff user id and an
+ * outcome and nothing else, so there is no field here through which a person's
+ * name could reach a log line (§7.6).
+ */
+export async function listWhatsappRecipients(
+  roles: readonly StaffRole[],
+): Promise<WhatsappRecipient[]> {
+  const rows = await prisma.staffUser.findMany({
+    where: { role: { in: [...roles] }, whatsappNumber: { not: null } },
+    orderBy: { id: "asc" },
+    select: { id: true, role: true, whatsappNumber: true },
+  });
+
+  return rows.flatMap((row) =>
+    row.whatsappNumber === null
+      ? []
+      : [{ id: row.id, role: row.role, whatsappNumber: row.whatsappNumber }],
+  );
+}
+
+/**
+ * The inbound webhook's one read: which staff user, if any, this number belongs
+ * to.
+ *
+ * THE NUMBER IS NORMALISED BEFORE IT REACHES THE QUERY. An inbound `from` is
+ * attacker-controllable, so it is reduced to digits first and a value that is
+ * not plausibly a phone number never becomes a query at all (§18). An unknown
+ * number returning `null` is the ordinary case, not an error — the caller
+ * answers it neutrally without disclosing whether it is known.
+ *
+ * BOTH STORED FORMS ARE TRIED, because a human setting this in `db:studio` may
+ * reasonably type `+233...` even though the canonical form is digits-only. Two
+ * exact lookups rather than a `contains`, which would let a short number match a
+ * longer one's suffix.
+ */
+export async function findStaffUserByWhatsappNumber(
+  rawNumber: string,
+): Promise<StaffUser | null> {
+  const digits = normaliseWhatsappNumber(rawNumber);
+
+  if (digits === null) return null;
+
+  return prisma.staffUser.findFirst({
+    where: { whatsappNumber: { in: [digits, `+${digits}`] } },
   });
 }

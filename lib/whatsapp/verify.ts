@@ -1,0 +1,80 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+/**
+ * Inbound request verification. Pure — it takes strings and returns booleans,
+ * touches no environment variable, no database, and no network.
+ *
+ * NOT `server-only`, for the same reason `lib/net/url.ts` is not: there is no
+ * secret in this module. The secret is read in `lib/whatsapp/client.ts` and
+ * passed in, which is also what makes both functions below testable without an
+ * environment.
+ *
+ * THIS IS THE WEBHOOK'S ACCESS CONTROL. That path has no login by design
+ * (§10.9), so signature verification is not a hardening measure on top of
+ * authentication — it IS the authentication. No login does not mean no
+ * verification.
+ */
+
+/**
+ * Meta signs the raw request body with the app secret and sends the result as
+ * `X-Hub-Signature-256: sha256=<hex>`.
+ *
+ * THE RAW BODY IS NOT NEGOTIABLE. A re-serialised `await request.json()` differs
+ * from what was signed by key order and whitespace, so it will not match — the
+ * caller reads `await request.text()` and passes that string through unmodified.
+ *
+ * CONSTANT-TIME COMPARISON, so a rejected signature leaks nothing about how far
+ * it got. Everything before the comparison is shape-checking with no secret
+ * involved, so an early return there is not a timing channel.
+ */
+export function verifyWebhookSignature({
+  rawBody,
+  signatureHeader,
+  secret,
+}: {
+  rawBody: string;
+  signatureHeader: string | null;
+  secret: string;
+}): boolean {
+  if (!signatureHeader) return false;
+
+  const prefix = "sha256=";
+
+  if (!signatureHeader.startsWith(prefix)) return false;
+
+  const received = signatureHeader.slice(prefix.length);
+
+  // A non-hex or wrong-length digest would make `timingSafeEqual` throw on
+  // mismatched buffer lengths, so it is rejected on shape first.
+  if (!/^[0-9a-f]{64}$/i.test(received)) return false;
+
+  const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+
+  return timingSafeEqual(
+    Buffer.from(expected, "hex"),
+    Buffer.from(received.toLowerCase(), "hex"),
+  );
+}
+
+/**
+ * The `GET` subscription handshake's token comparison.
+ *
+ * Also constant-time: the verify token is a shared secret, and a byte-by-byte
+ * `===` on a value an unauthenticated caller supplies is exactly the comparison
+ * worth not writing.
+ */
+export function verifyTokenMatches(
+  received: string | null,
+  expected: string,
+): boolean {
+  if (!received) return false;
+
+  const a = Buffer.from(received, "utf8");
+  const b = Buffer.from(expected, "utf8");
+
+  // Length is not secret — it is observable from the request anyway — but
+  // `timingSafeEqual` throws unless the buffers match, so it is checked first.
+  if (a.length !== b.length) return false;
+
+  return timingSafeEqual(a, b);
+}

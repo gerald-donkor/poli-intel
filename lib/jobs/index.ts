@@ -15,6 +15,7 @@ import { fetchRadarSource } from "./functions/radar-fetch";
 import { scheduleRadarSources } from "./functions/radar-schedule";
 import { rematchEvidenceForSignal } from "./functions/rematch-evidence";
 import { sweepUnembeddedEvidence } from "./functions/sweep-unembedded";
+import { sendWhatsappDigest } from "./functions/whatsapp-digest";
 
 /**
  * The function registry the serve endpoint mounts.
@@ -32,6 +33,7 @@ export const inngestFunctions = [
   matchEvidenceForSignal,
   rematchEvidenceForSignal,
   sendMorningDigest,
+  sendWhatsappDigest,
   scheduleImpactDetection,
   detectBriefInfluence,
   notifyFieldSubmission,
