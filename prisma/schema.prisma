@@ -379,6 +379,24 @@ model PolicySignal {
   summaryText String       @map("summary_text")
   status      SignalStatus @default(new)
 
+  /// When the policy window this signal names actually closes — the consultation
+  /// deadline, the submission cut-off, the committee's last sitting.
+  ///
+  /// HUMAN-SET, AND ONLY HUMAN-SET. Nothing derives it and nothing infers it:
+  ///
+  /// - NEVER DERIVED FROM `urgency` + `detectedAt`. The urgency bands are ranges
+  ///   ("under 4 weeks"), so a date computed from one would be a fabricated
+  ///   deadline presented as fact on a calendar a Director plans around. Same
+  ///   argument as `audienceTarget` above — absent is honest; wrong is not.
+  /// - NEVER WRITTEN BY THE CLASSIFICATION CALL. A Gemini-extracted deadline is a
+  ///   plausible later feature and is deliberately not this column: a
+  ///   model-invented date would sit here with no indication of its provenance.
+  ///
+  /// Null means NOBODY HAS RECORDED A DATE, which is a different fact from "this
+  /// window has no deadline". Undated signals are listed beside the tracker's
+  /// calendar rather than hidden, so the gap is visible rather than assumed away.
+  windowClosesAt DateTime? @map("window_closes_at")
+
   /// vector(1536) — see EMBEDDING_DIMENSIONS in lib/ai/config.ts.
   embedding      Unsupported("vector(1536)")?
   /// Which embedding model produced `embedding`. Changing models invalidates
@@ -397,6 +415,9 @@ model PolicySignal {
   @@index([status])
   @@index([urgency])
   @@index([detectedAt])
+  /// The tracker's primary query is a date-range scan over this column, so this
+  /// is a real query path rather than a speculative index (§12.5).
+  @@index([windowClosesAt])
   @@map("policy_signal")
 }
 

@@ -8,7 +8,7 @@ import { UserMenu } from "@/components/user-menu";
 import type { StaffUserDto } from "@/lib/auth/dto";
 import { cn } from "@/lib/utils";
 
-// The five desktop surfaces. `/field` is deliberately absent — it is a separate
+// The six desktop surfaces. `/field` is deliberately absent — it is a separate
 // surface with its own chrome, not a tab of this one.
 //
 // This list is presentation only. Showing or hiding a link here is NOT access
@@ -17,6 +17,13 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/signals", label: "Signals" },
   { href: "/briefs", label: "Briefs" },
+  // Lifecycle order: a window is detected, a brief answers it, the tracker says
+  // by when. Spec §5.5's route table folds the tracker into /stakeholders; it
+  // sits here instead because its content is signals and briefs, not contacts,
+  // and a deadline view buried in the CRM is findable only by someone who
+  // already knows it is there. A deliberate divergence, recorded in
+  // prompts/25-submission-tracker.md.
+  { href: "/tracker", label: "Tracker" },
   // Contacts follow from the thing you send them, so this sits after Briefs.
   { href: "/stakeholders", label: "Stakeholders" },
   { href: "/evidence", label: "Evidence" },

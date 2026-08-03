@@ -146,6 +146,18 @@ export {
   type SignalReclassificationView,
 } from "./signal-board";
 export {
+  getTrackerWindows,
+  setSignalWindowClosesAt,
+  TRACKER_LOOKAHEAD_DAYS,
+  TRACKER_LOOKBACK_DAYS,
+  TRACKER_UNDATED_LIMIT,
+  type SetSignalWindowResult,
+  type TrackerBrief,
+  type TrackerDatedWindow,
+  type TrackerSignal,
+  type TrackerWindows,
+} from "./tracker";
+export {
   createClassifiedSignal,
   findRecentSignalsForDedup,
   recordRadarRun,

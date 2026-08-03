@@ -164,6 +164,31 @@ export function canReclassifySignal(role: StaffRole): boolean {
 }
 
 /**
+ * Record or clear the date a signal's policy window closes (§10.2, §10.3).
+ *
+ * MIRRORS `canReclassifySignal` DELIBERATELY, because the two controls answer the
+ * same question in two different units: urgency says how soon someone should act
+ * in bands, a window date says it as a day. Whoever may say "this is Immediate"
+ * is whoever may say "this closes on the 14th"; splitting them would let a role
+ * assert one and not the other about the same signal.
+ *
+ * A Research Officer is refused for the same reason they are refused
+ * reclassification — their classification authority is over EVIDENCE (§10.4,
+ * §10.8) — and a Field Officer has no signal surface at all (§10.5).
+ *
+ * NO AUDIT ROW BACKS THIS ONE, unlike reclassification. A window date is a
+ * scheduling annotation, not a status transition (§8.3) and not a classification
+ * (§10.8), so it does not earn a fourth audit table against the 500MB budget
+ * (§12.5). `updated_at` on the signal moves; that is the whole record.
+ */
+export function canSetSignalWindow(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
+/**
  * Ask the Evidence Matcher to run again on a signal (§10.3, §10.4).
  *
  * WIDER THAN `canReclassifySignal`, and not a reuse of it. Re-matching changes
