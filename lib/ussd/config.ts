@@ -66,6 +66,23 @@ export const USSD_MAX_BRIEFS = 3;
 export const USSD_MAX_ITEM_CHARS = 34;
 
 /**
+ * How much of a title the detail screen may spend before the label and the
+ * summary get their share.
+ *
+ * WITHOUT THIS, A LONG TITLE STARVES THE MEANING. Real radar titles are not
+ * headlines — a CBD notification arrives as "SCBD/CPU/WM/AMC/MW/92848
+ * (SCBD/CPU/WM/AMC/MW/92848): Kunming Biodiversity Fund Project, ..." — and a
+ * screen that caps only at the end spends all 160 characters on the reference
+ * code, truncates "Coming later this year" mid-phrase, and drops the summary
+ * entirely. The urgency label is the one line on that screen that must never be
+ * cut: it is what the officer dialled to find out.
+ *
+ * 60 leaves the label its longest form (29 characters) and still returns roughly
+ * 70 to the summary.
+ */
+export const USSD_MAX_TITLE_CHARS = 60;
+
+/**
  * Inbound rate limit, per number.
  *
  * A flood of dial-ins from one handset must not spend the database's connection

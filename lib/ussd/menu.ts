@@ -13,6 +13,7 @@ import {
   USSD_MAX_BRIEFS,
   USSD_MAX_ITEM_CHARS,
   USSD_MAX_SIGNALS,
+  USSD_MAX_TITLE_CHARS,
 } from "./config";
 import { capScreen, toGsmSafe } from "./text";
 
@@ -95,11 +96,16 @@ export function buildUssdScreen(
         titles: briefs.map((brief) => brief.title),
       });
 
+    // THE TITLE IS CAPPED BEFORE THE LABEL, not after it. Radar titles are not
+    // headlines — a scraped notification reference runs to well over a screen —
+    // and capping only the finished string spends the whole budget on the title,
+    // cuts the plain-language label mid-phrase, and drops the summary the
+    // officer dialled for.
     case "signal":
       return screen(
         "END",
         [
-          position.item.title,
+          capScreen(position.item.title, USSD_MAX_TITLE_CHARS),
           URGENCY_PLAIN_LABEL[position.item.urgency],
           position.item.summaryText,
         ].join("\n"),
@@ -109,7 +115,7 @@ export function buildUssdScreen(
       return screen(
         "END",
         [
-          position.item.title,
+          capScreen(position.item.title, USSD_MAX_TITLE_CHARS),
           BRIEF_STATUS_PLAIN_LABEL[position.item.status],
         ].join("\n"),
       );
