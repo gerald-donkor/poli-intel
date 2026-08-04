@@ -17,6 +17,13 @@ export {
   type WhatsappRecipient,
 } from "./staff";
 export {
+  deleteGoogleDriveGrant,
+  findGoogleDriveGrant,
+  saveGoogleDriveGrant,
+  type GoogleDriveGrantRecord,
+  type SaveGoogleDriveGrantInput,
+} from "./google-grants";
+export {
   findFieldSubmissionForNotice,
   readFieldDigest,
   type FieldBriefCard,

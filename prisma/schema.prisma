@@ -345,8 +345,50 @@ model StaffUser {
   stakeholderSharesLogged StakeholderBrief[]
   influenceEventsLogged   InfluenceEvent[]            @relation("InfluenceLoggedBy")
   influenceEventsVerified InfluenceEvent[]            @relation("InfluenceVerifiedBy")
+  googleDriveGrant        GoogleDriveGrant?
 
   @@map("staff_user")
+}
+
+/// One staff member's Google Drive authorisation, held so that exporting a
+/// brief to Google Docs does not show a consent screen on every export.
+///
+/// IT IS SEPARATE FROM SIGN-IN BY DESIGN. `auth.ts` requests no Drive scope, so
+/// a Field Officer who will never export anything never sees a Drive consent
+/// screen (§10.5). This row is written only by the incremental-authorisation
+/// flow at `/api/auth/google-drive`, entered the first time someone asks for a
+/// Google Doc.
+///
+/// THE REFRESH TOKEN IS SEALED, NEVER STORED RAW. A refresh token is a
+/// long-lived credential against a staff member's own Workspace account;
+/// `refreshTokenSealed` holds AES-256-GCM ciphertext produced by
+/// `lib/crypto/secret-box.ts` under `DRIVE_TOKEN_ENCRYPTION_KEY`, and it is
+/// opened in exactly one module (`lib/google/drive-client.ts`). It never
+/// appears in a log line, a Sentry event, a PostHog property, or a response
+/// body (§18, §7.6).
+///
+/// NO ACCESS TOKEN COLUMN. An access token lives for the duration of one
+/// request and is minted from this row each time; persisting one would be a
+/// second credential at rest buying nothing.
+///
+/// `scope` records what was actually granted rather than what was asked for, so
+/// a grant made under an older scope set is recognisable rather than assumed.
+///
+/// DELETING THE ROW IS THE REVOCATION. `onDelete: Cascade` means a staff user's
+/// removal takes their grant with them.
+model GoogleDriveGrant {
+  id          String @id @default(uuid())
+  staffUserId String @unique @map("staff_user_id")
+  /// AES-256-GCM ciphertext. Never the token itself.
+  refreshTokenSealed String @map("refresh_token_sealed")
+  /// The space-delimited scope string Google returned on the exchange.
+  scope     String
+  grantedAt DateTime @default(now()) @map("granted_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@map("google_drive_grant")
 }
 
 // ---------------------------------------------------------------------------

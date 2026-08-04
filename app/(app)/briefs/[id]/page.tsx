@@ -23,6 +23,7 @@ import {
   listStakeholderOptions,
 } from "@/lib/db";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
+import { isDriveExportConfigured } from "@/lib/google/drive-client";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
 import { AudienceSwitcher } from "./audience-switcher";
@@ -92,6 +93,11 @@ export default async function BriefPage({
   // with it rather than the download being withheld (§16.8).
   const mayExport = canExportBrief(staffUser.role);
 
+  // Deployment capability, not a permission: a deployment with no Drive
+  // credentials cannot offer the destination at all. The route refuses it too —
+  // this only keeps the page from offering a control that would 400 (§17.6).
+  const driveExportAvailable = isDriveExportConfigured();
+
   const openFlagCount = brief.flags.filter(
     (flag) => flag.status === FlagStatus.open,
   ).length;
@@ -142,21 +148,36 @@ export default async function BriefPage({
         </Link>
         {mayExport ? (
           <span className="flex flex-col items-start gap-1 tablet:items-end">
-            {/* A plain anchor, not `Link`: this is a file response from a Route
-                Handler, not a client-side navigation. Never disabled by flag
-                state — the notice inside the file is the mechanism (§16.8). */}
-            <a
-              href={`/api/briefs/${brief.id}/export?format=docx`}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Download Word
-            </a>
+            <span className="flex flex-wrap items-center gap-2">
+              {/* Plain anchors, not `Link`: these are Route Handler responses —
+                  a file and a redirect — not client-side navigations. Neither
+                  is disabled by flag state; the notice inside the document is
+                  the mechanism (§16.8). */}
+              <a
+                href={`/api/briefs/${brief.id}/export?format=docx`}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Download Word
+              </a>
+              {/* Absent, not disabled, on a deployment with no Drive
+                  credentials: a control that cannot work is not a control, and
+                  the route refuses the direct URL regardless (§10.1). */}
+              {driveExportAvailable ? (
+                <a
+                  href={`/api/briefs/${brief.id}/export?format=gdoc`}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  Send to Google Docs
+                </a>
+              ) : null}
+            </span>
             {/* The watch ramp, not the ambient secondary ink: this line is about
                 open flag state, and watch is the guard's ramp (design-system,
-                §11.4). 9.1:1 on `card`. */}
+                §11.4). 9.1:1 on `card`. It covers both destinations — the Doc is
+                the same rendered document as the file. */}
             {openFlagCount > 0 ? (
               <span className="text-watch-ink max-w-[30ch] text-[12.5px] leading-snug tablet:text-right">
-                The file carries a notice about{" "}
+                The document carries a notice about{" "}
                 {openFlagCount === 1
                   ? "the claim"
                   : `the ${openFlagCount} claims`}{" "}

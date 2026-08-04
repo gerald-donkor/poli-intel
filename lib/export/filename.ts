@@ -44,9 +44,21 @@ export function sanitiseFilenameStem(title: string): string {
   return stem.length === 0 ? FALLBACK_STEM : stem;
 }
 
+/**
+ * A brief version's export name, without an extension.
+ *
+ * SHARED BY BOTH DESTINATIONS: it is the `.docx` download's stem and the Google
+ * Doc's name. One rule, so the same brief is called the same thing wherever it
+ * lands, and the sanitiser above cannot be applied to one and skipped on the
+ * other.
+ */
+export function briefExportName(title: string, version: number): string {
+  return `${sanitiseFilenameStem(title)}-v${version}`;
+}
+
 /** The full `.docx` filename for a brief's version. */
 export function briefExportFilename(title: string, version: number): string {
-  return `${sanitiseFilenameStem(title)}-v${version}.docx`;
+  return `${briefExportName(title, version)}.docx`;
 }
 
 /**
