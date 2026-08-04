@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import { constantTimeEquals } from "@/lib/net/secret";
+
 /**
  * Inbound request verification. Pure — it takes strings and returns booleans,
  * touches no environment variable, no database, and no network.
@@ -59,22 +61,15 @@ export function verifyWebhookSignature({
 /**
  * The `GET` subscription handshake's token comparison.
  *
- * Also constant-time: the verify token is a shared secret, and a byte-by-byte
- * `===` on a value an unauthenticated caller supplies is exactly the comparison
- * worth not writing.
+ * Constant-time, and now delegating to `lib/net/secret.ts` because the USSD
+ * callback needs the same comparison for its path secret. Same behaviour, one
+ * implementation — two channels that share nothing else must not share this
+ * module either, so the shared piece moved down to `lib/net/` rather than USSD
+ * importing from `lib/whatsapp/`.
  */
 export function verifyTokenMatches(
   received: string | null,
   expected: string,
 ): boolean {
-  if (!received) return false;
-
-  const a = Buffer.from(received, "utf8");
-  const b = Buffer.from(expected, "utf8");
-
-  // Length is not secret — it is observable from the request anyway — but
-  // `timingSafeEqual` throws unless the buffers match, so it is checked first.
-  if (a.length !== b.length) return false;
-
-  return timingSafeEqual(a, b);
+  return constantTimeEquals(received, expected);
 }

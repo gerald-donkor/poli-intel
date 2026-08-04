@@ -318,6 +318,15 @@ model StaffUser {
   /// Extends the existing actor rather than forking a parallel subscription
   /// table for the same concept (§12.1). Personal data: never logged, never in
   /// a URL, never rendered outside an authenticated screen (§18).
+  ///
+  /// IT IS NOW THE HANDSET IDENTIFIER FOR BOTH CHANNELS, not only WhatsApp. An
+  /// officer dialling the USSD short code is dialling from the same phone that
+  /// receives the Monday nudge, so `app/api/ussd/[secret]/route.ts` resolves
+  /// callers through this column too rather than adding a `ussdNumber` that
+  /// staff would have to keep in sync and that could disagree with this one. The
+  /// name reads a little narrow for its second caller; renaming it is a
+  /// migration and a rename across five files for no behavioural gain, so it
+  /// stays (§18 — no unrelated refactors).
   whatsappNumber String? @unique @map("whatsapp_number")
 
   createdAt DateTime @default(now()) @map("created_at")
