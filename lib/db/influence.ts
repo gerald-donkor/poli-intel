@@ -436,6 +436,156 @@ export async function listBriefOptionsForInfluence(): Promise<BriefOption[]> {
 }
 
 /* ---------------------------------------------------------------------------
+ * The map
+ * ------------------------------------------------------------------------- */
+
+/** One outcome node — an influence event, which is the map's spine. */
+export type ImpactMapOutcome = {
+  id: string;
+  briefId: string;
+  eventType: InfluenceEventType;
+  sourceTitle: string | null;
+  sourceDocument: string | null;
+  detectedAt: string;
+  verified: boolean;
+};
+
+/** One brief node. Only briefs an outcome names appear. */
+export type ImpactMapBrief = {
+  id: string;
+  title: string;
+  briefType: BriefType;
+  audience: BriefAudience;
+};
+
+/**
+ * One evidence node — BIBLIOGRAPHIC IDENTITY ONLY.
+ *
+ * `title` and `citationKey`, the same two columns `readQuarterlyImpactReport`
+ * already reads. No `full_text`, no chunk, no excerpt. A citation path is made
+ * of citations, not of content (§7).
+ */
+export type ImpactMapEvidence = {
+  id: string;
+  title: string;
+  citationKey: string;
+};
+
+export type ImpactMapLink = {
+  evidenceId: string;
+  briefId: string;
+};
+
+export type ImpactMap = {
+  outcomes: ImpactMapOutcome[];
+  briefs: ImpactMapBrief[];
+  evidence: ImpactMapEvidence[];
+  links: ImpactMapLink[];
+};
+
+/**
+ * The evidence → brief → outcome lattice `/impact` draws.
+ *
+ * DERIVED FROM THE INFLUENCE EVENT OUTWARDS, never from the brief list. A brief
+ * nobody has recorded an outcome against has no path and does not appear: this
+ * screen is the record of what reached policy, not a catalogue of what was
+ * drafted.
+ *
+ * OUTCOMES ARE RETURNED IN CITATION-DATE ORDER, ASCENDING, because that is the
+ * order the timeline draws in. The ordering is a property of the data, not a
+ * sort the component re-invents.
+ *
+ * THREE QUERIES, ONE PER LEVEL — never an N+1 walk down the lattice. Everything
+ * returned is serialisable: it crosses a Server Component boundary into a client
+ * component, so dates are ISO strings and no Prisma model instance escapes.
+ *
+ * NO CLASSIFICATION FILTER, DELIBERATELY. The gate's retrieval face (§7.5, §15.2)
+ * governs what may enter retrieval and what is searchable in the library; this
+ * performs neither. It renders a stored historical relation between rows a person
+ * already selected, and silently dropping a path would falsify the record of what
+ * actually happened. Equally: that is not licence to widen the select. Titles only.
+ */
+export async function readImpactMap(): Promise<ImpactMap> {
+  const eventRows = await prisma.influenceEvent.findMany({
+    orderBy: [{ detectedAt: "asc" }, { createdAt: "asc" }],
+    select: {
+      id: true,
+      briefId: true,
+      eventType: true,
+      sourceTitle: true,
+      sourceDocument: true,
+      detectedAt: true,
+      verified: true,
+    },
+  });
+
+  if (eventRows.length === 0) {
+    return { outcomes: [], briefs: [], evidence: [], links: [] };
+  }
+
+  const briefIds = [...new Set(eventRows.map((row) => row.briefId))];
+
+  const [briefRows, linkRows] = await Promise.all([
+    prisma.brief.findMany({
+      where: { id: { in: briefIds } },
+      select: {
+        id: true,
+        briefType: true,
+        audience: true,
+        versions: {
+          orderBy: { version: "desc" },
+          take: 1,
+          select: { bodyText: true },
+        },
+      },
+    }),
+    prisma.briefEvidence.findMany({
+      where: { briefId: { in: briefIds } },
+      orderBy: { addedAt: "asc" },
+      select: {
+        briefId: true,
+        evidenceItem: { select: { id: true, title: true, citationKey: true } },
+      },
+    }),
+  ]);
+
+  const evidence = new Map<string, ImpactMapEvidence>();
+
+  for (const row of linkRows) {
+    if (evidence.has(row.evidenceItem.id)) continue;
+
+    evidence.set(row.evidenceItem.id, {
+      id: row.evidenceItem.id,
+      title: row.evidenceItem.title,
+      citationKey: row.evidenceItem.citationKey,
+    });
+  }
+
+  return {
+    outcomes: eventRows.map((row) => ({
+      id: row.id,
+      briefId: row.briefId,
+      eventType: row.eventType,
+      sourceTitle: row.sourceTitle,
+      sourceDocument: row.sourceDocument,
+      detectedAt: row.detectedAt.toISOString(),
+      verified: row.verified,
+    })),
+    briefs: briefRows.map((row) => ({
+      id: row.id,
+      title: firstLine(row.versions[0]?.bodyText ?? "") || "Untitled brief",
+      briefType: row.briefType,
+      audience: row.audience,
+    })),
+    evidence: [...evidence.values()],
+    links: linkRows.map((row) => ({
+      evidenceId: row.evidenceItem.id,
+      briefId: row.briefId,
+    })),
+  };
+}
+
+/* ---------------------------------------------------------------------------
  * Writes a person makes
  * ------------------------------------------------------------------------- */
 

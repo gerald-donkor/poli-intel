@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
-import { ScreenPlaceholder } from "@/components/screen-placeholder";
 import { buttonVariants } from "@/components/ui/button";
 import {
   canGenerateImpactReport,
@@ -12,6 +11,7 @@ import { requireStaffUser } from "@/lib/auth/session";
 import {
   listBriefOptionsForInfluence,
   listInfluenceEvents,
+  readImpactMap,
   readQuarterlyImpactReport,
 } from "@/lib/db";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@/lib/impact/config";
 
 import { InfluenceEventRail } from "./event-rail";
+import { ImpactMap } from "./impact-map";
 import { LogInfluencePanel } from "./log-panel";
 import { QuarterlyReport } from "./quarterly-report";
 
@@ -40,10 +41,10 @@ export const metadata = {
  * This gate is the RENDER path. Every action authorises its own caller
  * server-side regardless of what was rendered (§10.1).
  *
- * THE MAP IS NOT BUILT HERE. The GSAP evidence → brief → outcome line-drawing is
- * the product's single GSAP surface and gets its own prompt — and a map can only
- * draw paths that exist, which is what this screen is for. The placeholder stays
- * and says so.
+ * THE MAP DRAWS ONLY WHAT THE RECORD ALREADY HOLDS. `ImpactMap` renders the
+ * evidence → brief → outcome lattice beside the rail; with nothing logged it does
+ * not render at all and `EmptyImpactState` stands. Nothing on the canvas mutates —
+ * confirming an event stays on the rail's `VerifyControl` (§8, §10.1).
  *
  * ONLY A SERVER COMPONENT FETCHES THIS PAGE'S DATA (§5.3). Nothing below polls,
  * and no client-side fetching library is involved.
@@ -67,12 +68,13 @@ export default async function ImpactPage({
     (requestedQuarter ? parseQuarterKey(requestedQuarter) : null) ??
     previousQuarter(quarterFor(now));
 
-  const [events, briefs, report] = await Promise.all([
+  const [events, briefs, report, map] = await Promise.all([
     listInfluenceEvents(),
     listBriefOptionsForInfluence(),
     showReport
       ? readQuarterlyImpactReport({ start: quarter.start, end: quarter.end })
       : Promise.resolve(null),
+    readImpactMap(),
   ]);
 
   return (
@@ -108,19 +110,21 @@ export default async function ImpactPage({
           {events.length === 0 ? (
             <EmptyImpactState />
           ) : (
-            <InfluenceEventRail
-              events={events}
-              canVerify={canVerifyInfluenceEvent(staffUser.role)}
-            />
+            // The handoff's grid for this screen: map left, rail right, stacking
+            // to one column below `laptop`. The rail's panel border switches from
+            // a top rule to a left one when it becomes a column.
+            <div className="grid min-w-0 grid-cols-1 gap-6 laptop:grid-cols-[1fr_356px]">
+              <ImpactMap map={map} />
+
+              <div className="border-line min-w-0 border-t pt-6 laptop:border-t-0 laptop:border-l laptop:pt-0 laptop:pl-6">
+                <InfluenceEventRail
+                  events={events}
+                  canVerify={canVerifyInfluenceEvent(staffUser.role)}
+                />
+              </div>
+            </div>
           )}
         </section>
-
-        {/* The one thing this prompt deliberately does not build. */}
-        <ScreenPlaceholder
-          title="The impact map goes here"
-          description="An evidence → brief → outcome lattice with drawn citation paths, over the records above. It is the product's only GSAP surface and gets its own prompt — and a map can only draw paths that already exist."
-          builtBy="impact-map prompt"
-        />
       </div>
     </>
   );

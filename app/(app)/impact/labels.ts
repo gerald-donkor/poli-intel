@@ -52,6 +52,43 @@ export const DETECTION_METHOD_LABELS: Record<InfluenceDetectionMethod, string> =
     [InfluenceDetectionMethod.detected_by_search]: "Found by the weekly search",
   };
 
+/* ---------------------------------------------------------------------------
+ * The map
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The map's own copy.
+ *
+ * A PATH IS *RECORDED*, NEVER PROVEN (§8.8). The map draws stored relations
+ * between rows a person already chose; it finds nothing, infers nothing, and
+ * establishes nothing. An unverified path is a lead nobody has confirmed yet —
+ * it is not an error, and nothing on this screen is red.
+ */
+export const IMPACT_MAP_COPY = {
+  heading: "The paths",
+  intro:
+    "Each line is a stored relation, not an inference: the evidence a brief cited, and the outcome someone recorded against that brief.",
+  columns: {
+    evidence: "Evidence",
+    brief: "Brief",
+    outcome: "Outcome",
+  },
+  legendVerified: "Solid — confirmed by the Programme Director",
+  legendUnverified: "Dashed — recorded, not yet confirmed",
+  replay: "Replay the paths",
+  summaryHeading: "Every path on the map, in words",
+  noEvidenceRecorded: "no evidence set recorded for this brief",
+} as const;
+
+/** What the SVG itself announces before the hidden list is read. */
+export function impactMapAriaLabel(pathCount: number, outcomeCount: number) {
+  return `Diagram of ${pathCount} recorded ${
+    pathCount === 1 ? "path" : "paths"
+  } from evidence through briefs to ${outcomeCount} ${
+    outcomeCount === 1 ? "outcome" : "outcomes"
+  }. The same information is listed as text below.`;
+}
+
 /** "3 Aug 2026" — the same short form the signal board uses. */
 export function formatInfluenceDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
