@@ -14,6 +14,7 @@ import {
   contentDispositionAttachment,
 } from "@/lib/export/filename";
 import { uploadBriefAsGoogleDoc } from "@/lib/export/gdoc";
+import { pandocConfig, renderPdfFromDocx } from "@/lib/export/pandoc";
 import { driveAccessToken, driveOAuthConfig } from "@/lib/google/drive-client";
 import {
   DRIVE_GRANTED_PARAM,
@@ -44,13 +45,16 @@ import {
  * that exists, never a silent fallback to Word, and nothing in the UI offers a
  * format this handler cannot produce.
  *
- * TWO KINDS OF RESPONSE, HONESTLY. `docx` responds with bytes; `gdoc` responds
- * with a redirect to the created Doc. Returning JSON and having the browser
- * open a window instead would put pipeline state in the UI (§5.3).
+ * TWO KINDS OF RESPONSE, HONESTLY. `docx` and `pdf` respond with bytes; `gdoc`
+ * responds with a redirect to the created Doc. Returning JSON and having the
+ * browser open a window instead would put pipeline state in the UI (§5.3).
+ *
+ * ALL THREE DESCEND FROM ONE RENDERING. `renderBriefDocx` runs once; the Doc is
+ * those bytes imported by Drive and the PDF is those bytes converted by Pandoc.
+ * That is why none of the three can lose the flag notice.
  */
 
-/** Pandoc PDF is still separate work; `?format=pdf` keeps its 400. */
-const SUPPORTED_FORMATS = ["docx", "gdoc"] as const;
+const SUPPORTED_FORMATS = ["docx", "pdf", "gdoc"] as const;
 
 type ExportFormat = (typeof SUPPORTED_FORMATS)[number];
 
@@ -62,6 +66,8 @@ function isSupportedFormat(value: string): value is ExportFormat {
 
 const DOCX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const PDF_CONTENT_TYPE = "application/pdf";
 
 /** Refusals a person can read. Never an empty body, never a partial file. */
 function refuse(status: number, message: string): Response {
@@ -90,7 +96,7 @@ export async function GET(
   if (!isSupportedFormat(format)) {
     return refuse(
       400,
-      `${format} export is not available. Word (?format=docx) and Google Docs (?format=gdoc) are the exports available today.`,
+      `${format} export is not available. Word (?format=docx), PDF (?format=pdf) and Google Docs (?format=gdoc) are the exports available today.`,
     );
   }
 
@@ -103,6 +109,17 @@ export async function GET(
     return refuse(
       400,
       "Google Docs export is not configured on this deployment. Word (?format=docx) still works.",
+    );
+  }
+
+  // The same shape one destination over: a host without a Pandoc binary cannot
+  // produce a PDF, so it says so before any work rather than failing halfway.
+  const pandoc = format === "pdf" ? pandocConfig() : null;
+
+  if (format === "pdf" && !pandoc) {
+    return refuse(
+      400,
+      "PDF export is not configured on this deployment. Word (?format=docx) still works.",
     );
   }
 
@@ -219,22 +236,64 @@ export async function GET(
     return NextResponse.redirect(upload.webViewLink);
   }
 
+  // THE SAME BYTES AGAIN, converted by a local child process this time. The PDF
+  // is a rendering of the Word file rather than a second mapping of the
+  // document, which is what carries the flag notice and the open-claims list
+  // into it without this route knowing about either (§16.8, §9.5).
+  let downloadBytes = bytes;
+  let contentType = DOCX_CONTENT_TYPE;
+
+  if (format === "pdf" && pandoc) {
+    const pdf = await renderPdfFromDocx({ config: pandoc, docxBytes: bytes });
+
+    if (!pdf.ok) {
+      if (pdf.reason === "timeout") {
+        return refuse(
+          504,
+          "Converting this brief to PDF took too long, so no file was produced. Word (?format=docx) still works.",
+        );
+      }
+
+      if (pdf.reason === "unavailable") {
+        return refuse(
+          502,
+          "The PDF converter could not be started on this deployment, so no file was produced. Word (?format=docx) still works.",
+        );
+      }
+
+      // Pandoc's own message is not surfaced to the browser: a converter's
+      // diagnostics can quote the document it was converting (§7.6).
+      return refuse(
+        502,
+        "The PDF converter did not produce a document, so no file was produced. Word (?format=docx) still works.",
+      );
+    }
+
+    downloadBytes = pdf.bytes;
+    contentType = PDF_CONTENT_TYPE;
+  }
+
   // Ids and counts only. Never the document, never a claim, never a citation,
   // and never the filename — a filename is derived from the brief's title, and
-  // a title is document content (§7.6).
+  // a title is document content (§7.6). `format` is what tells the two
+  // downloads apart; nothing else is needed to.
   console.info("brief.export.downloaded", {
     briefId: brief.id,
     actorId: staffUser.id,
     format,
-    byteLength: bytes.byteLength,
+    byteLength: downloadBytes.byteLength,
     openFlagCount: brief.openFlags.length,
   });
 
-  return new Response(bytes, {
+  return new Response(downloadBytes, {
     headers: {
-      "content-type": DOCX_CONTENT_TYPE,
+      "content-type": contentType,
       "content-disposition": contentDispositionAttachment(
-        briefExportFilename(brief.title, brief.version),
+        briefExportFilename(
+          brief.title,
+          brief.version,
+          format === "pdf" ? "pdf" : "docx",
+        ),
       ),
       // A brief's current version changes under this URL; a cached copy would
       // be a stale document with a stale flag notice attached to it.

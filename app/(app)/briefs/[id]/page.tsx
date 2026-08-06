@@ -22,6 +22,7 @@ import {
   listSharesForBrief,
   listStakeholderOptions,
 } from "@/lib/db";
+import { isPdfExportConfigured } from "@/lib/export/pandoc";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
 import { isDriveExportConfigured } from "@/lib/google/drive-client";
 
@@ -98,6 +99,11 @@ export default async function BriefPage({
   // this only keeps the page from offering a control that would 400 (§17.6).
   const driveExportAvailable = isDriveExportConfigured();
 
+  // Also a deployment capability: PDF needs a Pandoc binary on the host, which
+  // the hosting target does not ship. Unset means the control is not offered
+  // and Word is unaffected (§17.6).
+  const pdfExportAvailable = isPdfExportConfigured();
+
   const openFlagCount = brief.flags.filter(
     (flag) => flag.status === FlagStatus.open,
   ).length;
@@ -159,6 +165,18 @@ export default async function BriefPage({
               >
                 Download Word
               </a>
+              {/* The two downloads sit together, then the destination that
+                  leaves the app. Absent, not disabled, on a host with no Pandoc
+                  binary — the same rule as the Drive control below, for the
+                  same reason. */}
+              {pdfExportAvailable ? (
+                <a
+                  href={`/api/briefs/${brief.id}/export?format=pdf`}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  Download PDF
+                </a>
+              ) : null}
               {/* Absent, not disabled, on a deployment with no Drive
                   credentials: a control that cannot work is not a control, and
                   the route refuses the direct URL regardless (§10.1). */}

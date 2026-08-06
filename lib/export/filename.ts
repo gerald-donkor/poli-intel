@@ -47,18 +47,29 @@ export function sanitiseFilenameStem(title: string): string {
 /**
  * A brief version's export name, without an extension.
  *
- * SHARED BY BOTH DESTINATIONS: it is the `.docx` download's stem and the Google
- * Doc's name. One rule, so the same brief is called the same thing wherever it
- * lands, and the sanitiser above cannot be applied to one and skipped on the
- * other.
+ * SHARED BY ALL THREE DESTINATIONS: it is the `.docx` download's stem, the
+ * `.pdf` download's stem, and the Google Doc's name. One rule, so the same
+ * brief is called the same thing wherever it lands, and the sanitiser above
+ * cannot be applied to one and skipped on the others.
  */
 export function briefExportName(title: string, version: number): string {
   return `${sanitiseFilenameStem(title)}-v${version}`;
 }
 
-/** The full `.docx` filename for a brief's version. */
-export function briefExportFilename(title: string, version: number): string {
-  return `${briefExportName(title, version)}.docx`;
+/**
+ * The full download filename for a brief's version.
+ *
+ * The extension is a literal union rather than free text, and never a query
+ * parameter: this string becomes a `Content-Disposition` header, so an
+ * unconstrained extension would reopen the injection vector the stem is
+ * sanitised to close.
+ */
+export function briefExportFilename(
+  title: string,
+  version: number,
+  extension: "docx" | "pdf",
+): string {
+  return `${briefExportName(title, version)}.${extension}`;
 }
 
 /**
