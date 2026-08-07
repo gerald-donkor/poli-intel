@@ -28,6 +28,7 @@
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@react-email/render": "^2.1.0",
+    "@sentry/nextjs": "^10.69.0",
     "@shadcn/react": "^0.2.1",
     "@tiptap/core": "^3.29.2",
     "@tiptap/pm": "^3.29.2",

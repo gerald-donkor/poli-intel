@@ -142,7 +142,7 @@ Use only these skills.
 - `playwright-skill` — scraping mechanics and end-to-end tests (community; no official Microsoft skill exists)
 - `gsap-core`, `gsap-timeline`, `gsap-plugins`, `gsap-react` — the impact map's line-drawing sequence only
 - `resend`, `react-email`, `email-best-practices` — digest and notification email
-- `sentry-nextjs-sdk`, `sentry-instrument`, `sentry-debug-issue` — error tracking
+- `sentry-instrument`, `sentry-debug-issue` — error tracking. (This list previously also named `sentry-nextjs-sdk`; no such skill is installed. Corrected rather than left as a name to cite.)
 - `deploy-to-vercel`, `vercel-optimize`, `vercel-react-best-practices` — deployment and Next.js performance
 - `web-design-guidelines`, `writing-guidelines` — general craft
 
@@ -516,6 +516,8 @@ Scripts that currently exist in `package.json`:
 - `npm run playwright:install` — download the Chromium build Playwright drives. Needed once per machine, and again after a Playwright version bump; the npm package alone does not ship a browser. Only the Policy Radar's scrape sources use it, and they run as Inngest jobs — a radar run against a scrape source fails with `scrape_failed` until this has been run.
 
 > **PDF export needs two binaries on the host, and there is no script for them.** `?format=pdf` shells out to Pandoc, which is not an npm dependency: install it plus a PDF engine (`sudo pacman -S pandoc-cli python-weasyprint` on Arch), then set `PANDOC_BIN` to the executable's path and restart the dev server. Unset, PDF is simply not offered — no control on the brief page, a readable 400 on the direct URL, Word and Google Docs unaffected. Vercel does not ship Pandoc, so that unconfigured state is what production currently gets. `PANDOC_PDF_ENGINE` overrides the `weasyprint` default.
+
+> **Sentry is inert without a DSN, and that is the state production is in.** No Sentry organisation is provisioned for this project, so `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` are unset and `instrumentation.ts` / `instrumentation-client.ts` skip `init` entirely — the app boots, builds, and runs with no Sentry output and no call to ingest. Set both to start reporting; set `SENTRY_AUTH_TOKEN` as well to upload source maps, which is otherwise disabled so a missing token can never fail a build. Same shape as `PANDOC_BIN` above: unconfigured is a first-class state, not a degraded one. Redaction is not optional in either state — every event passes `scrubEvent()` in `lib/observability/scrub.ts` (section 7.6), and there is no flag that turns it off.
 
 > **Never run `prisma migrate dev`.** Prisma has no HNSW index type, so the pgvector similarity indexes on `evidence_chunk.embedding` and `policy_signal.embedding` live only in migration SQL and are invisible to `schema.prisma`. Every diff consequently proposes `DROP INDEX` on both, and `migrate dev` writes those drops into the migration it generates — silently leaving both vector columns unindexed, which makes every retrieval a sequential scan (section 15.1). `npm run db:migrate:new` produces the same diff with those drops filtered out; it protects any index named `*_embedding_cosine_idx`, so name new pgvector indexes to that pattern. A migration that adds a vector column must have its HNSW cosine index written in by hand, as `prisma/migrations/20260730100000_init/migration.sql` does.
 

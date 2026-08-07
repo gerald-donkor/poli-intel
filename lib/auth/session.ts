@@ -6,6 +6,7 @@ import type { Session } from "next-auth";
 
 import { auth } from "@/auth";
 import { findStaffUserById } from "@/lib/db";
+import { setStaffScope } from "@/lib/observability/capture";
 import type { StaffUser } from "@/lib/generated/prisma/client";
 import type { StaffRole } from "@/lib/generated/prisma/enums";
 
@@ -38,7 +39,16 @@ export const getCurrentStaffUser = cache(async (): Promise<StaffUser | null> => 
 
   if (!staffUserId) return null;
 
-  return findStaffUserById(staffUserId);
+  const staffUser = await findStaffUserById(staffUserId);
+
+  // The one place a resolved staff identity exists on every request path, so it
+  // is where the error reporter learns who was on the screen. Id and role only,
+  // never email or name (§18) — and the direction of the import matters: auth
+  // depends on observability, never the reverse, so the error reporter stays a
+  // leaf with no database in it.
+  if (staffUser) setStaffScope(staffUser.id, staffUser.role);
+
+  return staffUser;
 });
 
 /**
