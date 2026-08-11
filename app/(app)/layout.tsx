@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppNav } from "@/components/app-nav";
 import { toStaffUserDto } from "@/lib/auth/dto";
 import { requireStaffUser } from "@/lib/auth/session";
+import { loadCommandIndex } from "@/lib/command";
 
 // Desktop shell for the Director and Officer surfaces. A nested layout rather
 // than a second root layout: sibling root layouts force a full page reload when
@@ -15,6 +16,7 @@ import { requireStaffUser } from "@/lib/auth/session";
 // this line as "everything under (app) is protected".
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const staffUser = await requireStaffUser();
+  const commandIndex = await loadCommandIndex(staffUser);
 
   return (
     <>
@@ -24,7 +26,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <AppNav user={toStaffUserDto(staffUser)} />
+      <AppNav user={toStaffUserDto(staffUser)} commandIndex={commandIndex} />
       <main id="main" className="flex min-h-0 flex-1 flex-col">
         {children}
       </main>

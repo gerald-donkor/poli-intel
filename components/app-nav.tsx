@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Kbd } from "@/components/ui/kbd";
+import { CommandPalette } from "@/components/command-palette";
 import { UserMenu } from "@/components/user-menu";
+import type { CommandIndex } from "@/lib/command/types";
 import type { StaffUserDto } from "@/lib/auth/dto";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,13 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppNav({ user }: { user: StaffUserDto }) {
+export function AppNav({
+  user,
+  commandIndex,
+}: {
+  user: StaffUserDto;
+  commandIndex: CommandIndex;
+}) {
   const pathname = usePathname();
 
   return (
@@ -84,19 +91,7 @@ export function AppNav({ user }: { user: StaffUserDto }) {
         </ul>
 
         <div className="flex shrink-0 items-center gap-3">
-          {/* Honest placeholder: the command palette is a later prompt, so this
-              renders at its final dimensions as a disabled button rather than a
-              text input that would silently swallow typing. */}
-          <button
-            type="button"
-            disabled
-            className="bg-paper border-line rounded-card text-ink-3 laptop:flex hidden h-8 w-[240px] items-center justify-between gap-2 border px-2.5 text-left text-[13px]"
-          >
-            <span className="truncate whitespace-nowrap">
-              Search signals &amp; evidence
-            </span>
-            <Kbd className="bg-stone text-ink-3 shrink-0 font-mono">⌘K</Kbd>
-          </button>
+          <CommandPalette index={commandIndex} />
           <UserMenu user={user} />
         </div>
       </nav>
