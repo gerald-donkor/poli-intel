@@ -35,12 +35,17 @@ Open <http://localhost:3000>.
 Run the standard local checks before committing implementation work:
 
 ```bash
+npm run playwright:install
+npm run test
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-There is no test script yet.
+`npm run playwright:install` is needed once per machine, and again after a
+Playwright version bump. `npm run test` runs the credential-free Playwright
+regression suite for governance, authorisation, public routing, and fail-closed
+callback behavior.
 
 ## Operations
 

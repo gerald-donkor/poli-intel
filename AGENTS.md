@@ -505,6 +505,7 @@ Scripts that currently exist in `package.json`:
 - `npm run dev` — start the Next.js dev server (Turbopack); watch its terminal for job and pipeline logs
 - `npm run build` — Next.js production build
 - `npm run start` — run the production build locally after `npm run build`
+- `npm run test` — credential-free Playwright regression suite. It starts or reuses a local Next.js server with fake local test env values and covers the governance gate, role-authorisation predicates, unauthenticated protected-route routing, the Google Workspace-only sign-in surface, and selected fail-closed callback routes. It must not require real Google, Gemini, Supabase, Resend, Inngest, Uploadthing, WhatsApp/USSD, Sentry, PostHog, Pandoc, Vercel, or Google Drive credentials.
 - `npm run lint` — ESLint
 - `npm run scale:review` — local AI stack readiness estimate. Reads source constants and env var presence only; no network calls, no database connection, no Gemini call, and no secret values. This complements Google AI Studio, Supabase, and Vercel dashboards; it does not replace account-specific checks.
 - `npm run typecheck` — `tsc --noEmit`
@@ -514,7 +515,7 @@ Scripts that currently exist in `package.json`:
 - `npm run db:migrate:new -- <snake_case_name>` — author a migration from the live-database diff, for review. Writes a file; applies nothing.
 - `npm run db:migrate` — `prisma migrate deploy && prisma generate`; applies pending migrations. Same command in dev, CI, and production. Needs `DIRECT_URL`.
 - `npm run db:studio` — `prisma studio`
-- `npm run playwright:install` — download the Chromium build Playwright drives. Needed once per machine, and again after a Playwright version bump; the npm package alone does not ship a browser. Only the Policy Radar's scrape sources use it, and they run as Inngest jobs — a radar run against a scrape source fails with `scrape_failed` until this has been run.
+- `npm run playwright:install` — download the Chromium build Playwright drives. Needed once per machine, and again after a Playwright version bump; the npm package alone does not ship a browser. The browser is used by both the Policy Radar's scrape sources and the Playwright regression suite; a radar run against a scrape source fails with `scrape_failed` until this has been run.
 
 > **PDF export needs two binaries on the host, and there is no script for them.** `?format=pdf` shells out to Pandoc, which is not an npm dependency: install it plus a PDF engine (`sudo pacman -S pandoc-cli python-weasyprint` on Arch), then set `PANDOC_BIN` to the executable's path and restart the dev server. Unset, PDF is simply not offered — no control on the brief page, a readable 400 on the direct URL, Word and Google Docs unaffected. Vercel does not ship Pandoc, so that unconfigured state is what production currently gets. `PANDOC_PDF_ENGINE` overrides the `weasyprint` default.
 
@@ -524,10 +525,8 @@ Scripts that currently exist in `package.json`:
 
 > **Never run `prisma migrate dev`.** Prisma has no HNSW index type, so the pgvector similarity indexes on `evidence_chunk.embedding` and `policy_signal.embedding` live only in migration SQL and are invisible to `schema.prisma`. Every diff consequently proposes `DROP INDEX` on both, and `migrate dev` writes those drops into the migration it generates — silently leaving both vector columns unindexed, which makes every retrieval a sequential scan (section 15.1). `npm run db:migrate:new` produces the same diff with those drops filtered out; it protects any index named `*_embedding_cosine_idx`, so name new pgvector indexes to that pattern. A migration that adds a vector column must have its HNSW cosine index written in by hand, as `prisma/migrations/20260730100000_init/migration.sql` does.
 
-"Run available checks" (sections 2 and 18) currently means running `npm run lint` and `npm run typecheck`, plus `npm run build` when the change could affect the build, and reporting the exact output.
+"Run available checks" (sections 2 and 18) currently means running `npm run test`, `npm run lint`, and `npm run typecheck`, plus `npm run build` when the change could affect the build, and reporting the exact output.
 
 > **Known lint noise.** `npm run lint` currently reports 4 pre-existing errors from code this project does not own: `react-hooks/set-state-in-effect` in the vendored `components/ui/carousel.tsx` and `hooks/use-mobile.ts`, and two errors in `design_handoff_evibrief/support.js`, which is prototype runtime and not application code (section 2). Do not reformat vendored component files or the handoff to satisfy a style rule. Read the output for problems in *your* files.
-
-> **Gaps to flag, not to invent.** There is still no test script in `package.json`. When a prompt first introduces one, add the script in that same change and update this section with it. Never reference a script name before it exists. Playwright is now installed, but as a **scraping** dependency for the Policy Radar only — there is no end-to-end test runner, no `playwright.config.ts`, and no `tests/` directory, so `npx playwright test` is not a command this project has.
 
 Report the exact command output; never claim a check passed without running it.

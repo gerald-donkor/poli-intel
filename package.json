@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "NODE_OPTIONS=--conditions=react-server playwright test",
     "lint": "eslint",
     "scale:review": "node scripts/ai-stack-scale-review.mjs",
     "inngest:dev": "inngest-cli dev",
@@ -70,6 +71,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@react-email/ui": "^6.9.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
