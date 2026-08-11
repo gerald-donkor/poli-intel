@@ -506,6 +506,7 @@ Scripts that currently exist in `package.json`:
 - `npm run build` — Next.js production build
 - `npm run start` — run the production build locally after `npm run build`
 - `npm run lint` — ESLint
+- `npm run scale:review` — local AI stack readiness estimate. Reads source constants and env var presence only; no network calls, no database connection, no Gemini call, and no secret values. This complements Google AI Studio, Supabase, and Vercel dashboards; it does not replace account-specific checks.
 - `npm run typecheck` — `tsc --noEmit`
 - `npm run inngest:dev` — the Inngest dev server (`npx inngest-cli@latest dev`), alongside `npm run dev`. It auto-discovers the serve endpoint at `/api/inngest` and gives you the run UI at <http://localhost:8288> for triggering jobs, replaying events, and reading step traces. Local runs need no keys: the client sets `isDev` from `NODE_ENV`, so `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` are production-only.
 - `npm run email` — the React Email preview server for `emails/`, at <http://localhost:3100> (port 3100 so it can run alongside `npm run dev`). Renders each template against its `PreviewProps` with no `RESEND_API_KEY` and no delivery, which is how the morning digest is checked at 320px and desktop without sending anything.
