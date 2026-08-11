@@ -10,6 +10,8 @@ import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
 import { classifyEvidenceItem } from "@/lib/db/evidence";
 import { sendEvidenceClassificationChanged } from "@/lib/jobs/client";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { classifyEvidenceSchema, type ClassifyEvidenceInput } from "./schema";
 
@@ -87,6 +89,15 @@ export async function classifyEvidenceAction(
   // that something changed, and it re-reads the classification from the
   // database rather than taking anything from here.
   await sendEvidenceClassificationChanged(parsed.data.evidenceItemId);
+  await captureUsage(
+    USAGE_EVENTS.evidenceClassificationChanged,
+    {
+      evidenceItemId: parsed.data.evidenceItemId,
+      previousClassification: result.previousClassification,
+      newClassification: parsed.data.classification,
+    },
+    staffUser,
+  );
 
   revalidatePath("/evidence");
   revalidatePath("/evidence/queue");

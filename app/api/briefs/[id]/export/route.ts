@@ -20,6 +20,8 @@ import {
   DRIVE_GRANTED_PARAM,
   driveConsentStartPath,
 } from "@/lib/google/drive-consent";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 /**
  * The brief download.
@@ -129,6 +131,11 @@ export async function GET(
   if (!brief) {
     return refuse(404, "That brief does not exist.");
   }
+  await captureUsage(
+    USAGE_EVENTS.briefExportRequested,
+    { briefId: brief.id, format },
+    staffUser,
+  );
 
   // Resolved BEFORE the document is rendered, so a person who has not
   // authorised Drive is sent to the consent screen rather than made to wait for
@@ -232,6 +239,17 @@ export async function GET(
       openFlagCount: brief.openFlags.length,
       documentId: upload.documentId,
     });
+    await captureUsage(
+      USAGE_EVENTS.briefExportCompleted,
+      {
+        briefId: brief.id,
+        format,
+        byteLength: bytes.byteLength,
+        openFlagCount: brief.openFlags.length,
+        outcome: "gdoc_created",
+      },
+      staffUser,
+    );
 
     return NextResponse.redirect(upload.webViewLink);
   }
@@ -284,6 +302,17 @@ export async function GET(
     byteLength: downloadBytes.byteLength,
     openFlagCount: brief.openFlags.length,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefExportCompleted,
+    {
+      briefId: brief.id,
+      format,
+      byteLength: downloadBytes.byteLength,
+      openFlagCount: brief.openFlags.length,
+      outcome: "downloaded",
+    },
+    staffUser,
+  );
 
   return new Response(downloadBytes, {
     headers: {

@@ -7,6 +7,8 @@ import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
 import { reclassifySignalUrgency } from "@/lib/db";
 import type { Urgency } from "@/lib/generated/prisma/enums";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { reclassifySignalSchema, type ReclassifySignalInput } from "./schema";
 
@@ -84,6 +86,15 @@ export async function reclassifySignalUrgencyAction(
 
   revalidatePath("/signals");
   revalidatePath(`/signals/${parsed.data.signalId}`);
+  await captureUsage(
+    USAGE_EVENTS.signalStatusChanged,
+    {
+      signalId: parsed.data.signalId,
+      urgency: result.newUrgency,
+      changed: true,
+    },
+    staffUser,
+  );
 
   return { ok: true, urgency: result.newUrgency, changed: true };
 }

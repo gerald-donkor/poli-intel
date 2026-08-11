@@ -32,7 +32,13 @@ import {
   GenerationFailureReason,
   GenerationStage,
 } from "@/lib/generated/prisma/enums";
-import type { BriefAudience, BriefType } from "@/lib/generated/prisma/enums";
+import type {
+  BriefAudience,
+  BriefType,
+  StaffRole,
+} from "@/lib/generated/prisma/enums";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { generateBriefSchema, type GenerateBriefInput } from "./schema";
 
@@ -178,6 +184,17 @@ export async function startBriefGeneration(
     audience: parsed.data.audience,
     evidenceItemCount: gated.context.length,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefGenerationRequested,
+    {
+      generationId,
+      signalId,
+      briefType: parsed.data.briefType,
+      audience: parsed.data.audience,
+      evidenceItemCount: gated.context.length,
+    },
+    staffUser,
+  );
 
   return { ok: true, generationId };
 }
@@ -193,7 +210,7 @@ export async function draftBriefAction(
 
   if (!resolved.ok) return { ok: false, refusal: resolved.refusal };
 
-  const { attempt, context } = resolved;
+  const { attempt, context, staffUser } = resolved;
 
   const started = Date.now();
 
@@ -209,7 +226,7 @@ export async function draftBriefAction(
   if (!generated.ok) {
     return {
       ok: false,
-      refusal: await recordFailure(generationId, generated.failure),
+      refusal: await recordFailure(generationId, generated.failure, staffUser),
     };
   }
 
@@ -228,6 +245,19 @@ export async function draftBriefAction(
     statedGapCount: generated.draft.statedGaps.length,
     elapsedMs: Date.now() - started,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefGenerationCompleted,
+    {
+      generationId,
+      stage: "drafted",
+      briefType: attempt.briefType,
+      audience: attempt.audience,
+      findingCount: generated.draft.findings.length,
+      statedGapCount: generated.draft.statedGaps.length,
+      elapsedMs: Date.now() - started,
+    },
+    staffUser,
+  );
 
   return { ok: true };
 }
@@ -243,7 +273,7 @@ export async function verifyBriefAction(
 
   if (!resolved.ok) return { ok: false, refusal: resolved.refusal };
 
-  const { attempt, context } = resolved;
+  const { attempt, context, staffUser } = resolved;
 
   // Stage 2 already committed, so a retried stage 3 resumes rather than
   // regenerating — that is the whole reason the draft lives on the attempt row.
@@ -276,7 +306,7 @@ export async function verifyBriefAction(
     // best-effort save, not a brief with the guard skipped.
     return {
       ok: false,
-      refusal: await recordFailure(generationId, checked.failure),
+      refusal: await recordFailure(generationId, checked.failure, staffUser),
     };
   }
 
@@ -331,6 +361,20 @@ export async function verifyBriefAction(
     flagCount: checked.unsupported.length,
     elapsedMs: Date.now() - started,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefGenerationCompleted,
+    {
+      generationId,
+      briefId,
+      signalId: attempt.signalId,
+      stage: "verified",
+      scoredEvidenceCount: relevanceScores.size,
+      claimsChecked: checked.claimsChecked,
+      flagCount: checked.unsupported.length,
+      elapsedMs: Date.now() - started,
+    },
+    staffUser,
+  );
 
   revalidatePath("/briefs");
 
@@ -361,6 +405,10 @@ type ResolvedAttempt = {
     promptVersion: string | null;
   };
   context: GatedEvidenceContext;
+  staffUser: {
+    id: string;
+    role: StaffRole;
+  };
 };
 
 /**
@@ -458,7 +506,12 @@ async function resolveAttempt(
     GENERATION_EVIDENCE_CONTEXT_SIZE,
   ) as unknown as GatedEvidenceContext;
 
-  return { ok: true, attempt: { ...attempt, createdById: staffUser.id }, context };
+  return {
+    ok: true,
+    attempt: { ...attempt, createdById: staffUser.id },
+    context,
+    staffUser,
+  };
 }
 
 /**
@@ -472,12 +525,22 @@ async function resolveAttempt(
 async function recordFailure(
   generationId: string,
   failure: StructuredCallFailure,
+  staffUser?: { id: string; role: StaffRole },
 ): Promise<ActionRefusal> {
   if (failure.reason === "rate_limited") {
     console.info("brief.generation.rate_limited", {
       generationId,
       retryAfterMs: failure.retryAfterMs,
     });
+    await captureUsage(
+      USAGE_EVENTS.briefGenerationFailed,
+      {
+        generationId,
+        reason: "rate_limited",
+        retryAfterMs: failure.retryAfterMs,
+      },
+      staffUser,
+    );
 
     return { kind: "rate-limited", retryAfterMs: failure.retryAfterMs };
   }
@@ -496,6 +559,15 @@ async function recordFailure(
     reason,
     status: failure.reason === "request_failed" ? failure.status : null,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefGenerationFailed,
+    {
+      generationId,
+      reason,
+      status: failure.reason === "request_failed" ? failure.status : null,
+    },
+    staffUser,
+  );
 
   return {
     kind: "generation-failed",

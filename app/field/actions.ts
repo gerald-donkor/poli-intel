@@ -7,6 +7,8 @@ import { createFieldSubmission } from "@/lib/db/evidence";
 import { recordIngestionSuccess } from "@/lib/db/ingestion-log";
 import { EvidenceSourceType } from "@/lib/generated/prisma/enums";
 import { sendEvidenceFieldSubmitted } from "@/lib/jobs/client";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { fieldObservationSchema, type FieldObservationInput } from "./schema";
 
@@ -99,6 +101,17 @@ export async function submitFieldObservationAction(
   // the event is what the job's idempotency key exists to absorb — but not
   // sending it at all is cheaper and just as correct.
   if (submission.deduped) {
+    await captureUsage(
+      USAGE_EVENTS.fieldSubmissionCreated,
+      {
+        evidenceItemId: submission.evidenceItemId,
+        deduped: true,
+        notified: true,
+        chunkCount: submission.chunkCount,
+      },
+      staffUser,
+    );
+
     return {
       ok: true,
       evidenceItemId: submission.evidenceItemId,
@@ -119,6 +132,17 @@ export async function submitFieldObservationAction(
   });
 
   const notified = await sendEvidenceFieldSubmitted(submission.evidenceItemId);
+  await captureUsage(
+    USAGE_EVENTS.fieldSubmissionCreated,
+    {
+      evidenceItemId: submission.evidenceItemId,
+      deduped: false,
+      notified,
+      chunkCount: submission.chunkCount,
+      extractedChars: values.observation.length,
+    },
+    staffUser,
+  );
 
   return {
     ok: true,

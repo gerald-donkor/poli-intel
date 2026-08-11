@@ -4,6 +4,8 @@ import { canRequestEvidenceRematch, unauthorised } from "@/lib/auth/authorize";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
 import { sendSignalRematchRequested } from "@/lib/jobs/client";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { requestRematchSchema, type RequestRematchInput } from "../schema";
 
@@ -73,6 +75,12 @@ export async function requestEvidenceRematchAction(
       },
     };
   }
+
+  await captureUsage(
+    USAGE_EVENTS.signalRematchRequested,
+    { signalId: parsed.data.signalId, queued },
+    staffUser,
+  );
 
   return { ok: true };
 }

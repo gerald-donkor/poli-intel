@@ -7,6 +7,7 @@ import type { Session } from "next-auth";
 import { auth } from "@/auth";
 import { findStaffUserById } from "@/lib/db";
 import { setStaffScope } from "@/lib/observability/capture";
+import { setStaffUsageIdentity } from "@/lib/observability/posthog-server";
 import type { StaffUser } from "@/lib/generated/prisma/client";
 import type { StaffRole } from "@/lib/generated/prisma/enums";
 
@@ -46,7 +47,10 @@ export const getCurrentStaffUser = cache(async (): Promise<StaffUser | null> => 
   // never email or name (§18) — and the direction of the import matters: auth
   // depends on observability, never the reverse, so the error reporter stays a
   // leaf with no database in it.
-  if (staffUser) setStaffScope(staffUser.id, staffUser.role);
+  if (staffUser) {
+    setStaffScope(staffUser.id, staffUser.role);
+    setStaffUsageIdentity({ id: staffUser.id, role: staffUser.role });
+  }
 
   return staffUser;
 });

@@ -30,6 +30,8 @@ import {
 } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
 import type { StaffUser } from "@/lib/generated/prisma/client";
+import { USAGE_EVENTS } from "@/lib/observability/events";
+import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { logShareSchema, type LogShareInput } from "../../stakeholders/schema";
 import {
@@ -200,6 +202,18 @@ export async function changeBriefStatusAction(
       reason: result.reason,
       openFlagCount: result.reason === "open-flags" ? result.openFlagCount : 0,
     });
+    if (result.reason === "open-flags") {
+      await captureUsage(
+        USAGE_EVENTS.briefApprovalRefused,
+        {
+          briefId: parsed.data.briefId,
+          transition: parsed.data.transition,
+          reason: "open_flags",
+          openFlagCount: result.openFlagCount,
+        },
+        staffUser,
+      );
+    }
 
     return { ok: false, refusal: toTransitionRefusal(result) };
   }
@@ -210,6 +224,15 @@ export async function changeBriefStatusAction(
     transition: parsed.data.transition,
     newStatus: result.status,
   });
+  await captureUsage(
+    USAGE_EVENTS.briefStatusChanged,
+    {
+      briefId: parsed.data.briefId,
+      transition: parsed.data.transition,
+      newStatus: result.status,
+    },
+    staffUser,
+  );
 
   revalidatePath(`/briefs/${parsed.data.briefId}`);
   revalidatePath("/briefs");

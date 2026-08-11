@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter, Source_Serif_4 } from "next/font/google";
+import { PostHogProvider } from "@/lib/observability/posthog-client";
+import { postHogConfig } from "@/lib/observability/posthog-config";
 import "./globals.css";
 
 // Three families, three jobs. Inter is the product's own voice, Source Serif 4
@@ -33,12 +35,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const analyticsConfig = postHogConfig();
+
   return (
     <html
       lang="en"
       className={`${inter.variable} ${sourceSerif.variable} ${plexMono.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <PostHogProvider config={analyticsConfig}>{children}</PostHogProvider>
+      </body>
     </html>
   );
 }
