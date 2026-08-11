@@ -11,6 +11,7 @@ import {
 import { matchEvidenceForSignal } from "./functions/match-evidence";
 import { sendMorningDigest } from "./functions/morning-digest";
 import { notifyFieldSubmission } from "./functions/notify-field-submission";
+import { sendRadarGapAnalysis } from "./functions/radar-gap-analysis";
 import { fetchRadarSource } from "./functions/radar-fetch";
 import { scheduleRadarSources } from "./functions/radar-schedule";
 import { rematchEvidenceForSignal } from "./functions/rematch-evidence";
@@ -33,6 +34,7 @@ export const inngestFunctions = [
   matchEvidenceForSignal,
   rematchEvidenceForSignal,
   sendMorningDigest,
+  sendRadarGapAnalysis,
   sendWhatsappDigest,
   scheduleImpactDetection,
   detectBriefInfluence,
