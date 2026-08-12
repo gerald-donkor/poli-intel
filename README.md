@@ -39,6 +39,7 @@ npm run playwright:install
 npm run test
 npm run lint
 npm run typecheck
+npm run scale:review
 npm run build
 ```
 
@@ -46,6 +47,18 @@ npm run build
 Playwright version bump. `npm run test` runs the credential-free Playwright
 regression suite for governance, authorisation, public routing, and fail-closed
 callback behavior.
+
+## CI and production readiness
+
+GitHub Actions runs the credential-free checks on pushes and pull requests for
+`main`: `npm run lint`, `npm run typecheck`, `npm run scale:review`,
+`npm run build`, and `npm run test`.
+
+CI uses fake local credentials only. It does not load `.env.local`, contact real
+providers, run migrations, seed data, or deploy the app. Production deployment
+still requires the account and governance checks in
+[docs/production-readiness.md](docs/production-readiness.md) and the quarterly
+runbook.
 
 ## Operations
 
