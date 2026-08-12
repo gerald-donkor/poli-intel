@@ -333,6 +333,9 @@ function envCategories() {
     ],
     Sentry: ["SENTRY_DSN", "SENTRY_AUTH_TOKEN", "NEXT_PUBLIC_SENTRY_DSN"],
     PostHog: ["NEXT_PUBLIC_POSTHOG_KEY", "NEXT_PUBLIC_POSTHOG_HOST"],
+    "Production deployment preflight": [
+      "EVIBRIEF_VERCEL_PRODUCTION_PLAN_ACK",
+    ],
   };
 }
 

@@ -70,4 +70,12 @@ npm run scale:review
 
 This command reads source constants and environment variable presence only. It does not call Gemini, Supabase, Vercel, PostHog, Sentry, or the database, and it never prints secret values.
 
+Run the production deployment preflight after loading production-shaped environment variables in your shell:
+
+```bash
+npm run production:preflight
+```
+
+This command checks local environment shape, optional provider capability posture, evidence-governance reminders, and local Vercel linkage files. It does not deploy, contact providers, run migrations, seed data, or print secrets.
+
 Read the quarterly runbook at [docs/ai-stack-scale-review.md](docs/ai-stack-scale-review.md).

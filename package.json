@@ -9,6 +9,7 @@
     "test": "NODE_OPTIONS=--conditions=react-server playwright test",
     "lint": "eslint",
     "scale:review": "node scripts/ai-stack-scale-review.mjs",
+    "production:preflight": "node scripts/production-preflight.mjs",
     "inngest:dev": "inngest-cli dev",
     "email": "email dev --dir emails --port 3100",
     "playwright:install": "playwright install chromium",
