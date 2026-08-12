@@ -150,6 +150,8 @@ Project-specific and vendor skills are used **together**, not one instead of the
 
 Do not invent new skills, and do not cite a skill name that is not on this list. If a task seems to need a skill that does not exist, say so and proceed using the installed package's own docs.
 
+If an approved skill from this list is required or clearly needed but is disabled in `.agents/skills.disabled/<name>` or another project-recognized disabled location, re-enable only that required skill before implementation, then read its `SKILL.md` completely before acting. This does not permit enabling arbitrary unapproved skills. If re-enabling is blocked by filesystem permissions or another hard constraint, request the needed approval; if it still cannot be re-enabled, state the blocker and continue only when the task can be completed safely from installed package docs or other approved sources.
+
 For Zod, React Hook Form, dnd-kit, cmdk, SWR, `docx`, and Pandoc, use existing project patterns, package docs, and `node_modules/next/dist/docs/`.
 
 The eight project-specific skills live at `.claude/skills/<name>/SKILL.md` as real directories in this repository, alongside the symlinked vendor skills. They describe conventions the numbered prompts implement, so a skill may document a pattern before the code it governs exists — where it does, it says so. Never silently substitute a vendor skill for a project convention.
