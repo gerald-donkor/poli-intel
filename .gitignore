@@ -49,3 +49,8 @@ next-env.d.ts
 
 # claude code local settings
 .claude/settings.local.json
+
+# scratch scripts
+/fix.cjs
+/fix.js
+/test.ts
