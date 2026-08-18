@@ -203,6 +203,34 @@
     @apply text-primary no-underline hover:text-primary-hover hover:underline;
   }
 
+  /* Set cursor-pointer on standard HTML interactive tags, custom slots, and click targets */
+  a,
+  button,
+  summary,
+  select,
+  option,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="checkbox"],
+  input[type="radio"],
+  [data-slot="checkbox"],
+  [data-slot="switch"],
+  [data-slot="radio-group-item"] {
+    cursor: pointer;
+  }
+
+  /* Disabled states must carry cursor-not-allowed or be non-reactive */
+  a[disabled],
+  button[disabled],
+  select[disabled],
+  input[disabled],
+  [disabled],
+  [data-disabled],
+  .disabled {
+    cursor: not-allowed !important;
+  }
+
   /* Global focus state. Declared once here so no component restates it, and
      never `outline: none` alone — WCAG 2.1 AA is a hard requirement (§11.13). */
   :focus-visible {

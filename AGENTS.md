@@ -382,6 +382,7 @@ Roles: **Programme Director**, **Policy & Advocacy Officer**, **Research Officer
 13. WCAG 2.1 AA is a hard requirement — keyboard navigation across the kanban board and evidence table, ARIA labels on urgency and relevance badges, 4.5:1 minimum text contrast. Verify any new colour pairing before finalising.
 14. Desktop-first for Director and Officer routes; mobile-first for Field Officer routes.
 15. **Every page is fully responsive at every screen size** — usable and legible from 320px to 1600px+, no horizontal page scroll at any width. The breakpoint mechanics (there is no `mobile:` variant; `tablet`/`laptop`/`desktop` are `min-width`, so unprefixed classes *are* the phone layout) and the widths to check are in the **`design-system`** skill, which is already loaded for all UI work.
+16. **All interactive UI elements** — including links, buttons, select dropdowns, custom switches, checkboxes, accordion triggers, and custom card actions — must explicitly carry or inherit `cursor-pointer` on hover. Disabled interactive elements must carry or inherit `cursor-not-allowed`.
 
 ---
 
