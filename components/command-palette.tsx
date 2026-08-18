@@ -175,6 +175,20 @@ export function CommandPalette({
 
   return (
     <>
+      {/* Two responsive forms of one control. Below `laptop` there is no ⌘K to
+          fall back on — a touch device has no meta key — so the trigger becomes
+          an icon-only button rather than disappearing, and drops the `Kbd`,
+          which would be a lie on that device. Only one is ever visible, so the
+          dialog never has two focusable openers in the tab order. */}
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="Search signals and evidence"
+        className="bg-paper border-line rounded-card text-ink-3 hover:text-ink flex size-8 items-center justify-center border transition-colors duration-150 laptop:hidden"
+      >
+        <SearchIcon aria-hidden="true" className="size-4" />
+      </button>
+
       <button
         type="button"
         onClick={() => setOpen(true)}
