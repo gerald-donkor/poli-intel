@@ -1,0 +1,1 @@
+require('dotenv').config({ path: '.env.local' }); const { PrismaClient } = require('./lib/generated/prisma/client'); const prisma = new PrismaClient(); prisma.staffUser.update({ where: { email: 'donkorgerald0@gmail.com' }, data: { role: 'programme_director' }}).then(() => console.log('Fixed')).catch(console.error);
