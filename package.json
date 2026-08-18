@@ -18,7 +18,8 @@
     "db:migrate:new": "node scripts/new-migration.mjs",
     "db:migrate": "prisma migrate deploy && prisma generate",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:seed": "prisma db seed"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -84,9 +85,13 @@
     "inngest-cli": "^1.39.0",
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   },
   "allowScripts": {
     "inngest-cli@1.39.0": true
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

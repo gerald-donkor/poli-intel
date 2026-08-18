@@ -22,6 +22,13 @@ Generate the Prisma client:
 npm run db:generate
 ```
 
+Run the database migration and seed data for demos (see [docs/demo-script.md](docs/demo-script.md) for details):
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
 Start the development server:
 
 ```bash
