@@ -28,7 +28,7 @@ async function main() {
     console.log(existing ? `Already seeded: staff ${s.email}` : `Seeding staff ${s.email}`);
     return prisma.staffUser.upsert({
       where: { email: s.email },
-      update: { name: s.name },
+      update: { name: s.name, role: s.role },
       create: { email: s.email, name: s.name, role: s.role },
     });
   }));
@@ -161,7 +161,7 @@ async function main() {
     })));
 
     if (!result.ok) {
-      throw new Error(`Embedding failed: ${result.failure}`);
+      throw new Error(`Embedding failed: ${result.failure.reason}`);
     }
 
     if (result.refused.length > 0) {

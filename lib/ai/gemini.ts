@@ -34,7 +34,7 @@ export function getGeminiClient(): GoogleGenAI | null {
   // ordinary, reportable outcome — not an obscure SDK error three frames down.
   if (!apiKey) return null;
 
-  client ??= new GoogleGenAI({ apiKey });
+  client ??= new GoogleGenAI({ apiKey, vertexai: false });
 
   return client;
 }
