@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useId, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -77,6 +77,14 @@ export function SignalBoard({
 }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
+
+  // Given no `id`, dnd-kit derives the drag handles' `aria-describedby` from a
+  // module-level counter (`useUniqueId` in @dnd-kit/utilities). That counter
+  // survives across renders in the long-lived server process but restarts at 0
+  // in a freshly loaded browser module, so the two never agree and every
+  // hydration reports a mismatch on every handle. `useId` is stable across the
+  // boundary and unique per tree position.
+  const dndId = useId();
 
   const [optimisticSignals, applyMove] = useOptimistic(
     signals,
@@ -164,6 +172,7 @@ export function SignalBoard({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCorners}
       accessibility={{ announcements: ANNOUNCEMENTS }}

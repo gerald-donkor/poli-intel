@@ -60,10 +60,14 @@ export function UserMenu({ user }: { user: StaffUserDto }) {
         <DropdownMenuSeparator />
 
         {/* Sign out is a POST through a Server Action, never a link and never a
-            GET URL. */}
+            GET URL. Base UI's Item renders a <div> and defaults `nativeButton`
+            to false; the render element here *is* a real <button>, so it has to
+            say so, or Base UI layers its non-native `role` / `aria-disabled`
+            shims on top of native button behaviour. */}
         <form action={signOutAction}>
           <DropdownMenuGroup>
             <DropdownMenuItem
+              nativeButton
               render={<button type="submit" />}
               className="w-full justify-start"
             >
