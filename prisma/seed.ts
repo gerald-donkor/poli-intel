@@ -24,6 +24,8 @@ async function main() {
     if (s.email.endsWith('@tropenbosghana.example')) {
       console.warn(`Warning: Using placeholder email ${s.email}. Set SEED_* variables for real accounts.`);
     }
+    const existing = await prisma.staffUser.findUnique({ where: { email: s.email } });
+    console.log(existing ? `Already seeded: staff ${s.email}` : `Seeding staff ${s.email}`);
     return prisma.staffUser.upsert({
       where: { email: s.email },
       update: { name: s.name },
@@ -40,7 +42,9 @@ async function main() {
   // 1. EUDR
   const eudrCitation = 'EUDR-2023-1115';
   let eudrItem = await prisma.evidenceItem.findUnique({ where: { citationKey: eudrCitation } });
-  if (!eudrItem) {
+  if (eudrItem) {
+    console.log(`Already seeded: evidence item ${eudrCitation}`);
+  } else {
     const shellResult = await createEvidenceShell({
       title: 'EU Deforestation Regulation (EUDR) Official Text',
       sourceType: EvidenceSourceType.literature,
@@ -74,7 +78,9 @@ async function main() {
   // 2. Ghana Forestry Commission Notice
   const fcCitation = 'GFC-2024-01';
   let fcItem = await prisma.evidenceItem.findUnique({ where: { citationKey: fcCitation } });
-  if (!fcItem) {
+  if (fcItem) {
+    console.log(`Already seeded: evidence item ${fcCitation}`);
+  } else {
     const shellResult = await createEvidenceShell({
       title: 'Ghana Forestry Commission Notice on Logging',
       sourceType: EvidenceSourceType.literature,
@@ -108,7 +114,9 @@ async function main() {
   // 3. Unpublished Internal
   const internalCitation = 'INTERNAL-DRAFT-2024';
   let internalItem = await prisma.evidenceItem.findUnique({ where: { citationKey: internalCitation } });
-  if (!internalItem) {
+  if (internalItem) {
+    console.log(`Already seeded: evidence item ${internalCitation}`);
+  } else {
     const shellResult = await createEvidenceShell({
       title: 'Draft Observations on CREMA Governance',
       sourceType: EvidenceSourceType.research,
@@ -133,16 +141,19 @@ async function main() {
     // Remains unpublished_internal by default
   }
 
-  // Embed eligible candidates (public_published)
+  // Embed only public_published items. Never pass unpublished_internal or
+  // community_sourced candidates to embedEvidenceCandidates — the refusal this
+  // gate would produce for them must be proved by omission (embedding IS NULL),
+  // not by triggering it (AGENTS.md §7.2, prompt 40 "Evidence classification impact").
   const allItems = [eudrItem, fcItem, internalItem].filter(Boolean) as EvidenceItem[];
-  const eligibleItems = await prisma.evidenceItem.findMany({
-    where: { id: { in: allItems.map(i => i.id) } },
+  const publishedItems = await prisma.evidenceItem.findMany({
+    where: { id: { in: allItems.map(i => i.id) }, classification: Classification.public_published },
     select: { id: true, title: true, classification: true, fullText: true },
   });
 
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     console.log('Embedding evidence...');
-    const result = await embedEvidenceCandidates(eligibleItems.map(i => ({
+    const result = await embedEvidenceCandidates(publishedItems.map(i => ({
       id: i.id,
       title: i.title,
       classification: i.classification,
@@ -151,6 +162,10 @@ async function main() {
 
     if (!result.ok) {
       throw new Error(`Embedding failed: ${result.failure}`);
+    }
+
+    if (result.refused.length > 0) {
+      console.warn(`Refused (not eligible for embedding): ${result.refused.map(r => `${r.id} (${r.reason})`).join(', ')}`);
     }
 
     if (result.embedded.length > 0) {
@@ -165,7 +180,9 @@ async function main() {
   // 4. Community Sourced (Field Submission)
   const submissionKey = 'field-sub-demo-123';
   let fieldSub = await prisma.evidenceItem.findUnique({ where: { submissionKey } });
-  if (!fieldSub) {
+  if (fieldSub) {
+    console.log(`Already seeded: field submission ${submissionKey}`);
+  } else {
     const fsResult = await createFieldSubmission({
       title: 'Illegal logging near Juabeso',
       observation: 'We observed three trucks leaving the eastern edge of Juabeso-Bia without proper manifestos. Community members state this has been ongoing for weeks.',
@@ -180,7 +197,9 @@ async function main() {
   // Signals
   const eudrSignalUrl = 'https://example.com/eudr-notice';
   let eudrSignal = await prisma.policySignal.findFirst({ where: { sourceUrl: eudrSignalUrl } });
-  if (!eudrSignal) {
+  if (eudrSignal) {
+    console.log(`Already seeded: signal ${eudrSignalUrl}`);
+  } else {
     eudrSignal = await prisma.policySignal.create({
       data: {
         title: 'EUDR Compliance Deadlines Confirmed',
@@ -200,7 +219,9 @@ async function main() {
 
   const gapSignalUrl = 'https://example.com/unrelated-policy';
   let gapSignal = await prisma.policySignal.findFirst({ where: { sourceUrl: gapSignalUrl } });
-  if (!gapSignal) {
+  if (gapSignal) {
+    console.log(`Already seeded: signal ${gapSignalUrl}`);
+  } else {
     gapSignal = await prisma.policySignal.create({
       data: {
         title: 'Proposed Changes to Urban Zoning',
@@ -219,7 +240,9 @@ async function main() {
 
   // Radar Matcher Runs
   const eudrMatchRun = await prisma.evidenceMatchRun.findFirst({ where: { signalId: eudrSignal.id } });
-  if (!eudrMatchRun) {
+  if (eudrMatchRun) {
+    console.log('Already seeded: EUDR evidence match run');
+  } else {
     await prisma.evidenceMatchRun.create({
       data: {
         signalId: eudrSignal.id,
@@ -246,7 +269,9 @@ async function main() {
   }
 
   const gapMatchRun = await prisma.evidenceMatchRun.findFirst({ where: { signalId: gapSignal.id } });
-  if (!gapMatchRun) {
+  if (gapMatchRun) {
+    console.log('Already seeded: gap evidence match run');
+  } else {
     await prisma.evidenceMatchRun.create({
       data: {
         signalId: gapSignal.id,
@@ -262,8 +287,27 @@ async function main() {
   // Brief Generation
   const briefAudience = BriefAudience.ghana_ministry_official;
   let brief = await prisma.brief.findFirst({ where: { signalId: eudrSignal.id } });
-  if (!brief) {
-    // Generate the brief records
+  if (brief) {
+    console.log('Already seeded: EUDR brief');
+  } else {
+    // Matches the real flow's order: a generation attempt opens with no brief
+    // yet, and only the stage-3 transaction creates Brief/BriefVersion/
+    // BriefEvidence and writes briefId back onto the generation
+    // (prompt 40 decision #1; schema.prisma BriefGeneration.briefId comment).
+    const briefGeneration = await prisma.briefGeneration.create({
+      data: {
+        createdById: director.id,
+        briefType: BriefType.policy_brief,
+        audience: briefAudience,
+        signalId: eudrSignal.id,
+        policyText: 'The EU has published definitive deadlines for operators to demonstrate full traceability for cocoa and timber.',
+        evidenceItemIds: [eudrItem!.id],
+        stage: GenerationStage.complete,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      }
+    });
+
     brief = await prisma.brief.create({
       data: {
         signalId: eudrSignal.id,
@@ -291,24 +335,17 @@ async function main() {
       }
     });
 
-    await prisma.briefGeneration.create({
-      data: {
-        createdById: director.id,
-        briefType: BriefType.policy_brief,
-        audience: briefAudience,
-        signalId: eudrSignal.id,
-        policyText: 'The EU has published definitive deadlines for operators to demonstrate full traceability for cocoa and timber.',
-        evidenceItemIds: [eudrItem!.id],
-        stage: GenerationStage.complete,
-        briefId: brief.id,
-        startedAt: new Date(),
-        updatedAt: new Date(),
-      }
+    await prisma.briefGeneration.update({
+      where: { id: briefGeneration.id },
+      data: { briefId: brief.id },
     });
 
     // Hallucination Flag (Open)
     const claim = 'Importantly, a recent report shows 90% of local farmers are unaware of these rules.';
     const anchorFrom = bodyText.indexOf(claim);
+    if (anchorFrom === -1) {
+      throw new Error(`Seed claim text not found in briefVersion.bodyText — anchor cannot be computed: "${claim}"`);
+    }
     const anchorTo = anchorFrom + claim.length;
 
     await prisma.hallucinationFlag.create({
@@ -326,7 +363,9 @@ async function main() {
 
   // Stakeholder CRM
   let stakeholder = await prisma.stakeholder.findFirst({ where: { name: 'Dr. Kwame Mensah', organisation: 'Ministry of Lands and Natural Resources' } });
-  if (!stakeholder) {
+  if (stakeholder) {
+    console.log('Already seeded: stakeholder Dr. Kwame Mensah');
+  } else {
     stakeholder = await prisma.stakeholder.create({
       data: {
         name: 'Dr. Kwame Mensah',
@@ -349,7 +388,9 @@ async function main() {
   // Impact Event
   const sourceKey = 'national-strategy-2025';
   const influenceEvent = await prisma.influenceEvent.findFirst({ where: { sourceKey } });
-  if (!influenceEvent) {
+  if (influenceEvent) {
+    console.log(`Already seeded: influence event ${sourceKey}`);
+  } else {
     await prisma.influenceEvent.create({
       data: {
         briefId: brief.id,
@@ -368,10 +409,31 @@ async function main() {
   }
 
   console.log('Seed completed successfully.');
-  const evidenceCount = await prisma.evidenceItem.count();
-  const signalCount = await prisma.policySignal.count();
-  const briefCount = await prisma.brief.count();
-  console.log(`Summary: ${evidenceCount} Evidence Items, ${signalCount} Signals, ${briefCount} Briefs.`);
+  const [
+    staffCount,
+    evidenceCount,
+    signalCount,
+    briefCount,
+    stakeholderCount,
+    influenceEventCount,
+    hallucinationFlagCount,
+    fieldSubmissionCount,
+  ] = await Promise.all([
+    prisma.staffUser.count(),
+    prisma.evidenceItem.count(),
+    prisma.policySignal.count(),
+    prisma.brief.count(),
+    prisma.stakeholder.count(),
+    prisma.influenceEvent.count(),
+    prisma.hallucinationFlag.count(),
+    prisma.evidenceItem.count({ where: { submissionKey: { not: null } } }),
+  ]);
+  console.log(
+    `Summary: ${staffCount} Staff Users, ${evidenceCount} Evidence Items ` +
+    `(${fieldSubmissionCount} Field Submissions), ${signalCount} Signals, ` +
+    `${briefCount} Briefs, ${hallucinationFlagCount} Hallucination Flags, ` +
+    `${stakeholderCount} Stakeholders, ${influenceEventCount} Influence Events.`
+  );
 }
 
 main()

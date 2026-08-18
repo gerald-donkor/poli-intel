@@ -60,8 +60,9 @@ This script provides a click-by-click walkthrough for demonstrating EviBrief to 
   - Click **Approve** (as Programme Director).
   - **Observe the server-side refusal:** The system blocks approval while an unsupported claim is open.
   - **Resolve the flag:** Click the flag, provide a resolution reason (e.g., "Verified against source paragraph 4"), and resolve it.
-  - Click **Approve** again. It succeeds, and the status changes to "Published".
+  - Click **Approve** again. It succeeds, and the status changes to "Reviewed" — approval and publishing are separate human actions (AGENTS.md §10.2); "Mark as submitted" and "Mark as published" are further, later steps not covered in this walkthrough.
   - **State Proved:** "A draft brief showing the hallucination guard's slate/pulse treatment on an unsupported claim." (and the refusal logic).
+  - **Rate-limited state:** if a live generation is attempted during the demo (see the optional Inngest segment below) and the Gemini free-tier limit is hit mid-generation, the UI shows a retry-timing message rather than a generic error or a lost draft. This state is not seeded (it depends on hitting a live rate limit) — mention it verbally, or trigger it by running several live generations back to back if a redundant demo generation is acceptable.
 
 ### 4. Brief Export and Audience Switching
 - **Show Export:**
