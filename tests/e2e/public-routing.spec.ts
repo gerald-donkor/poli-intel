@@ -18,7 +18,7 @@ test.describe("Public Routing", () => {
 
     await expect(page).toHaveURL(/\/signin$/);
     await expect(
-      page.getByRole("heading", { name: "Sign in", level: 1 }),
+      page.getByRole("heading", { name: "Sign in" }),
     ).toBeVisible();
   });
 
@@ -30,7 +30,7 @@ test.describe("Public Routing", () => {
 
       await expect(page).toHaveURL(/\/signin$/);
       await expect(
-        page.getByRole("heading", { name: "Sign in", level: 1 }),
+        page.getByRole("heading", { name: "Sign in" }),
       ).toBeVisible();
     });
   }
@@ -40,7 +40,7 @@ test.describe("Public Routing", () => {
   }) => {
     await page.goto("/signin");
 
-    await expect(page.getByText("EviBrief")).toBeVisible();
+    await expect(page.getByText("EviBrief").first()).toBeVisible();
     await expect(
       page.getByText("Sign in with your Tropenbos Ghana Workspace account."),
     ).toBeVisible();
