@@ -530,6 +530,6 @@ Scripts that currently exist in `package.json`:
 
 "Run available checks" (sections 2 and 18) currently means running `npm run test`, `npm run lint`, and `npm run typecheck`, plus `npm run build` when the change could affect the build, and reporting the exact output.
 
-> **Known lint noise.** `npm run lint` currently reports 4 pre-existing errors from code this project does not own: `react-hooks/set-state-in-effect` in the vendored `components/ui/carousel.tsx` and `hooks/use-mobile.ts`, and two errors in `design_handoff_evibrief/support.js`, which is prototype runtime and not application code (section 2). Do not reformat vendored component files or the handoff to satisfy a style rule. Read the output for problems in *your* files.
+> **Known lint noise.** `npm run lint` currently reports 2 pre-existing errors from code this project does not own: `react-hooks/set-state-in-effect` in the vendored `components/ui/carousel.tsx` and `hooks/use-mobile.ts`. Both are vendored shadcn that ships in the bundle; do not reformat them. Read the output for problems in *your* files; anything else in the output is yours.
 
 Report the exact command output; never claim a check passed without running it.
