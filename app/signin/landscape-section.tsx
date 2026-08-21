@@ -3,24 +3,35 @@ import { MapPin } from "lucide-react";
 import { ContourField } from "./contour-field";
 import { LandscapeLocator } from "./landscape-locator";
 
+// `value` is what the server renders and what a visitor without JavaScript
+// sees. `countTo` and `suffix` only tell the motion layer where to count from
+// and to — the number on screen is never produced by the tween alone.
 const LANDSCAPE_STATS = [
   {
     value: "2",
+    countTo: 2,
+    suffix: "",
     label: "Core Landscapes",
     detail: "Juabeso-Bia & Sefwi-Wiawso",
   },
   {
     value: "14+",
+    countTo: 14,
+    suffix: "+",
     label: "CREMA Partners",
     detail: "Community Forest Governance",
   },
   {
     value: "10",
+    countTo: 10,
+    suffix: "",
     label: "Network Countries",
     detail: "Tropenbos International",
   },
   {
     value: "100%",
+    countTo: 100,
+    suffix: "%",
     label: "Data Consented",
     detail: "Protected Field Evidence",
   },
@@ -43,7 +54,10 @@ const LANDSCAPES = [
 
 export function LandscapeSection() {
   return (
-    <section className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16">
+    <section
+      data-anim="landscape"
+      className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16"
+    >
       <div className="relative isolate overflow-hidden rounded-card border border-line bg-card p-6 shadow-raised tablet:p-10 laptop:p-12">
         {/* Topographic wash behind the card. Decorative and inert (§11.7). */}
         <ContourField className="pointer-events-none absolute -bottom-40 -left-24 -z-10 h-[520px] w-[720px] text-sage/40 [mask-image:radial-gradient(60%_60%_at_35%_60%,black,transparent_100%)]" />
@@ -64,7 +78,9 @@ export function LandscapeSection() {
 
               {/* Verbatim institutional language — Source Serif 4, per §11.6.
                   The serif is reserved for quoted material only. */}
-              <blockquote className="font-serif text-[18px] leading-relaxed text-ink italic tablet:text-[22px] tablet:leading-snug">
+              <blockquote
+                data-anim="landscape-quote"
+                className="split-heading font-serif text-[18px] leading-relaxed text-ink italic tablet:text-[22px] tablet:leading-snug">
                 &ldquo;The future of tropical forests is locally owned. Better
                 policies inform better practices when national regulations
                 reflect the lived reality of smallholder farmers and community
@@ -81,10 +97,18 @@ export function LandscapeSection() {
             </div>
 
             {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 gap-3 border-t border-line pt-6 tablet:grid-cols-4">
+            <div
+              data-anim="landscape-stats"
+              className="grid grid-cols-2 gap-3 border-t border-line pt-6 tablet:grid-cols-4"
+            >
               {LANDSCAPE_STATS.map((stat) => (
                 <div key={stat.label}>
-                  <div className="font-mono text-h2 font-semibold text-primary">
+                  <div
+                    data-anim="counter"
+                    data-count-to={stat.countTo}
+                    data-count-suffix={stat.suffix}
+                    className="font-mono text-h2 font-semibold text-primary"
+                  >
                     {stat.value}
                   </div>
                   <div className="text-meta font-medium text-ink">
@@ -98,7 +122,10 @@ export function LandscapeSection() {
 
           {/* Right Column: The Two Landscapes */}
           <div className="flex flex-col gap-4 laptop:col-span-5">
-            <div className="rounded-card border border-line bg-paper p-4">
+            <div
+              data-anim="locator"
+              className="rounded-card border border-line bg-paper p-4"
+            >
               <LandscapeLocator className="pointer-events-none h-auto w-full text-ink-2" />
             </div>
 

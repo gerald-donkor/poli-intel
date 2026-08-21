@@ -306,6 +306,23 @@
   }
 }
 
+/* Landing scroll narrative (app/signin/ only — AGENTS.md §6, §11.9).
+
+   `font-kerning: none` on a split heading stops the kerning jump SplitText
+   causes when it wraps each word in its own element. `will-change` is set only
+   on the four elements that actually animate on load — never speculatively,
+   which just burns compositor layers. Everything else on that surface animates
+   on scroll and gets its layer when its trigger fires. */
+.split-heading {
+  font-kerning: none;
+  will-change: transform;
+}
+
+[data-anim="signin-card"],
+[data-anim="hero-contour"] {
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

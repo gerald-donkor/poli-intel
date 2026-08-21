@@ -70,6 +70,7 @@ export function CapabilitiesGrid() {
             return (
               <div
                 key={cap.title}
+                data-anim="capability-card"
                 className="flex flex-col justify-between rounded-card border border-line bg-card p-6 shadow-raised transition-all duration-150 hover:border-accent/40"
               >
                 <div className="flex flex-col gap-4">

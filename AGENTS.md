@@ -140,7 +140,7 @@ Use only these skills.
 - `langchain-fundamentals`, `langchain-rag`, `langchain-dependencies` — RAG pipeline orchestration
 - `inngest-setup`, `inngest-durable-functions`, `inngest-steps`, `inngest-events`, `inngest-flow-control`, `inngest-cli` — Inngest job structure
 - `playwright-skill` — scraping mechanics and end-to-end tests (community; no official Microsoft skill exists)
-- `gsap-core`, `gsap-timeline`, `gsap-plugins`, `gsap-react` — the impact map's line-drawing sequence only
+- `gsap-core`, `gsap-timeline`, `gsap-plugins`, `gsap-react`, `gsap-scrolltrigger`, `gsap-performance`, `gsap-utils` — the impact map and the landing surface
 - `resend`, `react-email`, `email-best-practices` — digest and notification email
 - `sentry-instrument`, `sentry-debug-issue` — error tracking. (This list previously also named `sentry-nextjs-sdk`; no such skill is installed. Corrected rather than left as a name to cite.)
 - `deploy-to-vercel`, `vercel-optimize`, `vercel-react-best-practices` — deployment and Next.js performance
@@ -277,7 +277,7 @@ Use:
 - Tiptap — brief editor; `docx` npm library — Word export; Pandoc — PDF export
 - Zod + React Hook Form — shared validation
 - dnd-kit (kanban drag), cmdk (command palette), SWR (signal dashboard polling only)
-- Motion — UI micro-interactions; GSAP — the impact map only
+- Motion — UI micro-interactions; GSAP — the impact map and the unauthenticated landing surface (`app/signin/`), and nowhere else
 - WhatsApp Business API on the **Cloud API** shape — Meta direct or 360dialog, which exposes the same surface; Africa's Talking USSD gateway
 - Vercel (hosting) + Supabase (managed database)
 - Sentry (error tracking) + PostHog (usage analytics, self-hosted)
@@ -289,7 +289,7 @@ Do not use:
 - a client-side data-fetching library on primary read paths
 - an alternative ORM or query builder, or raw SQL outside the data layer's pgvector queries
 - a paid AI provider or a non-Gemini model without an explicit recorded decision (section 7)
-- GSAP anywhere except the impact map, or Motion for the impact map
+- GSAP outside the impact map and the unauthenticated landing surface (`app/signin/`), or Motion for the impact map
 - red / amber / green as urgency or status colour (section 11)
 - a generic shadcn default theme, or any second design system
 - local JSON or filesystem app storage
@@ -375,7 +375,7 @@ Roles: **Programme Director**, **Policy & Advocacy Officer**, **Research Officer
 6. **The serif is reserved for quoted material only** — source excerpts, citations, verbatim policy language. Generated prose is always the sans. This distinction is load-bearing; breaking it defeats the design.
 7. No leaf, tree, or forest iconography, and no stock forest photography. Abstract structural marks only — thin-stroke circles, squares, concentric contour rings echoing topographic maps.
 8. No generic admin-dashboard look; no playful or startup tone. The subject matter is serious.
-9. Motion builds trust and explains the AI's reasoning; it is never decoration. Micro-interactions 150–300ms, nothing beyond ~600ms except the impact map's line-drawing sequence, which is meant to be watched. Motion for UI, GSAP for the impact map only.
+9. Motion builds trust and explains the AI's reasoning; it is never decoration. Micro-interactions 150–300ms, nothing beyond ~600ms except the impact map's line-drawing sequence, which is meant to be watched. Motion for UI, GSAP for the impact map only. The unauthenticated landing surface (`app/signin/`) is the one exception to the duration cap: it carries a scroll narrative whose reveals run to ~1.2s and whose scrubbed sequences are tied to scroll position rather than a clock. It renders no signal, flag, evidence, or queue state, so none of the reasons the cap exists apply to it. Every authenticated route stays at 150–300ms.
 10. Respect `prefers-reduced-motion` with instant state changes. Never animate an automatic urgency reclassification — silent re-sorting must not surprise someone mid-review.
 11. If in doubt, cut the animation.
 12. Density is role-dependent: Officer and Research views may hold real density (evidence tables, citations, relevance scores); Field Officer and community-facing views strip to one message per screen.

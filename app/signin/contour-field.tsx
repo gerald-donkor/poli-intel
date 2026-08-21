@@ -30,7 +30,13 @@ const SCALES = [1, 0.87, 0.75, 0.64, 0.54, 0.45, 0.37, 0.29, 0.22, 0.15];
 const CENTRE_X = 300;
 const CENTRE_Y = 216;
 
-export function ContourField({ className }: { className?: string }) {
+export function ContourField({
+  className,
+  "data-anim": dataAnim,
+}: {
+  className?: string;
+  "data-anim"?: string;
+}) {
   return (
     <svg
       aria-hidden="true"
@@ -38,6 +44,7 @@ export function ContourField({ className }: { className?: string }) {
       viewBox="0 0 600 400"
       preserveAspectRatio="xMidYMid slice"
       className={className}
+      data-anim={dataAnim}
     >
       <g fill="none" stroke="currentColor" strokeWidth={1} strokeLinejoin="round">
         {SCALES.map((scale) => (

@@ -94,7 +94,7 @@ The full table is in the handoff. The mappings most likely to be got wrong:
 | Audience switcher | `Tabs` | Prose crossfades; citation chips stay position-anchored |
 | Evidence table | `Table` + custom relevance-bar cell | Number + bar, never colour-only |
 | Command/search | `Command` (cmdk) | Keyword and semantic results merge into one ranked list; every result shows its score |
-| Impact map | custom SVG/GSAP canvas | The only GSAP surface in the product |
+| Impact map | custom SVG/GSAP canvas | The only GSAP surface inside the product proper; `app/signin/` is the other, outside it |
 
 ## Responsive
 
@@ -114,7 +114,7 @@ Rules that hold at every size:
 **Motion builds trust and explains the AI's reasoning; it is never decoration** (`AGENTS.md` §11.9, spec §5.7). Every duration in the handoff's motion table is fixed and short.
 
 - Micro-interactions **150–300ms**. Nothing beyond ~600ms **except** the impact map's line-drawing sequence (~1.6s), which is meant to be watched.
-- **Motion (Framer Motion) for UI; GSAP for the impact map only.** Never GSAP elsewhere, never Motion for the impact map (`AGENTS.md` §6, §11.9).
+- **Motion (Framer Motion) for UI; GSAP for the impact map and the unauthenticated landing surface (`app/signin/`).** Never GSAP anywhere else, never Motion for either of those two (`AGENTS.md` §6, §11.9). The landing carve-out is narrow: that surface renders no signal, flag, evidence, or queue state, so it is also the one place exempt from the duration cap. Every authenticated route stays at 150–300ms.
 - Shared-layout animation — kanban drag and the audience-switch crossfade — needs Motion's `LayoutGroup` / `layoutId` on the citation chips so they stay anchored. Everything else is CSS keyframes exposed as `--animate-*` theme tokens.
 - **Guard-flag pulse: 900ms, once**, settling to a steady 2px underline. No blink, no loop, no colour change on pulse. The full contract is in `hallucination-guard`.
 - The generation stepper's active-stage "breath" (0.85–1.0 opacity over 2s) is **the only looping animation in the product.**

@@ -6,7 +6,10 @@ import { ShieldCheck } from "lucide-react";
  */
 export function LandingHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-card/95 backdrop-blur-xs">
+    <header
+      data-anim="header"
+      className="sticky top-0 z-40 border-b border-line bg-card/95 backdrop-blur-xs transition-shadow duration-200 ease-standard [&.is-scrolled]:shadow-raised"
+    >
       <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center justify-between px-4 tablet:px-8">
         {/* Brand identity */}
         <div className="flex items-center gap-3">

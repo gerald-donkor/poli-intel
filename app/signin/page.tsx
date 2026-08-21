@@ -9,6 +9,7 @@ import { PipelinePreview } from "./pipeline-preview";
 import { CapabilitiesGrid } from "./capabilities-grid";
 import { LandscapeSection } from "./landscape-section";
 import { LandingFooter } from "./landing-footer";
+import { LandingMotion } from "./landing-motion";
 
 export const metadata: Metadata = {
   title: "EviBrief · Policy Intelligence for Tropenbos Ghana",
@@ -49,7 +50,7 @@ export default async function SignInPage({
   const alert = alertCopy(Array.isArray(error) ? error[0] : error);
 
   return (
-    <div className="flex min-h-full flex-col bg-paper text-ink selection:bg-surface-tint selection:text-surface-tint-ink">
+    <LandingMotion className="flex min-h-full flex-col bg-paper text-ink selection:bg-surface-tint selection:text-surface-tint-ink">
       <LandingHeader />
       <main className="flex flex-1 flex-col">
         <LandingHero alert={alert} />
@@ -64,6 +65,6 @@ export default async function SignInPage({
         </div>
       </main>
       <LandingFooter />
-    </div>
+    </LandingMotion>
   );
 }

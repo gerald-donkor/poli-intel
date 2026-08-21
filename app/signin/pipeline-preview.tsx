@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   Database,
@@ -38,16 +37,21 @@ const STAGES = [
 
 type StageId = (typeof STAGES)[number]["id"];
 
+/**
+ * Keeps `"use client"` for the stage state only. The section's entrance and the
+ * lattice draw belong to `landing-motion.tsx`; the stage switch itself is the
+ * CSS `rise-in` keyframe, which the global `prefers-reduced-motion` rule in
+ * `globals.css` already disables. No JS animation library on this surface
+ * besides the one GSAP timeline.
+ */
 export function PipelinePreview() {
   const [activeStage, setActiveStage] = useState<StageId>("radar");
-  const prefersReduced = useReducedMotion();
-
-  const transition = prefersReduced
-    ? { duration: 0 }
-    : { duration: 0.22, ease: [0.2, 0.7, 0.3, 1] as const };
 
   return (
-    <section className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16">
+    <section
+      data-anim="pipeline"
+      className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16"
+    >
       <div className="flex flex-col gap-8">
         {/* Section Header */}
         <div className="grid grid-cols-1 items-center gap-8 laptop:grid-cols-12">
@@ -90,6 +94,7 @@ export function PipelinePreview() {
             return (
               <button
                 key={stage.id}
+                data-anim="pipeline-stage"
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveStage(stage.id)}
@@ -130,14 +135,9 @@ export function PipelinePreview() {
 
         {/* Stage Content Card with Animated Switch */}
         <div className="relative min-h-[380px] rounded-card border border-line bg-card p-6 shadow-raised tablet:p-8">
-          <AnimatePresence mode="wait">
+          <div key={activeStage} className="animate-rise-in">
             {activeStage === "radar" && (
-              <motion.div
-                key="radar"
-                initial={prefersReduced ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={prefersReduced ? undefined : { opacity: 0, y: -8 }}
-                transition={transition}
+              <div
                 className="flex flex-col gap-6"
               >
                 {/* Stage 1: Radar Signal */}
@@ -212,16 +212,11 @@ export function PipelinePreview() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {activeStage === "evidence" && (
-              <motion.div
-                key="evidence"
-                initial={prefersReduced ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={prefersReduced ? undefined : { opacity: 0, y: -8 }}
-                transition={transition}
+              <div
                 className="flex flex-col gap-6"
               >
                 {/* Stage 2: Evidence Matching */}
@@ -302,16 +297,11 @@ export function PipelinePreview() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {activeStage === "brief" && (
-              <motion.div
-                key="brief"
-                initial={prefersReduced ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={prefersReduced ? undefined : { opacity: 0, y: -8 }}
-                transition={transition}
+              <div
                 className="flex flex-col gap-6"
               >
                 {/* Stage 3: Brief Generation & Guard */}
@@ -398,9 +388,9 @@ export function PipelinePreview() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>

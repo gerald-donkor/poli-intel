@@ -27,14 +27,24 @@ export function LandscapeLocator({ className }: { className?: string }) {
       {/* Contour rings */}
       <g fill="none" strokeWidth={1} className="stroke-sage">
         {RING_RADII.map((r) => (
-          <circle key={r} cx={230} cy={120} r={r} />
+          <circle
+            key={r}
+            cx={230}
+            cy={120}
+            r={r}
+            data-anim="locator-ring"
+            stroke="currentColor"
+            strokeWidth={1}
+          />
         ))}
       </g>
 
       {/* Connector between the two landscapes */}
       <path
         d={`M${JUABESO.cx} ${JUABESO.cy} C ${JUABESO.cx + 26} ${JUABESO.cy + 30} ${SEFWI.cx - 26} ${SEFWI.cy - 30} ${SEFWI.cx} ${SEFWI.cy}`}
+        data-anim="locator-connector"
         fill="none"
+        stroke="currentColor"
         strokeWidth={1.25}
         className="stroke-accent"
       />

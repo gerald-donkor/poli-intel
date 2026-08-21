@@ -44,9 +44,23 @@ export function EvidenceLattice({ className }: { className?: string }) {
     >
       <g fill="none" strokeWidth={1.25}>
         {TRACED_LINKS.map((d) => (
-          <path key={d} d={d} className="stroke-accent" />
+          <path
+            key={d}
+            d={d}
+            data-anim="lattice-link"
+            stroke="currentColor"
+            strokeWidth={1.25}
+            className="stroke-accent"
+          />
         ))}
-        <path d={GAP_LINK} className="stroke-sage" strokeDasharray="4 4" />
+        <path
+          d={GAP_LINK}
+          data-anim="lattice-gap"
+          stroke="currentColor"
+          strokeWidth={1.25}
+          className="stroke-sage"
+          strokeDasharray="4 4"
+        />
       </g>
 
       <g fill="none" strokeWidth={1.25}>

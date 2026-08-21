@@ -6,7 +6,7 @@ export function LandingFooter() {
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-10 tablet:px-8 tablet:py-12">
         <div className="grid grid-cols-1 gap-8 laptop:grid-cols-12">
           {/* Tropenbos Identity */}
-          <div className="flex flex-col gap-3 laptop:col-span-6">
+          <div data-anim="footer-item" className="flex flex-col gap-3 laptop:col-span-6">
             <div className="flex items-center gap-2.5">
               <span
                 aria-hidden="true"
@@ -25,7 +25,7 @@ export function LandingFooter() {
 
           {/* Network and Governance Details */}
           <div className="grid grid-cols-1 gap-6 tablet:grid-cols-2 laptop:col-span-6">
-            <div className="flex flex-col gap-2">
+            <div data-anim="footer-item" className="flex flex-col gap-2">
               <span className="font-mono text-meta font-semibold uppercase tracking-wider text-ink">
                 Network Affiliation
               </span>
@@ -39,7 +39,7 @@ export function LandingFooter() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div data-anim="footer-item" className="flex flex-col gap-2">
               <span className="font-mono text-meta font-semibold uppercase tracking-wider text-ink">
                 Data Governance
               </span>
@@ -53,7 +53,10 @@ export function LandingFooter() {
         </div>
 
         {/* Bottom Line */}
-        <div className="flex flex-col items-center justify-between gap-4 border-t border-line/60 pt-6 text-meta text-ink-3 tablet:flex-row">
+        <div
+          data-anim="footer-item"
+          className="flex flex-col items-center justify-between gap-4 border-t border-line/60 pt-6 text-meta text-ink-3 tablet:flex-row"
+        >
           <p className="text-center tablet:text-left">
             © {new Date().getFullYear()} Tropenbos Ghana. All rights reserved.
             Institutional use only.
