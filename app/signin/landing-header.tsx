@@ -27,13 +27,16 @@ export function LandingHeader() {
 
         {/* System status pill */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 rounded-full border border-line bg-stone px-3 py-1 text-meta text-ink-2">
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-stone px-3 py-1 text-meta text-ink-2">
             <span
               aria-hidden="true"
               className="size-1.5 shrink-0 rounded-full bg-accent"
             />
-            <span className="font-mono text-[11px] tracking-normal">
-              Restricted Workspace SSO
+            <span className="truncate font-mono">
+              <span className="tablet:hidden">Workspace SSO</span>
+              <span className="hidden tablet:inline">
+                Restricted Workspace SSO
+              </span>
             </span>
           </div>
 

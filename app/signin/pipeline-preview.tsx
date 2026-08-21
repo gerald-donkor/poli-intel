@@ -10,6 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EvidenceLattice } from "./evidence-lattice";
 
 const STAGES = [
   {
@@ -49,22 +50,31 @@ export function PipelinePreview() {
     <section className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16">
       <div className="flex flex-col gap-8">
         {/* Section Header */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-meta font-semibold uppercase tracking-wider text-primary">
-              Traceability Pipeline
-            </span>
-            <span className="text-line text-meta">/</span>
-            <span className="text-meta text-ink-3">End-to-End Workflow</span>
+        <div className="grid grid-cols-1 items-center gap-8 laptop:grid-cols-12">
+          <div className="flex flex-col gap-2 laptop:col-span-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-meta font-semibold uppercase text-primary">
+                Traceability Pipeline
+              </span>
+              <span className="text-meta text-line">/</span>
+              <span className="text-meta text-ink-3">End-to-End Workflow</span>
+            </div>
+            <h2 className="text-h1 font-semibold text-ink tablet:text-display">
+              From Landscape Data to Policy Action
+            </h2>
+            <p className="max-w-[720px] text-body text-ink-2">
+              Every brief produced in EviBrief maintains unbroken provenance
+              back to classified field evidence. See how incoming policy signals
+              are matched and drafted without hallucinations.
+            </p>
           </div>
-          <h2 className="text-h1 font-semibold text-ink tablet:text-display">
-            From Landscape Data to Policy Action
-          </h2>
-          <p className="max-w-[720px] text-body text-ink-2">
-            Every brief produced in EviBrief maintains unbroken provenance back
-            to classified field evidence. See how incoming policy signals are
-            matched and drafted without hallucinations.
-          </p>
+
+          {/* Evidence → Brief → Outcome lattice. Solid accent links are
+              traceable paths; the dashed sage link is the evidence gap the
+              product states rather than papers over. */}
+          <div className="laptop:col-span-5">
+            <EvidenceLattice className="pointer-events-none mx-auto h-auto w-full max-w-[420px]" />
+          </div>
         </div>
 
         {/* Stage Selector Tabs */}
@@ -102,14 +112,14 @@ export function PipelinePreview() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[11px] font-semibold text-primary">
+                    <span className="font-mono text-meta font-semibold text-primary">
                       {stage.number}
                     </span>
-                    <span className="text-[13.5px] font-semibold truncate">
+                    <span className="truncate text-body font-semibold">
                       {stage.label}
                     </span>
                   </div>
-                  <p className="text-meta text-ink-3 truncate text-[11.5px]">
+                  <p className="truncate text-meta text-ink-3">
                     {stage.subtitle}
                   </p>
                 </div>
@@ -133,7 +143,7 @@ export function PipelinePreview() {
                 {/* Stage 1: Radar Signal */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-nearterm-border bg-nearterm-surface px-2.5 py-0.5 font-mono text-[11.5px] font-semibold text-nearterm-ink">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-nearterm-border bg-nearterm-surface px-2.5 py-0.5 font-mono text-meta font-semibold text-nearterm-ink">
                       <span className="size-1.5 rounded-full bg-nearterm-ink" />
                       Near-term (1–3 mo)
                     </span>
@@ -159,13 +169,13 @@ export function PipelinePreview() {
                     </p>
 
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-[11.5px] text-ink-2">
+                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-meta text-ink-2">
                         Western North Region
                       </span>
-                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-[11.5px] text-ink-2">
+                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-meta text-ink-2">
                         Cocoa Agroforestry
                       </span>
-                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-[11.5px] text-ink-2">
+                      <span className="rounded border border-line bg-stone px-2 py-0.5 font-mono text-meta text-ink-2">
                         Tree Tenure Reform
                       </span>
                     </div>
@@ -176,7 +186,7 @@ export function PipelinePreview() {
                       <span className="font-mono text-meta font-semibold uppercase tracking-wider text-ink-3">
                         Target Audiences
                       </span>
-                      <ul className="flex flex-col gap-1.5 text-body text-[13px] text-ink-2">
+                      <ul className="flex flex-col gap-1.5 text-body text-ink-2">
                         <li className="flex items-center gap-1.5">
                           <span className="size-1 rounded-full bg-primary" />
                           Ministry of Lands & Natural Resources
@@ -217,7 +227,7 @@ export function PipelinePreview() {
                 {/* Stage 2: Evidence Matching */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-tint-border bg-surface-tint px-2.5 py-0.5 font-mono text-[11.5px] font-semibold text-surface-tint-ink">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-tint-border bg-surface-tint px-2.5 py-0.5 font-mono text-meta font-semibold text-surface-tint-ink">
                       <ShieldCheck className="size-3.5 text-primary" />
                       Classified Evidence · AI Eligible
                     </span>
@@ -233,7 +243,7 @@ export function PipelinePreview() {
                 <div className="grid grid-cols-1 gap-6 laptop:grid-cols-12">
                   <div className="flex flex-col gap-3 laptop:col-span-8">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-stone px-2 py-0.5 font-mono text-[12px] font-semibold text-ink">
+                      <span className="rounded bg-stone px-2 py-0.5 font-mono text-meta font-semibold text-ink">
                         [TB-GH-2024-03]
                       </span>
                       <h3 className="text-h2 font-semibold text-ink">
@@ -275,7 +285,7 @@ export function PipelinePreview() {
                       <span className="font-mono text-meta font-semibold uppercase tracking-wider text-ink-3">
                         Governance Assertion
                       </span>
-                      <p className="text-meta text-ink-2 text-[12px] leading-relaxed">
+                      <p className="text-meta leading-relaxed text-ink-2">
                         Data passed all 3 classification gates: Data Ownership
                         verified, Community Consent confirmed, and Scientific Review
                         cleared.
@@ -307,7 +317,7 @@ export function PipelinePreview() {
                 {/* Stage 3: Brief Generation & Guard */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-watch-border bg-watch-surface px-2.5 py-0.5 font-mono text-[11.5px] font-medium text-watch-ink">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-watch-border bg-watch-surface px-2.5 py-0.5 font-mono text-meta font-medium text-watch-ink">
                       <span className="size-1.5 rounded-full bg-watch" />
                       Hallucination Guard: Cleared (100% Grounded)
                     </span>
@@ -346,7 +356,7 @@ export function PipelinePreview() {
                       <div className="mt-3 flex items-center justify-between border-t border-line/60 pt-3">
                         <div className="flex items-center gap-2">
                           <span className="text-meta text-ink-3">Citation:</span>
-                          <span className="inline-flex items-center rounded border border-surface-tint-border bg-surface-tint px-2 py-0.5 font-mono text-[11.5px] font-medium text-surface-tint-ink">
+                          <span className="inline-flex items-center rounded border border-surface-tint-border bg-surface-tint px-2 py-0.5 font-mono text-meta font-medium text-surface-tint-ink">
                             [TB-GH-2024-03: §4.2, p. 18]
                           </span>
                         </div>
@@ -362,7 +372,7 @@ export function PipelinePreview() {
                       <span className="font-mono text-meta font-semibold uppercase tracking-wider text-ink-3">
                         Audience Reframing
                       </span>
-                      <p className="text-meta text-ink-2 text-[12px] leading-relaxed">
+                      <p className="text-meta leading-relaxed text-ink-2">
                         Switch this brief in 1-click for:
                       </p>
                       <div className="flex flex-col gap-1 text-meta text-ink">

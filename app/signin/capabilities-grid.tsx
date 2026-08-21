@@ -77,16 +77,16 @@ export function CapabilitiesGrid() {
                     <div className="flex size-10 items-center justify-center rounded-card border border-surface-tint-border bg-surface-tint text-primary">
                       <Icon className="size-5" />
                     </div>
-                    <span className="font-mono text-[11px] font-medium text-ink-3">
+                    <span className="font-mono text-meta font-medium text-ink-3">
                       {cap.tag}
                     </span>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <h3 className="text-h2 font-semibold text-ink text-[16px]">
+                    <h3 className="text-h3 font-semibold text-ink">
                       {cap.title}
                     </h3>
-                    <p className="text-body text-ink-2 text-[13px] leading-relaxed">
+                    <p className="text-body leading-relaxed text-ink-2">
                       {cap.description}
                     </p>
                   </div>
