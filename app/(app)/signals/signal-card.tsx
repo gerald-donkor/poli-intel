@@ -14,6 +14,8 @@ import type { SignalBoardCard } from "@/lib/db";
 import {
   AUDIENCE_TARGET_LABELS,
   formatSignalDate,
+  GEOGRAPHY_LABELS,
+  IMPACT_AREA_LABELS,
   RELEVANCE_BADGE,
   RELEVANCE_LABELS,
   URGENCY_LABELS,
@@ -68,10 +70,10 @@ export function SignalCard({
   return (
     <article
       className={cn(
-        "bg-card rounded-card shadow-raised flex flex-col gap-2 border border-l-[3px] p-4",
+        "bg-card rounded-card shadow-raised group flex flex-col gap-2.5 border border-l-[3px] p-4 transition-all duration-200",
         ramp.card,
         dragging && "opacity-40",
-        lifted && "shadow-[0_8px_24px_rgb(44_44_42_/_0.14)]",
+        lifted && "shadow-[0_8px_24px_rgb(44_44_42_/_0.14)] cursor-grabbing",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -95,7 +97,7 @@ export function SignalCard({
         </span>
       </div>
 
-      <h3 className="text-[14px] leading-[1.35] font-semibold">
+      <h3 className="text-[14px] leading-snug font-semibold">
         {/* In the overlay this is a copy of a card that is mid-drag; a link there
             is a control nobody can click and a second tab stop for the same
             signal, so the lifted copy renders as plain text. */}
@@ -104,19 +106,30 @@ export function SignalCard({
         ) : (
           <Link
             href={`/signals/${signal.id}`}
-            className="text-ink hover:text-primary focus-visible:ring-accent focus-visible:ring-offset-card rounded-[3px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="text-ink group-hover:text-primary focus-visible:ring-accent focus-visible:ring-offset-card rounded-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             {signal.title}
           </Link>
         )}
       </h3>
 
-      <p className="text-ink-3 line-clamp-2 text-[12.5px] leading-[1.45]">
+      <p className="text-ink-3 line-clamp-2 text-[12.5px] leading-[1.45] font-sans">
         {signal.summaryText}
       </p>
 
-      <div className="text-ink-3 mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-        <span>{signal.sourceName}</span>
+      {/* Geography / Landscape + Impact Area Tags */}
+      <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+        <span className="bg-stone border-line text-ink-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-medium">
+          {GEOGRAPHY_LABELS[signal.geography]}
+        </span>
+        <span className="bg-stone/60 border-line/70 text-ink-3 inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px]">
+          {IMPACT_AREA_LABELS[signal.impactArea]}
+        </span>
+      </div>
+
+      {/* Source + Date + Audience Metadata */}
+      <div className="text-ink-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
+        <span className="text-ink-2 font-medium">{signal.sourceName}</span>
         <span aria-hidden="true">·</span>
         <span className="font-mono">{formatSignalDate(signal.detectedAt)}</span>
         {signal.audienceTarget ? (
@@ -127,7 +140,7 @@ export function SignalCard({
         ) : null}
       </div>
 
-      <div className="border-line/70 flex items-center justify-between gap-2 border-t pt-2">
+      <div className="border-line/70 flex items-center justify-between gap-2 border-t pt-2 mt-0.5">
         <MatchSummary signal={signal} />
         {dragHandle}
       </div>
@@ -192,8 +205,8 @@ export function SignalDragHandle({
       ref={handleRef}
       {...attributes}
       {...listeners}
-      aria-label={`Move ${title} to another urgency`}
-      className="text-ink-3 hover:text-ink hover:bg-stone focus-visible:ring-accent focus-visible:ring-offset-card -mr-1 flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-[4px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none tablet:size-8"
+      aria-label={`Move ${title} to another urgency stage`}
+      className="text-ink-3 hover:text-ink hover:bg-stone active:cursor-grabbing focus-visible:ring-accent focus-visible:ring-offset-card -mr-1 flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-[4px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none tablet:size-8 transition-colors"
     >
       <GripVertical aria-hidden="true" className="size-4" />
     </button>

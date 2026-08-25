@@ -105,30 +105,39 @@ export default async function SignalDetailPage({
         <Link href="/signals" className={buttonVariants({ variant: "outline" })}>
           Back to the board
         </Link>
-        {mayGenerate ? (
-          <span className="flex flex-col items-start gap-1 tablet:items-end">
-            <Link
-              href={`/briefs/new?signal=${signal.id}`}
-              className={buttonVariants({ variant: "default" })}
-            >
-              Draft a brief from this signal
-            </Link>
-            <span className="text-ink-3 max-w-[38ch] text-[12.5px] leading-snug tablet:text-right">
-              {describeSignalPrefill({
-                outcome: signal.matchRuns[0]?.outcome ?? null,
-                matchedCount: preselectableCount,
-              })}
-            </span>
-          </span>
-        ) : null}
       </PageHeader>
 
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-4 p-4 tablet:p-6">
+        {mayGenerate ? (
+          <div className="bg-surface-tint border-surface-tint-border rounded-card flex flex-col items-start justify-between gap-4 border p-4.5 tablet:flex-row tablet:items-center">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-primary-ink text-[14.5px] font-semibold">
+                Draft a policy brief from this signal
+              </h2>
+              <p className="text-ink-2 max-w-[65ch] text-[13px] leading-relaxed">
+                {describeSignalPrefill({
+                  outcome: signal.matchRuns[0]?.outcome ?? null,
+                  matchedCount: preselectableCount,
+                })}
+              </p>
+            </div>
+            <Link
+              href={`/briefs/new?signal=${signal.id}`}
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "shrink-0 font-medium shadow-xs",
+              )}
+            >
+              Draft brief
+            </Link>
+          </div>
+        ) : null}
+
         <div className="grid min-w-0 grid-cols-1 gap-4 laptop:grid-cols-[minmax(0,1fr)_minmax(0,340px)] laptop:items-start desktop:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
           <div className="flex min-w-0 flex-col gap-4">
             <section
               className={cn(
-                "bg-card rounded-card shadow-raised flex flex-col gap-3 border border-l-[3px] p-4 tablet:p-5",
+                "bg-card rounded-card shadow-raised flex flex-col gap-3.5 border border-l-[3px] p-5",
                 ramp.card,
               )}
             >
@@ -144,7 +153,7 @@ export default async function SignalDetailPage({
                 </p>
                 <span
                   className={cn(
-                    "rounded-full border px-2 py-0.5 text-[10.5px] font-semibold",
+                    "rounded-full border px-2.5 py-0.5 text-[10.5px] font-semibold",
                     RELEVANCE_BADGE[signal.relevance],
                   )}
                 >
@@ -153,9 +162,24 @@ export default async function SignalDetailPage({
                 </span>
               </div>
 
+              {/* Landscape, Impact Area, and Audience Tags */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="bg-stone border-line text-ink-2 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium">
+                  {GEOGRAPHY_LABELS[signal.geography]}
+                </span>
+                <span className="bg-stone/60 border-line/70 text-ink-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px]">
+                  {IMPACT_AREA_LABELS[signal.impactArea]}
+                </span>
+                {signal.audienceTarget ? (
+                  <span className="bg-stone/60 border-line/70 text-ink-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px]">
+                    Target: {AUDIENCE_TARGET_LABELS[signal.audienceTarget]}
+                  </span>
+                ) : null}
+              </div>
+
               {/* Generated prose — the classification pass wrote it — so the sans,
                   never the serif (§11.6). */}
-              <p className="text-ink max-w-[70ch] text-[14px] leading-[1.55]">
+              <p className="text-ink max-w-[70ch] text-[14.5px] leading-[1.6]">
                 {signal.summaryText}
               </p>
 
@@ -171,7 +195,7 @@ export default async function SignalDetailPage({
                 </p>
               ) : null}
 
-              <p className="text-ink-3 text-[12.5px]">
+              <p className="text-ink-3 border-line/60 border-t pt-2.5 text-[12px]">
                 Urgency and relevance were suggested by the classification pass.
                 Anyone who monitors signals can move this on the board; the change
                 is recorded with their name and the time.

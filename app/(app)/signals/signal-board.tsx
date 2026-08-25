@@ -191,7 +191,7 @@ export function SignalBoard({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2 desktop:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 tablet:grid-cols-2 tablet:gap-4 desktop:grid-cols-4">
         {URGENCY_ORDER.map((urgency) => (
           <UrgencyColumn
             key={urgency}
@@ -241,20 +241,22 @@ function UrgencyColumn({
       {/* At one column the stage header sticks, so a long board never leaves you
           scrolling through cards without knowing which stage you are in. From
           `tablet` the columns are side by side and it is a plain header. */}
-      <header className="bg-paper sticky top-0 z-10 flex items-baseline justify-between gap-2 pt-1 pb-2 tablet:static tablet:bg-transparent">
-        <h2
-          id={`column-${urgency}`}
-          className={cn(
-            "text-[10.5px] font-semibold tracking-[0.06em] uppercase",
-            ramp.eyebrow,
-          )}
-        >
-          {URGENCY_LABELS[urgency]}
-          <span className="text-ink-3 ml-2 tracking-normal normal-case">
+      <header className="bg-paper sticky top-0 z-10 flex items-center justify-between gap-2 pt-1 pb-2 tablet:static tablet:bg-transparent">
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <h2
+            id={`column-${urgency}`}
+            className={cn(
+              "text-[10.5px] font-semibold tracking-[0.06em] uppercase",
+              ramp.eyebrow,
+            )}
+          >
+            {URGENCY_LABELS[urgency]}
+          </h2>
+          <span className="bg-stone border-line/60 text-ink-3 rounded-[3px] border px-1.5 py-0.5 text-[10.5px] font-medium tracking-normal normal-case">
             {URGENCY_WINDOWS[urgency]}
           </span>
-        </h2>
-        <span className="text-ink-3 font-mono text-[11.5px] tabular-nums">
+        </div>
+        <span className="bg-stone/80 text-ink-2 border-line/60 rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums">
           {signals.length}
         </span>
       </header>
@@ -262,7 +264,7 @@ function UrgencyColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "rounded-card relative flex min-h-[96px] flex-1 flex-col gap-3 border border-dashed p-2",
+          "rounded-card relative flex min-h-[120px] flex-1 flex-col gap-3 border border-dashed p-2.5 transition-colors duration-200",
           ramp.column,
         )}
       >
@@ -293,9 +295,9 @@ function UrgencyColumn({
         </SortableContext>
 
         {signals.length === 0 ? (
-          <p className="text-ink-3 relative px-2 py-4 text-[12.5px]">
-            Nothing at this stage.
-          </p>
+          <div className="border-line/60 flex flex-1 flex-col items-center justify-center rounded-[4px] border border-dashed p-6 text-center">
+            <p className="text-ink-3 text-[12.5px]">Nothing at this stage.</p>
+          </div>
         ) : null}
       </div>
     </section>

@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 
 import {
   describeMatchFailure,
-  formatScore,
   formatSignalDateTime,
   IMPACT_AREA_LABELS,
 } from "../labels";
@@ -109,15 +108,15 @@ function IneligibleNotice({ count }: { count: number }) {
   if (count === 0) return null;
 
   return (
-    <div className="bg-immediate-surface border-immediate-border text-immediate-ink rounded-card flex items-start gap-2.5 border p-3">
+    <div className="bg-immediate-surface border-immediate-border text-immediate-ink rounded-card flex items-start gap-2.5 border p-3.5">
       {/* A square: the governance-hold glyph, distinct from the circle a review
           flag uses, so the two are told apart with colour ignored (§11.7). */}
       <span
         aria-hidden="true"
         className="border-immediate mt-0.5 size-3 shrink-0 border-2"
       />
-      <p className="text-[12.5px]">
-        <span className="font-mono font-medium tabular-nums">{count}</span>{" "}
+      <p className="text-[12.5px] leading-relaxed">
+        <span className="font-mono font-semibold tabular-nums">{count}</span>{" "}
         matched {count === 1 ? "item is" : "items are"} awaiting
         re-classification and {count === 1 ? "is" : "are"} not shown. Evidence
         reaches this panel only while it is tagged public and published.
@@ -128,15 +127,15 @@ function IneligibleNotice({ count }: { count: number }) {
 
 function MatchList({ matches }: { matches: SignalEvidenceMatchView[] }) {
   return (
-    <ol className="flex flex-col gap-3">
+    <ol className="flex flex-col gap-3.5">
       {matches.map((match) => (
         <li
           key={match.evidenceItemId}
-          className="border-line rounded-card flex flex-col gap-2 border p-3.5"
+          className="border-line bg-card rounded-card flex flex-col gap-2.5 border p-4 shadow-2xs"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-0.5">
-              <h3 className="text-ink text-[13.5px] leading-snug font-semibold">
+              <h3 className="text-ink text-[14px] leading-snug font-semibold">
                 {match.title}
               </h3>
               <p className="text-ink-3 font-mono text-[11px]">
@@ -145,18 +144,18 @@ function MatchList({ matches }: { matches: SignalEvidenceMatchView[] }) {
                 {match.country === null ? "" : ` · ${match.country}`}
               </p>
             </div>
-            <span className="text-ink-3 shrink-0 font-mono text-[11px]">
+            <span className="bg-stone border-line/60 text-ink-3 shrink-0 rounded-[3px] border px-1.5 py-0.5 font-mono text-[11px] font-medium">
               #{match.rank}
             </span>
           </div>
 
-          <div className="flex flex-col gap-1.5 tablet:flex-row tablet:gap-6">
+          <div className="flex flex-col gap-1.5 pt-0.5 tablet:flex-row tablet:gap-6">
             <ScoreBar label="Similarity" value={match.similarity} />
             <ScoreBar label="Relevance" value={match.rerankScore} />
           </div>
 
           {match.excerpt ? (
-            <blockquote className="border-accent text-ink border-l-2 pl-3 font-serif text-[13px] leading-[1.5]">
+            <blockquote className="border-accent text-ink border-l-2 pl-3.5 font-serif text-[13.5px] leading-relaxed">
               {match.excerpt}
             </blockquote>
           ) : (
@@ -181,21 +180,21 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-ink-3 w-[64px] shrink-0 text-[11px]">{label}</span>
+      <span className="text-ink-3 w-[64px] shrink-0 text-[11px] font-medium">{label}</span>
       <span
         className={cn(
           "font-mono text-[11.5px] tabular-nums",
-          value === null ? "text-ink-3" : "text-ink-2",
+          value === null ? "text-ink-3" : "text-ink font-medium",
         )}
       >
-        {value === null ? "not scored" : formatScore(value)}
+        {value === null ? "not scored" : `${percent}%`}
       </span>
       <span
         aria-hidden="true"
-        className="bg-stone h-[3px] w-20 shrink-0 overflow-hidden"
+        className="bg-stone h-1.5 w-20 shrink-0 overflow-hidden rounded-full"
       >
         <span
-          className="bg-primary block h-full"
+          className="bg-primary block h-full rounded-full transition-all duration-300"
           style={{ width: `${percent}%` }}
         />
       </span>
@@ -211,29 +210,33 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
  */
 function MatchGap({ impactArea }: { impactArea: ImpactArea }) {
   return (
-    <div className="flex flex-col items-start gap-3">
-      <span
-        aria-hidden="true"
-        className="mx-4 mt-3 mb-4 size-3 rounded-full shadow-[0_0_0_6px_var(--color-surface-tint),0_0_0_7px_var(--color-surface-tint-border),0_0_0_15px_var(--color-paper),0_0_0_16px_var(--color-line)]"
-      />
-      <h3 className="text-ink text-[14px] font-semibold">
-        Nothing in the eligible library was close enough
-      </h3>
-      <p className="text-ink-3 max-w-[62ch] text-[13px]">
-        The search ran and returned no evidence above the confidence threshold.
-        That is a finding about the corpus, not a fault — and it is worth
-        recording as a research gap in {IMPACT_AREA_LABELS[impactArea]}.
-      </p>
-      <div className="flex flex-wrap gap-2">
+    <div className="bg-watch-surface border-watch-border text-watch-ink rounded-card flex flex-col items-start gap-3 border p-4">
+      <div className="flex items-start gap-2.5">
+        <span
+          aria-hidden="true"
+          className="border-watch mt-0.5 size-3.5 shrink-0 rounded-full border-2"
+        />
+        <div className="flex flex-col gap-1">
+          <h3 className="text-ink text-[14px] font-semibold">
+            Nothing in the eligible library was close enough
+          </h3>
+          <p className="text-ink-3 max-w-[62ch] text-[13px] leading-relaxed">
+            The search ran and returned no evidence above the confidence threshold.
+            That is a finding about the corpus, not a fault — and it is worth
+            recording as a research gap in {IMPACT_AREA_LABELS[impactArea]}.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2 pt-1 pl-6">
         <Link
           href={`/evidence?${EVIDENCE_SEARCH_PARAMS.impactArea}=${impactArea}`}
-          className={buttonVariants({ variant: "outline" })}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           See what the library holds on {IMPACT_AREA_LABELS[impactArea]}
         </Link>
         <Link
           href="/evidence/new"
-          className={buttonVariants({ variant: "outline" })}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Add evidence
         </Link>

@@ -39,10 +39,10 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
 
 /** The time window each stage means, so the column header says it in plain words. */
 export const URGENCY_WINDOWS: Record<Urgency, string> = {
-  [Urgency.immediate]: "under 4 weeks",
+  [Urgency.immediate]: "< 4 weeks",
   [Urgency.near_term]: "1–3 months",
   [Urgency.horizon]: "3–6 months",
-  [Urgency.watch]: "over 6 months",
+  [Urgency.watch]: "> 6 months",
 };
 
 /**
