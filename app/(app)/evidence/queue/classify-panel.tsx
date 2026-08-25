@@ -39,16 +39,22 @@ const CLASSIFICATION_CHOICES = [
     value: Classification.public_published,
     label: "Public — published",
     hint: "Already in the public domain. Becomes searchable and eligible for the AI pipeline.",
+    glyphClassName: "bg-horizon border-horizon",
+    buttonVariant: "default" as const,
   },
   {
     value: Classification.community_sourced,
     label: "Community-sourced",
     hint: "Collected from farmers or CREMA communities. Stays on Tropenbos infrastructure.",
+    glyphClassName: "border-watch border-[1.5px]",
+    buttonVariant: "outline" as const,
   },
   {
     value: Classification.unpublished_internal,
     label: "Unpublished — internal",
     hint: "Internal research not yet published. Held from the AI pipeline.",
+    glyphClassName: "border-immediate border-[1.5px]",
+    buttonVariant: "outline" as const,
   },
 ] as const;
 
@@ -211,13 +217,17 @@ function QueueRow({
     <article className="bg-card border-line rounded-card flex flex-col gap-4 border p-4 tablet:p-5">
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h2 className="text-ink min-w-0 text-[15px] leading-snug font-semibold">
-            {item.title}
-          </h2>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-primary font-mono text-[11px] font-medium tracking-tight">
+              {item.citationKey}
+            </span>
+            <h2 className="text-ink min-w-0 text-[15px] leading-snug font-semibold">
+              {item.title}
+            </h2>
+          </div>
           <ClassificationBadge classification={item.classification} />
         </div>
         <p className="text-ink-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-          <span className="font-mono text-[11.5px]">{item.citationKey}</span>
           <span>{EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}</span>
           {item.year ? <span>{item.year}</span> : null}
           {item.country ? <span>{item.country}</span> : null}
@@ -234,14 +244,14 @@ function QueueRow({
       <EvidenceExcerpt excerpt={item.excerpt} />
 
       <Field>
-        <FieldLabel htmlFor={`reason-${item.id}`} className="text-[13px]">
-          Note (optional)
+        <FieldLabel htmlFor={`reason-${item.id}`} className="text-ink-2 text-[12.5px] font-semibold">
+          Governance note (optional)
         </FieldLabel>
         <Input
           id={`reason-${item.id}`}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          placeholder="Why this classification — recorded with your name and the time."
+          placeholder="Why this classification — recorded with your name and timestamp for governance audit."
           maxLength={500}
           className="text-[13px]"
         />
@@ -255,32 +265,39 @@ function QueueRow({
       >
         {CLASSIFICATION_CHOICES.map((choice) => {
           const isCurrent = choice.value === item.classification;
+          const isPendingChoice = pendingChoice === choice.value;
 
           return (
             <Button
               key={choice.value}
               type="button"
-              variant={
-                choice.value === Classification.public_published
-                  ? "default"
-                  : "outline"
-              }
+              variant={choice.buttonVariant}
               disabled={isPending || isCurrent}
               aria-label={`${choice.label} — ${choice.hint}`}
               onClick={() => classify(choice.value)}
-              className="h-11 justify-center tablet:h-8"
+              className="h-11 justify-start gap-2 px-3.5 text-[13px] font-medium tablet:h-9"
             >
-              {pendingChoice === choice.value ? "Recording…" : choice.label}
+              <span
+                aria-hidden="true"
+                className={`size-2.5 shrink-0 rounded-[1px] border ${choice.glyphClassName}`}
+              />
+              <span>{isPendingChoice ? "Recording…" : choice.label}</span>
             </Button>
           );
         })}
       </div>
 
-      <dl className="text-ink-3 grid gap-1 text-[12px]">
+      <dl className="bg-stone/40 border-line/60 rounded-input grid gap-1.5 border p-2.5 text-[12px]">
         {CLASSIFICATION_CHOICES.map((choice) => (
-          <div key={choice.value} className="flex flex-wrap gap-x-1.5">
-            <dt className="text-ink-2 font-medium">{choice.label} —</dt>
-            <dd className="min-w-0">{choice.hint}</dd>
+          <div key={choice.value} className="flex flex-wrap items-baseline gap-x-1.5">
+            <dt className="text-ink flex items-center gap-1.5 font-medium">
+              <span
+                aria-hidden="true"
+                className={`size-2 shrink-0 rounded-[1px] border ${choice.glyphClassName}`}
+              />
+              {choice.label} —
+            </dt>
+            <dd className="text-ink-3 min-w-0">{choice.hint}</dd>
           </div>
         ))}
       </dl>

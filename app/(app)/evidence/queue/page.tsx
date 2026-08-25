@@ -26,6 +26,10 @@ export default async function EvidenceQueuePage() {
       <>
         <PageHeader
           title="Classification queue"
+          breadcrumbs={[
+            { label: "Evidence", href: "/evidence" },
+            { label: "Classification Queue" },
+          ]}
           subtitle="Evidence awaiting a classification decision."
         />
         <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col p-4 tablet:p-6">

@@ -1,8 +1,17 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { ClassificationBadge } from "@/components/classification-badge";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -54,6 +63,7 @@ export function EvidenceTable({
   const [selectedId, setSelectedId] = useState<string | null>(
     results[0]?.id ?? null,
   );
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   // Results change under the selection whenever a filter or query moves, so the
   // selected id may no longer be in the list. Reconciling to the first result
@@ -61,126 +71,153 @@ export function EvidenceTable({
   const selected =
     results.find((item) => item.id === selectedId) ?? results[0] ?? null;
 
-  return (
-    <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_360px]">
-      {/* The table scrolls inside its own panel; the page never scrolls
-          horizontally (AGENTS.md §11.15). */}
-      <div className="min-w-0 overflow-x-auto">
-        <Table>
-          <TableHeader className="bg-stone">
-            <TableRow>
-              <TableHead className="text-ink-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
-                Title
-              </TableHead>
-              {showMatch ? (
-                <TableHead className="text-ink-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
-                  Match
-                </TableHead>
-              ) : null}
-              <TableHead className="text-ink-2 hidden text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
-                Type
-              </TableHead>
-              <TableHead className="text-ink-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
-                Year
-              </TableHead>
-              <TableHead className="text-ink-2 hidden text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
-                Country
-              </TableHead>
-              <TableHead className="text-ink-2 hidden text-[11.5px] font-semibold tracking-[0.06em] uppercase laptop:table-cell">
-                Impact area
-              </TableHead>
-              <TableHead className="text-ink-2 hidden text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
-                Classification
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {results.map((item, index) => {
-              const isSelected = item.id === selected?.id;
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.innerWidth < 1000) {
+      setMobileSheetOpen(true);
+    }
+  };
 
-              return (
-                <TableRow
-                  key={item.id}
-                  onClick={() => setSelectedId(item.id)}
-                  aria-current={isSelected ? "true" : undefined}
-                  // Match reveal: fade + 8px rise, 70ms apart, in match order
-                  // (handoff motion table). Only when there is a match to
-                  // reveal — a browse listing is not a result set. The global
-                  // reduced-motion rule neutralises it.
-                  style={
-                    showMatch && index < MAX_STAGGERED_ROWS
-                      ? { animationDelay: `${index * ROW_STAGGER_MS}ms` }
-                      : undefined
-                  }
-                  className={cn(
-                    "border-line cursor-pointer border-b transition-colors duration-150",
-                    showMatch && index < MAX_STAGGERED_ROWS && "animate-rise-in",
-                    // Selected row is a surface-tint background, never a
-                    // checkbox alone (design-system.md, evidence table).
-                    isSelected ? "bg-surface-tint" : "hover:bg-stone/60",
-                  )}
-                >
-                  <TableCell className="max-w-[420px] py-2.5">
-                    {/* The keyboard path: every row is reachable and operable
-                        without a pointer (WCAG 2.1 AA). */}
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedId(item.id);
-                      }}
-                      className="text-ink w-full text-left text-[13px] font-medium"
-                    >
-                      <span className="line-clamp-2">{item.title}</span>
-                      <span className="text-ink-3 mt-0.5 block font-mono text-[11px]">
-                        {item.citationKey}
-                      </span>
-                    </button>
-                  </TableCell>
-                  {showMatch ? (
-                    <TableCell className="py-2.5">
-                      <MatchCell match={item.match} />
+  return (
+    <>
+      <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_360px]">
+        {/* The table scrolls inside its own panel; the page never scrolls
+            horizontally (AGENTS.md §11.15). */}
+        <div className="min-w-0 overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-stone border-line border-b">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                  Title
+                </TableHead>
+                {showMatch ? (
+                  <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                    Match
+                  </TableHead>
+                ) : null}
+                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                  Type
+                </TableHead>
+                <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                  Year
+                </TableHead>
+                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                  Country
+                </TableHead>
+                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase laptop:table-cell">
+                  Impact area
+                </TableHead>
+                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                  Classification
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map((item, index) => {
+                const isSelected = item.id === selected?.id;
+
+                return (
+                  <TableRow
+                    key={item.id}
+                    onClick={() => handleSelect(item.id)}
+                    aria-current={isSelected ? "true" : undefined}
+                    // Match reveal: fade + 8px rise, 70ms apart, in match order
+                    // (handoff motion table). Only when there is a match to
+                    // reveal — a browse listing is not a result set. The global
+                    // reduced-motion rule neutralises it.
+                    style={
+                      showMatch && index < MAX_STAGGERED_ROWS
+                        ? { animationDelay: `${index * ROW_STAGGER_MS}ms` }
+                        : undefined
+                    }
+                    className={cn(
+                      "border-line cursor-pointer border-b border-l-[3px] transition-colors duration-150",
+                      showMatch && index < MAX_STAGGERED_ROWS && "animate-rise-in",
+                      // Selected row is a surface-tint background with primary left rule
+                      // (design-system.md, evidence table).
+                      isSelected
+                        ? "bg-surface-tint border-l-primary"
+                        : "border-l-transparent hover:bg-stone/60",
+                    )}
+                  >
+                    <TableCell className="max-w-[420px] py-2.5">
+                      {/* The keyboard path: every row is reachable and operable
+                          without a pointer (WCAG 2.1 AA). */}
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleSelect(item.id);
+                        }}
+                        className="text-ink w-full text-left text-[13px] font-medium focus-visible:outline-none"
+                      >
+                        <span className="line-clamp-2">{item.title}</span>
+                        <span className="text-primary font-mono text-[11px] font-medium mt-0.5 block">
+                          {item.citationKey}
+                        </span>
+                      </button>
                     </TableCell>
-                  ) : null}
-                  <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
-                    {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
-                  </TableCell>
-                  <TableCell className="text-ink-2 py-2.5 font-mono text-[11.5px]">
-                    {item.year ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
-                    {item.country ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-ink-2 hidden py-2.5 text-[13px] laptop:table-cell">
-                    {item.impactArea
-                      ? IMPACT_AREA_LABELS[item.impactArea]
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="hidden py-2.5 tablet:table-cell">
-                    <ClassificationBadge classification={item.classification} />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {showMatch ? (
+                      <TableCell className="py-2.5">
+                        <MatchCell match={item.match} />
+                      </TableCell>
+                    ) : null}
+                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
+                      {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
+                    </TableCell>
+                    <TableCell className="text-ink-2 py-2.5 font-mono text-[11.5px]">
+                      {item.year ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
+                      {item.country ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] laptop:table-cell">
+                      {item.impactArea
+                        ? IMPACT_AREA_LABELS[item.impactArea]
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="hidden py-2.5 tablet:table-cell">
+                      <ClassificationBadge classification={item.classification} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Panel border switches from top to left when the column becomes a
+            stacked row (design-system.md, responsive rules). */}
+        <aside
+          aria-label="Evidence detail"
+          className="border-line min-w-0 border-t p-4 sm:p-5 laptop:border-t-0 laptop:border-l"
+        >
+          {selected ? (
+            <EvidenceDetail item={selected} />
+          ) : (
+            <p className="text-ink-3 text-[13px]">
+              Select a row to read its details.
+            </p>
+          )}
+        </aside>
       </div>
 
-      {/* Panel border switches from top to left when the column becomes a
-          stacked row (design-system.md, responsive rules). */}
-      <aside
-        aria-label="Evidence detail"
-        className="border-line min-w-0 border-t p-4 laptop:border-t-0 laptop:border-l"
-      >
-        {selected ? (
-          <EvidenceDetail item={selected} />
-        ) : (
-          <p className="text-ink-3 text-[13px]">
-            Select a row to read its details.
-          </p>
-        )}
-      </aside>
-    </div>
+      {/* Mobile/Tablet responsive side-sheet preview (< 1000px) */}
+      <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+        <SheetContent
+          side="right"
+          className="w-[min(420px,94vw)] gap-0 overflow-y-auto p-4 sm:p-6"
+        >
+          <SheetHeader className="border-line border-b pb-3 mb-4">
+            <SheetTitle className="text-[14px]">Evidence Detail</SheetTitle>
+            <SheetDescription className="text-ink-3 text-[12px]">
+              Metadata, governance classification, and source excerpts.
+            </SheetDescription>
+          </SheetHeader>
+          {selected ? <EvidenceDetail item={selected} /> : null}
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
 
@@ -197,37 +234,37 @@ function MatchCell({ match }: { match: MatchProvenance | null }) {
   if (match === null) return null;
 
   if (match.kind === "keyword") {
-    return <span className="text-ink-2 text-[13px]">Keyword</span>;
+    return <span className="text-ink-2 text-[12.5px] font-medium">Keyword</span>;
   }
 
   const score = Math.round(match.similarity * 100);
   const alsoKeyword = match.kind === "both";
 
   return (
-    <span
+    <div
       className="flex min-w-[104px] flex-col gap-1"
       aria-label={`Closeness ${score} out of 100${
         alsoKeyword ? ", and a keyword match" : ""
       }`}
     >
-      <span className="flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <span className="text-ink font-mono text-[11.5px] font-medium tabular-nums">
           {score}
         </span>
         <span
           aria-hidden="true"
-          className="bg-stone h-1 w-14 overflow-hidden rounded-full"
+          className="bg-stone relative h-1.5 w-14 overflow-hidden rounded-full"
         >
           <span
-            className="bg-primary block h-full rounded-full"
+            className="bg-primary block h-full rounded-full transition-all duration-300"
             style={{ width: `${score}%` }}
           />
         </span>
-      </span>
+      </div>
       {alsoKeyword ? (
-        <span className="text-ink-3 text-[11.5px]">and keyword</span>
+        <span className="text-ink-3 text-[11px] font-medium">and keyword</span>
       ) : null}
-    </span>
+    </div>
   );
 }
 
@@ -239,15 +276,20 @@ function EvidenceDetail({ item }: { item: EvidenceSearchResult }) {
       : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-primary font-mono text-[11px] font-medium tracking-tight">
+          {item.citationKey}
+        </span>
         <h2 className="text-ink text-[15px] leading-snug font-semibold">
           {item.title}
         </h2>
-        <ClassificationBadge classification={item.classification} />
+        <div className="pt-0.5">
+          <ClassificationBadge classification={item.classification} />
+        </div>
       </div>
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[12.5px]">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[12.5px]">
         <DetailRow label="Authors">
           {item.authors.length > 0 ? item.authors.join(", ") : "Not recorded"}
         </DetailRow>
@@ -260,7 +302,7 @@ function EvidenceDetail({ item }: { item: EvidenceSearchResult }) {
           {item.impactArea ? IMPACT_AREA_LABELS[item.impactArea] : "Not recorded"}
         </DetailRow>
         <DetailRow label="Citation key">
-          <span className="font-mono text-[11.5px]">{item.citationKey}</span>
+          <span className="font-mono text-[11.5px] font-medium">{item.citationKey}</span>
         </DetailRow>
         <DetailRow label="Ingested">
           {formatIngestedAt(item.ingestedAt)}
@@ -283,13 +325,40 @@ function EvidenceDetail({ item }: { item: EvidenceSearchResult }) {
               href={item.sourceUrl}
               target="_blank"
               rel="noreferrer"
-              className="break-all"
+              className="text-primary hover:text-primary-ink break-all font-medium underline underline-offset-2"
             >
               {item.sourceUrl}
             </a>
           </DetailRow>
         ) : null}
       </dl>
+
+      {/* Action controls */}
+      <div className="border-line/60 flex flex-wrap items-center gap-2 border-t pt-3">
+        {item.sourceUrl ? (
+          <a
+            href={item.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-8 text-[12px] gap-1",
+            )}
+          >
+            <span>Open source</span>
+            <span aria-hidden="true" className="text-[10px]">↗</span>
+          </a>
+        ) : null}
+        <Link
+          href="/briefs/new"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-8 text-[12px]",
+          )}
+        >
+          Draft brief with library
+        </Link>
+      </div>
 
       {/* The matched passage sits above the opening excerpt: it is the reason
           this row is on screen, and burying it under the document's first
@@ -385,7 +454,7 @@ export function EvidenceExcerpt({
       <figcaption className="text-ink-3 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
         {label}
       </figcaption>
-      <blockquote className="border-accent text-ink font-serif text-[15px] leading-[1.55] border-l-2 pl-4">
+      <blockquote className="border-accent text-ink font-serif text-[14.5px] sm:text-[15px] leading-[1.55] border-l-2 pl-4 py-0.5 bg-card/60">
         {excerpt}
       </blockquote>
     </figure>

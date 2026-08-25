@@ -45,7 +45,10 @@ export function ClassificationPendingAlert({
           {showQueueLink ? (
             <>
               {" "}
-              <Link href="/evidence/queue" className="font-medium">
+              <Link
+                href="/evidence/queue"
+                className="font-medium underline-offset-2 hover:underline"
+              >
                 Open the classification queue
               </Link>
               .

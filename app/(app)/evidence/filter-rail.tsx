@@ -1,7 +1,12 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition, type FormEvent, type ReactNode } from "react";
+import {
+  useState,
+  useTransition,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +69,7 @@ type ControlsProps = {
 /** The inline rail. Hidden below `desktop`, where `EvidenceFilterBar` takes over. */
 export function EvidenceFilterRail({ search, facets }: ControlsProps) {
   const { navigate, isPending } = useSearchNavigation();
+  const activeFilters = countActiveFilters(search);
 
   return (
     <aside
@@ -72,16 +78,28 @@ export function EvidenceFilterRail({ search, facets }: ControlsProps) {
         "hidden desktop:flex desktop:flex-col desktop:gap-5",
         // The pending read is visible without an indeterminate spinner: the rail
         // dims and stops accepting input for the length of the transition.
-        isPending && "pointer-events-none opacity-60",
+        isPending && "pointer-events-none opacity-60 transition-opacity duration-150",
       )}
     >
       <SearchForm idPrefix="rail" search={search} navigate={navigate} />
-      <FilterFields
-        idPrefix="rail"
-        search={search}
-        facets={facets}
-        navigate={navigate}
-      />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-ink-3 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+            Filters
+          </span>
+          {activeFilters > 0 ? (
+            <span className="bg-surface-tint border-surface-tint-border text-primary-ink rounded-full border px-2 py-0.5 font-mono text-[11px] leading-tight font-medium">
+              {activeFilters} active
+            </span>
+          ) : null}
+        </div>
+        <FilterFields
+          idPrefix="rail"
+          search={search}
+          facets={facets}
+          navigate={navigate}
+        />
+      </div>
       <ClearFilters search={search} navigate={navigate} />
     </aside>
   );
@@ -98,7 +116,7 @@ export function EvidenceFilterBar({ search, facets }: ControlsProps) {
     <div
       className={cn(
         "flex flex-col gap-2 desktop:hidden tablet:flex-row tablet:items-end",
-        isPending && "pointer-events-none opacity-60",
+        isPending && "pointer-events-none opacity-60 transition-opacity duration-150",
       )}
     >
       <div className="min-w-0 flex-1">
@@ -107,18 +125,31 @@ export function EvidenceFilterBar({ search, facets }: ControlsProps) {
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
-          render={<Button type="button" variant="outline" className="h-9" />}
+          render={
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 shrink-0 gap-1.5"
+            />
+          }
         >
           Filters
           {activeFilters > 0 ? (
-            <span className="bg-surface-tint border-surface-tint-border text-primary-ink ml-1.5 rounded-full border px-1.5 font-mono text-[11px] leading-[18px]">
+            <span className="bg-surface-tint border-surface-tint-border text-primary-ink ml-1 rounded-full border px-1.5 font-mono text-[11px] leading-[18px]">
               {activeFilters}
             </span>
           ) : null}
         </SheetTrigger>
         <SheetContent side="right" className="w-[min(22rem,90vw)] gap-0">
-          <SheetHeader>
-            <SheetTitle>Filter evidence</SheetTitle>
+          <SheetHeader className="border-line border-b pb-3">
+            <div className="flex items-center justify-between pr-6">
+              <SheetTitle>Filter evidence</SheetTitle>
+              {activeFilters > 0 ? (
+                <span className="bg-surface-tint border-surface-tint-border text-primary-ink rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium">
+                  {activeFilters} active
+                </span>
+              ) : null}
+            </div>
             <SheetDescription className="text-[13px]">
               Filters narrow the eligible library. Untagged evidence stays in the
               classification queue either way.
@@ -188,7 +219,15 @@ function SearchForm({
   search: EvidenceSearchInput;
   navigate: Navigate;
 }) {
+  const [prevQuery, setPrevQuery] = useState(search.query);
   const [value, setValue] = useState(search.query ?? "");
+
+  // Sync state if search query changes externally (e.g. "Clear filters")
+  if (search.query !== prevQuery) {
+    setPrevQuery(search.query);
+    setValue(search.query ?? "");
+  }
+
   const id = `${idPrefix}-evidence-query`;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -205,11 +244,31 @@ function SearchForm({
     });
   };
 
+  const handleClear = () => {
+    setValue("");
+    if (search.query) {
+      navigate((params) => {
+        params.delete(EVIDENCE_SEARCH_PARAMS.query);
+      });
+    }
+  };
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-1.5" role="search">
-      <Label htmlFor={id} className="text-ink-2 text-[12px] font-semibold">
-        Search the library
-      </Label>
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id} className="text-ink-2 text-[12px] font-semibold">
+          Search the library
+        </Label>
+        {value.length > 0 ? (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-ink-3 hover:text-ink text-[11px] font-medium transition-colors"
+          >
+            Clear query
+          </button>
+        ) : null}
+      </div>
       <div className="flex items-center gap-2">
         <Input
           id={id}
