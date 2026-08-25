@@ -33,27 +33,36 @@ function allowedDomain(): string | null {
  */
 function isAllowedIdentity(
   email: string | null | undefined,
-  emailVerified: boolean | null | undefined,
+  emailVerified: boolean | string | null | undefined,
 ): boolean {
   const domain = allowedDomain();
   if (!domain) return false;
-  if (emailVerified !== true) return false;
+  const isVerified = emailVerified === true || emailVerified === "true";
+  if (!isVerified) return false;
   if (!email) return false;
 
   const emailDomain = email.split("@")[1]?.toLowerCase();
   return emailDomain === domain;
 }
 
-// The `hd` hint pre-filters Google's own account chooser. It is a UX nicety and
-// never the enforcement — the signIn callback below stands alone and must not
-// be made conditional on it.
+// The `hd` hint pre-filters Google's own account chooser for Google Workspace domains.
+// It is a UX nicety and never the enforcement — the signIn callback below stands alone
+// and must not be made conditional on it.
+//
+// Crucially, `hd` is only valid for custom Google Workspace domains; passing consumer
+// domains like `gmail.com` causes Google OAuth to reject with `400 invalid_request`.
 const googleAuthorizationParams = (() => {
   const domain = allowedDomain();
-  return domain ? { params: { hd: domain } } : undefined;
+  if (!domain || domain === "gmail.com" || domain === "googlemail.com") {
+    return undefined;
+  }
+  return { params: { hd: domain } };
 })();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google({ authorization: googleAuthorizationParams })],
+
+  trustHost: true,
 
   session: { strategy: "jwt" },
 
@@ -61,8 +70,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/signin", error: "/signin" },
 
   callbacks: {
-    signIn({ profile }) {
-      const allowed = isAllowedIdentity(profile?.email, profile?.email_verified);
+    signIn({ profile, user }) {
+      const email = profile?.email ?? user?.email;
+      const rawVerified =
+        profile?.email_verified ??
+        (profile as Record<string, unknown> | undefined)?.verified_email ??
+        (user as { emailVerified?: boolean | string | null } | undefined)?.emailVerified;
+      const emailVerified =
+        typeof rawVerified === "boolean" || typeof rawVerified === "string"
+          ? rawVerified
+          : Boolean(email && user?.id);
+
+      const allowed = isAllowedIdentity(email, emailVerified);
 
       if (!allowed) {
         // Log the decision, never the identity: no full email address, no
@@ -75,18 +94,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return allowed;
     },
 
-    async jwt({ token, profile }) {
-      // `profile` is present only on the sign-in pass, which the callback above
-      // has already allowed. Provisioning here is what puts `staffUserId` on
-      // the token; a failure throws and the sign-in fails visibly rather than
-      // issuing a token with no actor behind it.
-      if (profile) {
-        const email = profile.email;
+    async jwt({ token, profile, user }) {
+      // `profile` or `user` is present on the initial sign-in pass, which the
+      // callback above has already allowed. Provisioning here is what puts
+      // `staffUserId` on the token; a failure throws and the sign-in fails
+      // visibly rather than issuing a token with no actor behind it.
+      if (profile || user) {
+        const email = profile?.email ?? user?.email ?? token.email;
         if (!email) return token;
+
+        const rawName = profile?.name ?? user?.name ?? token.name;
+        const name =
+          typeof rawName === "string" && rawName.trim()
+            ? rawName.trim()
+            : email.split("@")[0];
 
         const staffUser = await provisionStaffUser({
           email,
-          name: profile.name?.trim() || email.split("@")[0],
+          name,
         });
 
         token.staffUserId = staffUser.id;
