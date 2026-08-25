@@ -218,7 +218,7 @@ export function LandingMotion({
               },
             });
 
-            // Pipeline: the three stage cards lift, then the lattice draws.
+            // Pipeline: the three stage cards lift, base lattice draws, and continuous green flow begins.
             const pipelineTl = gsap.timeline({
               defaults: { ease: "power2.out" },
               scrollTrigger: {
@@ -235,7 +235,7 @@ export function LandingMotion({
                 { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.1 },
               )
               .fromTo(
-                '[data-anim="lattice-link"]',
+                '[data-anim="lattice-base"]',
                 { drawSVG: "0% 0%" },
                 {
                   drawSVG: "0% 100%",
@@ -260,7 +260,36 @@ export function LandingMotion({
                   ease: "none",
                   clearProps: "strokeDasharray,strokeDashoffset",
                 },
+              )
+              .fromTo(
+                '[data-anim="lattice-flow"]',
+                { autoAlpha: 0 },
+                { autoAlpha: 1, duration: 0.35, ease: "power1.out" },
+                "-=0.2",
               );
+
+            // Continuous flowing green streams along verified evidence-to-policy paths
+            gsap.to('[data-anim="lattice-flow"]', {
+              strokeDashoffset: -100,
+              duration: 2.2,
+              ease: "none",
+              repeat: -1,
+            });
+
+            // Synchronized subtle breathing pulse on the central brief hub outer ring
+            gsap.fromTo(
+              '[data-anim="lattice-hub-pulse"]',
+              { scale: 0.95, autoAlpha: 0.35 },
+              {
+                scale: 1.12,
+                autoAlpha: 0.85,
+                svgOrigin: "180 120",
+                duration: 1.1,
+                yoyo: true,
+                repeat: -1,
+                ease: "sine.inOut",
+              },
+            );
 
             // Capabilities: unified section timeline so all cards animate deterministically together.
             const capabilitiesTl = gsap.timeline({

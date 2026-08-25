@@ -42,15 +42,16 @@ export function EvidenceLattice({ className }: { className?: string }) {
       viewBox="0 0 360 240"
       className={className}
     >
+      {/* Underlying base tracks so structural topology remains visible */}
       <g fill="none" strokeWidth={1.25}>
         {TRACED_LINKS.map((d) => (
           <path
-            key={d}
+            key={`base-${d}`}
             d={d}
-            data-anim="lattice-link"
+            data-anim="lattice-base"
             stroke="currentColor"
             strokeWidth={1.25}
-            className="stroke-accent"
+            className="stroke-accent/30"
           />
         ))}
         <path
@@ -61,6 +62,22 @@ export function EvidenceLattice({ className }: { className?: string }) {
           className="stroke-sage"
           strokeDasharray="4 4"
         />
+      </g>
+
+      {/* Active continuous flowing green paths */}
+      <g fill="none" strokeLinecap="round">
+        {TRACED_LINKS.map((d) => (
+          <path
+            key={`flow-${d}`}
+            d={d}
+            data-anim="lattice-flow"
+            pathLength="100"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeDasharray="16 34"
+            className="stroke-accent opacity-90"
+          />
+        ))}
       </g>
 
       <g fill="none" strokeWidth={1.25}>
@@ -77,7 +94,13 @@ export function EvidenceLattice({ className }: { className?: string }) {
         {/* Brief: concentric rings, the topographic mark the design system
             reserves for the product's own centre of gravity. */}
         <circle cx={180} cy={120} r={12} className="fill-card stroke-primary" />
-        <circle cx={180} cy={120} r={19} className="stroke-sage" />
+        <circle
+          cx={180}
+          cy={120}
+          r={19}
+          data-anim="lattice-hub-pulse"
+          className="stroke-accent/50"
+        />
         <circle cx={180} cy={120} r={3} className="fill-primary stroke-none" />
 
         {OUTCOME_NODES.map((node) => (
