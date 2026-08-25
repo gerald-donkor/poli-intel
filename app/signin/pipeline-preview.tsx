@@ -220,18 +220,10 @@ export function PipelinePreview() {
                 className="flex flex-col gap-6"
               >
                 {/* Stage 2: Evidence Matching */}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-tint-border bg-surface-tint px-2.5 py-0.5 font-mono text-meta font-semibold text-surface-tint-ink">
-                      <ShieldCheck className="size-3.5 text-primary" />
-                      Classified Evidence · AI Eligible
-                    </span>
-                    <span className="font-mono text-meta text-ink-3">
-                      Cosine Similarity: 0.892
-                    </span>
-                  </div>
-                  <span className="font-mono text-meta text-ink-disabled">
-                    Embedding: Gemini Embedding 2
+                <div className="flex flex-wrap items-center gap-3 border-b border-line pb-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-surface-tint-border bg-surface-tint px-2.5 py-0.5 font-mono text-meta font-semibold text-surface-tint-ink">
+                    <ShieldCheck className="size-3.5 text-primary" />
+                    Classified Evidence · AI Eligible
                   </span>
                 </div>
 
