@@ -33,9 +33,9 @@ export function UserMenu({ user }: { user: StaffUserDto }) {
           that would silently do nothing on Base UI. */}
       <DropdownMenuTrigger
         aria-label={`Account menu — ${user.name}`}
-        className="rounded-full"
+        className="rounded-full cursor-pointer transition-transform duration-150 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
       >
-        <Avatar className="size-[30px]">
+        <Avatar className="size-[30px] border border-line shadow-raised">
           <AvatarFallback className="bg-surface-tint text-primary-ink text-[11.5px] font-semibold">
             {user.initials}
           </AvatarFallback>
@@ -44,20 +44,20 @@ export function UserMenu({ user }: { user: StaffUserDto }) {
 
       {/* The default content width tracks the anchor, which here is a 30px
           avatar. Layout override only — no colour, no type. */}
-      <DropdownMenuContent align="end" className="w-auto min-w-[240px]">
+      <DropdownMenuContent align="end" className="w-auto min-w-[240px] rounded-card border border-line bg-card p-1 shadow-overlay">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex min-w-0 flex-col gap-0.5 px-1.5 py-1.5">
-            <span className="text-body text-ink font-medium">{user.name}</span>
+          <DropdownMenuLabel className="flex min-w-0 flex-col gap-1 px-2.5 py-2">
+            <span className="text-[13.5px] text-ink font-semibold">{user.name}</span>
             <span className="text-ink-3 truncate text-[12px] font-normal">
               {user.email}
             </span>
-            <span className="text-ink-3 text-[12px] font-normal">
+            <span className="bg-surface-tint border border-surface-tint-border text-primary-ink text-[11px] font-medium px-2 py-0.5 rounded-full inline-flex items-center w-fit mt-0.5">
               {ROLE_LABELS[user.role]}
             </span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-line my-1" />
 
         {/* Sign out is a POST through a Server Action, never a link and never a
             GET URL. Base UI's Item renders a <div> and defaults `nativeButton`
@@ -69,7 +69,7 @@ export function UserMenu({ user }: { user: StaffUserDto }) {
             <DropdownMenuItem
               nativeButton
               render={<button type="submit" />}
-              className="w-full justify-start"
+              className="w-full justify-start cursor-pointer text-[13px] text-ink font-medium px-2.5 py-1.5 rounded-card hover:bg-stone/50 transition-colors duration-150"
             >
               Sign out
             </DropdownMenuItem>

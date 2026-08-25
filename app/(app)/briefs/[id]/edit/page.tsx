@@ -96,6 +96,11 @@ export default async function BriefEditPage({
     <>
       <PageHeader
         title={briefTypeLabel(brief.briefType)}
+        breadcrumbs={[
+          { label: "Briefs", href: "/briefs" },
+          { label: briefTypeLabel(brief.briefType), href: `/briefs/${brief.id}` },
+          { label: "Edit" },
+        ]}
         subtitle={
           <>
             Editing · for {audienceLabel(brief.audience)} ·{" "}

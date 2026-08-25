@@ -102,6 +102,11 @@ export default async function BriefReframePage({
     <>
       <PageHeader
         title={briefTypeLabel(brief.briefType)}
+        breadcrumbs={[
+          { label: "Briefs", href: "/briefs" },
+          { label: briefTypeLabel(brief.briefType), href: `/briefs/${brief.id}` },
+          { label: `Reframe (${profile.label})` },
+        ]}
         subtitle={
           <>
             Reframing from {audienceLabel(brief.audience)} to {profile.label} ·

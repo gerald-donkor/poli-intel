@@ -73,6 +73,19 @@ Do not overbuild. In particular: no auto-publishing or autonomous submission, no
 
 **Phases are narrative, not structure.** The spec's four-phase roadmap (Section 7) explains *why* the list above exists and roughly in what order value lands. It is project context, not the organising principle of this file. Every rule in this document applies on every task regardless of phase. Actual sequencing happens through the numbered files in `prompts/`.
 
+## 1.1 UI & UX Refinement Roadmap
+
+The holistic design polish across the application runs sequentially through the following numbered prompt files:
+
+1. `prompts/53-global-app-chrome-and-feedback-refinement.md` — Global app shell (`AppNav`), breadcrumbs, user menu role badge, warm institutional feedback/toasts, and responsive layout consistency.
+2. `prompts/54-policy-radar-and-kanban-board-ux.md` — Policy radar kanban columns, 3px urgency left-border rules, drag/drop crossfades, and signal detail context.
+3. `prompts/55-evidence-library-and-governance-queue-ux.md` — Filter rail facets, relevance number+bar cells, side-sheet preview, and 3-way classification queue with square glyphs.
+4. `prompts/56-brief-generation-and-audience-switcher-ux.md` — 3-stage generation stepper breath animation, rate-limit draft recovery, and audience switcher diff crossfade.
+5. `prompts/57-brief-editor-hallucination-guard-and-twi-ux.md` — Tiptap document canvas, in-context citation sheets, 900ms slate flag pulse, director approval block, and Twi translation assist.
+6. `prompts/58-submission-tracker-and-stakeholder-crm-ux.md` — Policy window calendar timeline, undated signals quick drawer, and stakeholder brief engagement history.
+7. `prompts/59-impact-tracker-and-animated-map-ux.md` — Influence event logger, quarterly report layout, and SVG/GSAP force lattice animated paths.
+8. `prompts/60-field-officer-mobile-and-offline-ux.md` — Mobile-first PWA layout, 48px tap targets, offline sync indicator, and plain-language digest.
+
 ---
 
 # 2. Workflow

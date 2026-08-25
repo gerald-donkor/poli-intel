@@ -49,6 +49,10 @@ export default async function StakeholderPage({
     <>
       <PageHeader
         title={stakeholder.name}
+        breadcrumbs={[
+          { label: "Stakeholders", href: "/stakeholders" },
+          { label: stakeholder.name },
+        ]}
         subtitle={
           [stakeholder.role, stakeholder.organisation]
             .filter(Boolean)

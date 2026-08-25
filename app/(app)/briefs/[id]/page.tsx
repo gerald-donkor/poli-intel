@@ -138,6 +138,10 @@ export default async function BriefPage({
     <>
       <PageHeader
         title={briefTypeLabel(brief.briefType)}
+        breadcrumbs={[
+          { label: "Briefs", href: "/briefs" },
+          { label: briefTypeLabel(brief.briefType) },
+        ]}
         subtitle={
           // The audience has moved out of this line and into the switcher
           // below — it is a control now, not a label.

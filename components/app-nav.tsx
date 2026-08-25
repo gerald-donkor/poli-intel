@@ -55,22 +55,22 @@ export function AppNav({
   const pathname = usePathname();
 
   return (
-    <header className="bg-card border-line border-b">
+    <header className="bg-card border-line border-b sticky top-0 z-40">
       <nav
         aria-label="Main"
-        className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-4 px-6"
+        className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-3 px-4 tablet:gap-4 tablet:px-6"
       >
-        <NavDrawer pathname={pathname} />
+        <NavDrawer pathname={pathname} user={user} />
 
         <Link
           href="/signals"
-          className="flex shrink-0 items-center gap-2 no-underline hover:no-underline"
+          className="flex shrink-0 items-center gap-2 no-underline hover:no-underline cursor-pointer group"
         >
           {/* Abstract structural mark — a bordered square. No leaf, no tree,
               no image asset (AGENTS.md §11.7). */}
           <span
             aria-hidden="true"
-            className="border-primary size-[18px] rounded-[2px] border-2"
+            className="border-primary size-[18px] rounded-[2px] border-2 group-hover:border-accent transition-colors duration-150"
           />
           <span className="text-primary hidden text-[13px] font-semibold tracking-[0.12em] uppercase tablet:inline">
             EviBrief
@@ -91,10 +91,10 @@ export function AppNav({
                   href={link.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-card block px-2.5 py-1.5 text-[13px] no-underline transition-colors duration-150 hover:no-underline",
+                    "rounded-card block px-2.5 py-1.5 text-[13px] no-underline transition-colors duration-150 hover:no-underline cursor-pointer",
                     active
                       ? "bg-surface-tint text-primary font-medium"
-                      : "text-ink-2 hover:text-ink",
+                      : "text-ink-2 hover:text-ink hover:bg-stone/50",
                   )}
                 >
                   {link.label}
@@ -104,7 +104,7 @@ export function AppNav({
           })}
         </ul>
 
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2.5 tablet:gap-3">
           <CommandPalette index={commandIndex} />
           <UserMenu user={user} />
         </div>
@@ -112,6 +112,13 @@ export function AppNav({
     </header>
   );
 }
+
+const ROLE_LABELS: Record<string, string> = {
+  programme_director: "Programme Director",
+  policy_advocacy_officer: "Policy & Advocacy Officer",
+  research_officer: "Research Officer",
+  field_officer: "Field Officer",
+};
 
 /**
  * The collapsed form of the navigation, below `tablet` (760px).
@@ -121,7 +128,7 @@ export function AppNav({
  * itself behind a hidden scrollbar (design-system.md, responsive rules:
  * "content moves into a `Sheet` drawer"). Same links, same active treatment.
  */
-function NavDrawer({ pathname }: { pathname: string }) {
+function NavDrawer({ pathname, user }: { pathname: string; user: StaffUserDto }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -131,7 +138,7 @@ function NavDrawer({ pathname }: { pathname: string }) {
           <button
             type="button"
             aria-label="Open navigation"
-            className="text-ink-2 rounded-card hover:text-ink hover:bg-surface-tint flex size-8 shrink-0 items-center justify-center transition-colors duration-150 tablet:hidden"
+            className="text-ink-2 rounded-card hover:text-ink hover:bg-surface-tint flex size-8 shrink-0 items-center justify-center transition-colors duration-150 tablet:hidden cursor-pointer"
           />
         }
       >
@@ -140,38 +147,57 @@ function NavDrawer({ pathname }: { pathname: string }) {
 
       <SheetContent
         side="left"
-        className="bg-card border-line w-[min(17rem,82vw)] gap-0"
+        className="bg-card border-line w-[min(18rem,84vw)] gap-0 p-0 flex flex-col justify-between"
       >
-        <SheetHeader>
-          <SheetTitle className="text-primary text-[13px] font-semibold tracking-[0.12em] uppercase">
-            EviBrief
-          </SheetTitle>
-        </SheetHeader>
+        <div className="flex flex-col">
+          <SheetHeader className="p-4 border-b border-line">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="border-primary size-[18px] rounded-[2px] border-2"
+              />
+              <SheetTitle className="text-primary text-[13px] font-semibold tracking-[0.12em] uppercase">
+                EviBrief
+              </SheetTitle>
+            </div>
+          </SheetHeader>
 
-        <nav aria-label="All sections" className="p-2">
-          <ul className="flex flex-col gap-0.5">
-            {NAV_LINKS.map((link) => {
-              const active = isActive(pathname, link.href);
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setOpen(false)}
-                    className={cn(
-                      "rounded-card flex min-h-11 items-center px-3 text-[14px] no-underline transition-colors duration-150 hover:no-underline",
-                      active
-                        ? "bg-surface-tint text-primary font-medium"
-                        : "text-ink-2 hover:text-ink hover:bg-paper",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
+          <nav aria-label="All sections" className="p-3">
+            <ul className="flex flex-col gap-1">
+              {NAV_LINKS.map((link) => {
+                const active = isActive(pathname, link.href);
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "rounded-card flex min-h-11 items-center px-3.5 text-[14px] no-underline transition-colors duration-150 hover:no-underline cursor-pointer",
+                        active
+                          ? "bg-surface-tint text-primary font-medium"
+                          : "text-ink-2 hover:text-ink hover:bg-stone/50",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+
+        {/* User profile footer inside drawer */}
+        <div className="border-t border-line p-4 bg-paper/50">
+          <div className="flex flex-col gap-1">
+            <span className="text-[13px] font-semibold text-ink">{user.name}</span>
+            <span className="text-[11.5px] text-ink-3 truncate">{user.email}</span>
+            <span className="bg-surface-tint border border-surface-tint-border text-primary-ink text-[10.5px] font-medium px-2 py-0.5 rounded-full inline-flex items-center w-fit mt-1">
+              {ROLE_LABELS[user.role] ?? user.role}
+            </span>
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   );

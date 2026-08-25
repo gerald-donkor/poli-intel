@@ -79,6 +79,10 @@ export default async function NewBriefPage({
     <>
       <PageHeader
         title="Generate a brief"
+        breadcrumbs={[
+          { label: "Briefs", href: "/briefs" },
+          { label: "New draft" },
+        ]}
         subtitle="Paste the policy document, choose who it is for, and pick the evidence it should draw on. The draft is fact-checked against that evidence before it is saved."
       />
 

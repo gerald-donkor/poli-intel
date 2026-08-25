@@ -92,6 +92,10 @@ export default async function SignalDetailPage({
     <>
       <PageHeader
         title={signal.title}
+        breadcrumbs={[
+          { label: "Signals", href: "/signals" },
+          { label: signal.title },
+        ]}
         subtitle={
           <>
             {signal.sourceName} · picked up {formatSignalDate(signal.detectedAt)}

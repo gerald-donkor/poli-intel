@@ -56,6 +56,10 @@ export default async function EvidenceQueuePage() {
     <>
       <PageHeader
         title="Classification queue"
+        breadcrumbs={[
+          { label: "Evidence", href: "/evidence" },
+          { label: "Classification Queue" },
+        ]}
         subtitle="Newly ingested evidence is held here. Nothing is searchable, and nothing reaches the AI pipeline, until it is tagged."
       >
         <Link

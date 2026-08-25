@@ -55,6 +55,10 @@ export default async function NewEvidencePage() {
     <>
       <PageHeader
         title="Add evidence"
+        breadcrumbs={[
+          { label: "Evidence", href: "/evidence" },
+          { label: "Add Evidence" },
+        ]}
         subtitle="The text is extracted and chunked on upload. The item is then held for classification before it becomes searchable."
       >
         <Link

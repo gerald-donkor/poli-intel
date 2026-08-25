@@ -5,6 +5,8 @@ import { toStaffUserDto } from "@/lib/auth/dto";
 import { requireStaffUser } from "@/lib/auth/session";
 import { loadCommandIndex } from "@/lib/command";
 
+import { Toaster } from "@/components/ui/toast";
+
 // Desktop shell for the Director and Officer surfaces. A nested layout rather
 // than a second root layout: sibling root layouts force a full page reload when
 // navigating between them, and the fonts load once in app/layout.tsx.
@@ -30,6 +32,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <main id="main" className="flex min-h-0 flex-1 flex-col">
         {children}
       </main>
+      <Toaster />
     </>
   );
 }
