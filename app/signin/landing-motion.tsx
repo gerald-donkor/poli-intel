@@ -229,12 +229,11 @@ export function LandingMotion({
             });
 
             pipelineTl
-              .from('[data-anim="pipeline-stage"]', {
-                y: 16,
-                autoAlpha: 0,
-                duration: 0.45,
-                stagger: 0.1,
-              })
+              .fromTo(
+                '[data-anim="pipeline-stage"]',
+                { y: 16, autoAlpha: 0 },
+                { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.1 },
+              )
               .fromTo(
                 '[data-anim="lattice-link"]',
                 { drawSVG: "0% 0%" },
@@ -273,12 +272,11 @@ export function LandingMotion({
               },
             });
 
-            capabilitiesTl.from('[data-anim="capability-card"]', {
-              y: 20,
-              autoAlpha: 0,
-              duration: 0.45,
-              stagger: 0.08,
-            });
+            capabilitiesTl.fromTo(
+              '[data-anim="capability-card"]',
+              { y: 20, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.08 },
+            );
 
             // Landscape: the blockquote wipes line by line. It keeps its
             // serif — the serif is quotation-only (AGENTS.md §11.6) and
@@ -288,17 +286,21 @@ export function LandingMotion({
               mask: "lines",
               autoSplit: true,
               onSplit(self) {
-                return gsap.from(self.lines, {
-                  yPercent: 100,
-                  duration: 0.7,
-                  stagger: 0.09,
-                  ease: "power3.out",
-                  scrollTrigger: {
-                    trigger: '[data-anim="landscape"]',
-                    start: "top 75%",
-                    once: true,
+                return gsap.fromTo(
+                  self.lines,
+                  { yPercent: 100 },
+                  {
+                    yPercent: 0,
+                    duration: 0.7,
+                    stagger: 0.09,
+                    ease: "power3.out",
+                    scrollTrigger: {
+                      trigger: '[data-anim="landscape"]',
+                      start: "top 75%",
+                      once: true,
+                    },
                   },
-                });
+                );
               },
             });
 
@@ -314,15 +316,19 @@ export function LandingMotion({
             });
 
             locatorTl
-              .from('[data-anim="locator-ring"]', {
-                scale: 0.7,
-                autoAlpha: 0,
-                // All four rings are concentric, so one shared SVG-space
-                // origin is correct. Never paired with transformOrigin.
-                svgOrigin: "230 120",
-                duration: 0.6,
-                stagger: { each: 0.08, from: "center" },
-              })
+              .fromTo(
+                '[data-anim="locator-ring"]',
+                { scale: 0.7, autoAlpha: 0 },
+                {
+                  scale: 1,
+                  autoAlpha: 1,
+                  // All four rings are concentric, so one shared SVG-space
+                  // origin is correct. Never paired with transformOrigin.
+                  svgOrigin: "230 120",
+                  duration: 0.6,
+                  stagger: { each: 0.08, from: "center" },
+                },
+              )
               .fromTo(
                 '[data-anim="locator-connector"]',
                 { drawSVG: "0% 0%" },
@@ -369,12 +375,13 @@ export function LandingMotion({
               },
             });
 
-            footerTl.from('[data-anim="footer-item"]', {
-              y: 16,
-              autoAlpha: 0,
-              duration: 0.45,
-              stagger: 0.08,
-            });
+            footerTl.fromTo(
+              '[data-anim="footer-item"]',
+              { y: 16, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.08 },
+            );
+
+            ScrollTrigger.refresh();
           });
 
           // Rule 4. Every ScrollTrigger and timeline above is created only once
