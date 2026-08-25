@@ -74,7 +74,7 @@ export function LandingMotion({
       // the type back to what's actually handed to us at runtime.
       const contextSafe = contextSafeFn as NonNullable<typeof contextSafeFn>;
 
-      // Rule 4. Reset before any trigger geometry is computed, so no batch or
+      // Rule 4. Reset before any trigger geometry is computed, so no
       // ScrollTrigger is ever created while the page is pre-scrolled into a
       // section the visitor hasn't reached yet.
       const previousScrollRestoration = history.scrollRestoration;
@@ -183,7 +183,7 @@ export function LandingMotion({
            * Scroll. Created only once webfonts have settled (Rule 4), inside
            * `contextSafe` since this runs asynchronously — after `useGSAP`'s
            * own synchronous setup has finished — so every ScrollTrigger and
-           * batch tween created here is still tracked by the component's
+           * timeline tween created here is still tracked by the component's
            * GSAP context and reverted on unmount, even if that unmount
            * happens before fonts resolve. ScrollTriggers are created in page
            * order — hero, pipeline, capabilities, landscape, footer — so
@@ -263,22 +263,21 @@ export function LandingMotion({
                 },
               );
 
-            // Capabilities: batches of up to four, so cards never arrive all
-            // at once or one-by-one down a long chain.
-            ScrollTrigger.batch('[data-anim="capability-card"]', {
-              interval: 0.08,
-              batchMax: 4,
-              start: "top 85%",
-              once: true,
-              onEnter: (batch) =>
-                gsap.from(batch, {
-                  y: 20,
-                  autoAlpha: 0,
-                  duration: 0.45,
-                  stagger: 0.06,
-                  ease: "power2.out",
-                  overwrite: true,
-                }),
+            // Capabilities: unified section timeline so all cards animate deterministically together.
+            const capabilitiesTl = gsap.timeline({
+              defaults: { ease: "power2.out" },
+              scrollTrigger: {
+                trigger: '[data-anim="capabilities"]',
+                start: "top 75%",
+                toggleActions: "play none none none",
+              },
+            });
+
+            capabilitiesTl.from('[data-anim="capability-card"]', {
+              y: 20,
+              autoAlpha: 0,
+              duration: 0.45,
+              stagger: 0.08,
             });
 
             // Landscape: the blockquote wipes line by line. It keeps its
@@ -360,24 +359,25 @@ export function LandingMotion({
                 });
               });
 
-            ScrollTrigger.batch('[data-anim="footer-item"]', {
-              interval: 0.08,
-              batchMax: 4,
-              start: "top 92%",
-              once: true,
-              onEnter: (batch) =>
-                gsap.from(batch, {
-                  y: 16,
-                  autoAlpha: 0,
-                  duration: 0.5,
-                  stagger: 0.08,
-                  ease: "power2.out",
-                  overwrite: true,
-                }),
+            // Footer: unified section timeline
+            const footerTl = gsap.timeline({
+              defaults: { ease: "power2.out" },
+              scrollTrigger: {
+                trigger: '[data-anim="footer"]',
+                start: "top 90%",
+                toggleActions: "play none none none",
+              },
+            });
+
+            footerTl.from('[data-anim="footer-item"]', {
+              y: 16,
+              autoAlpha: 0,
+              duration: 0.45,
+              stagger: 0.08,
             });
           });
 
-          // Rule 4. Every ScrollTrigger and batch above is created only once
+          // Rule 4. Every ScrollTrigger and timeline above is created only once
           // webfonts have settled — line breaks move when a webfont lands,
           // which moves every trigger below it — so there is exactly one
           // geometry pass, not a synchronous one followed by a racing

@@ -2,7 +2,7 @@ import { ShieldCheck } from "lucide-react";
 
 export function LandingFooter() {
   return (
-    <footer className="mt-auto border-t border-line bg-card">
+    <footer data-anim="footer" className="mt-auto border-t border-line bg-card">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-10 tablet:px-8 tablet:py-12">
         <div className="grid grid-cols-1 gap-8 laptop:grid-cols-12">
           {/* Tropenbos Identity */}

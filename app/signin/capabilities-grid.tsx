@@ -42,7 +42,10 @@ const CAPABILITIES = [
 
 export function CapabilitiesGrid() {
   return (
-    <section className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16">
+    <section
+      data-anim="capabilities"
+      className="mx-auto w-full max-w-[1440px] px-4 py-12 tablet:px-8 tablet:py-16"
+    >
       <div className="flex flex-col gap-8">
         {/* Section Heading */}
         <div className="flex flex-col gap-2">
