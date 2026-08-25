@@ -64,6 +64,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
   trustHost: true,
 
+  // Auth.js' default error logger includes callback details in some failure
+  // paths. Keep diagnostics useful without allowing OAuth query parameters,
+  // tokens, cookies, or provider profile data into logs.
+  logger: {
+    error(error) {
+      const type =
+        typeof (error as { type?: unknown }).type === "string"
+          ? (error as unknown as { type: string }).type
+          : error.name;
+      console.error("[auth] auth flow failed", { type });
+    },
+    warn(code) {
+      console.warn("[auth] auth flow warning", { code });
+    },
+  },
+
   session: { strategy: "jwt" },
 
   // No default Auth.js UI is ever reachable; both land on the project's screen.
