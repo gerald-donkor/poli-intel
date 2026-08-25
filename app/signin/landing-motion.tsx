@@ -128,11 +128,10 @@ export function LandingMotion({
             .from(
               '[data-anim="signin-card"]',
               {
-                scale: 0.955,
-                y: 18,
-                filter: "blur(8px)",
-                duration: 0.6,
-                clearProps: "filter",
+                scale: 0.97,
+                y: 14,
+                autoAlpha: 0,
+                duration: 0.55,
               },
               0.45,
             )
@@ -231,12 +230,10 @@ export function LandingMotion({
 
             pipelineTl
               .from('[data-anim="pipeline-stage"]', {
-                y: 18,
-                filter: "blur(6px)",
+                y: 16,
                 autoAlpha: 0,
-                duration: 0.5,
-                stagger: 0.12,
-                clearProps: "filter",
+                duration: 0.45,
+                stagger: 0.1,
               })
               .fromTo(
                 '[data-anim="lattice-link"]',
@@ -275,14 +272,12 @@ export function LandingMotion({
               once: true,
               onEnter: (batch) =>
                 gsap.from(batch, {
-                  y: 24,
-                  filter: "blur(6px)",
+                  y: 20,
                   autoAlpha: 0,
-                  duration: 0.55,
-                  stagger: 0.08,
+                  duration: 0.45,
+                  stagger: 0.06,
                   ease: "power2.out",
                   overwrite: true,
-                  clearProps: "filter",
                 }),
             });
 
