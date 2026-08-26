@@ -80,34 +80,33 @@ export function EvidenceTable({
 
   return (
     <>
-      <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_360px]">
-        {/* The table scrolls inside its own panel; the page never scrolls
-            horizontally (AGENTS.md §11.15). */}
-        <div className="min-w-0 overflow-x-auto">
-          <Table>
+      <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_340px]">
+        {/* Central Pane: Table is table-fixed, occupying 100% width with zero horizontal scrollbar. */}
+        <div className="min-w-0 w-full overflow-hidden">
+          <Table className="w-full table-fixed">
             <TableHeader className="bg-stone border-line border-b">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                <TableHead className="text-ink-2 py-2.5 px-3 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
                   Title
                 </TableHead>
                 {showMatch ? (
-                  <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                  <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[90px]">
                     Match
                   </TableHead>
                 ) : null}
-                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[75px]">
                   Type
                 </TableHead>
-                <TableHead className="text-ink-2 py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[52px]">
                   Year
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase md:table-cell w-[70px]">
                   Country
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase laptop:table-cell">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase xl:table-cell w-[115px]">
                   Impact area
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase tablet:table-cell">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[125px]">
                   Classification
                 </TableHead>
               </TableRow>
@@ -131,7 +130,7 @@ export function EvidenceTable({
                         : undefined
                     }
                     className={cn(
-                      "border-line cursor-pointer border-b border-l-[3px] transition-colors duration-150",
+                      "border-line cursor-pointer border-b border-l-[3px] transition-colors duration-150 min-h-[48px]",
                       showMatch && index < MAX_STAGGERED_ROWS && "animate-rise-in",
                       // Selected row is a surface-tint background with primary left rule
                       // (design-system.md, evidence table).
@@ -140,7 +139,7 @@ export function EvidenceTable({
                         : "border-l-transparent hover:bg-stone/60",
                     )}
                   >
-                    <TableCell className="max-w-[420px] py-2.5">
+                    <TableCell className="py-2.5 px-3 whitespace-normal">
                       {/* The keyboard path: every row is reachable and operable
                           without a pointer (WCAG 2.1 AA). */}
                       <button
@@ -151,33 +150,39 @@ export function EvidenceTable({
                         }}
                         className="text-ink w-full text-left text-[13px] font-medium focus-visible:outline-none"
                       >
-                        <span className="line-clamp-2">{item.title}</span>
-                        <span className="text-primary font-mono text-[11px] font-medium mt-0.5 block">
+                        <span className="line-clamp-2 leading-snug">{item.title}</span>
+                        <span className="text-primary font-mono text-[11px] font-medium mt-0.5 block truncate">
                           {item.citationKey}
                         </span>
                       </button>
                     </TableCell>
                     {showMatch ? (
-                      <TableCell className="py-2.5">
+                      <TableCell className="py-2.5 px-2 w-[90px] whitespace-normal">
                         <MatchCell match={item.match} />
                       </TableCell>
                     ) : null}
-                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
+                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] sm:table-cell w-[75px] truncate">
                       {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
                     </TableCell>
-                    <TableCell className="text-ink-2 py-2.5 font-mono text-[11.5px]">
+                    <TableCell className="text-ink-2 py-2.5 px-2 font-mono text-[11.5px] w-[52px]">
                       {item.year ?? "—"}
                     </TableCell>
-                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] tablet:table-cell">
+                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] md:table-cell w-[70px] truncate">
                       {item.country ?? "—"}
                     </TableCell>
-                    <TableCell className="text-ink-2 hidden py-2.5 text-[13px] laptop:table-cell">
+                    <TableCell
+                      className="text-ink-2 hidden py-2.5 px-2 text-[12px] xl:table-cell w-[115px] truncate"
+                      title={item.impactArea ? IMPACT_AREA_LABELS[item.impactArea] : undefined}
+                    >
                       {item.impactArea
                         ? IMPACT_AREA_LABELS[item.impactArea]
                         : "—"}
                     </TableCell>
-                    <TableCell className="hidden py-2.5 tablet:table-cell">
-                      <ClassificationBadge classification={item.classification} />
+                    <TableCell className="hidden py-2.5 px-2 sm:table-cell w-[125px]">
+                      <ClassificationBadge
+                        classification={item.classification}
+                        compact
+                      />
                     </TableCell>
                   </TableRow>
                 );
@@ -186,11 +191,10 @@ export function EvidenceTable({
           </Table>
         </div>
 
-        {/* Panel border switches from top to left when the column becomes a
-            stacked row (design-system.md, responsive rules). */}
+        {/* Right Pane: Evidence detail panel cleanly separated with border-l, never overlapping */}
         <aside
           aria-label="Evidence detail"
-          className="border-line min-w-0 border-t p-4 sm:p-5 laptop:border-t-0 laptop:border-l"
+          className="border-line min-w-0 border-t p-4 sm:p-5 laptop:border-t-0 laptop:border-l overflow-y-auto"
         >
           {selected ? (
             <EvidenceDetail item={selected} />
@@ -234,7 +238,7 @@ function MatchCell({ match }: { match: MatchProvenance | null }) {
   if (match === null) return null;
 
   if (match.kind === "keyword") {
-    return <span className="text-ink-2 text-[12.5px] font-medium">Keyword</span>;
+    return <span className="text-ink-2 text-[12px] font-medium">Keyword</span>;
   }
 
   const score = Math.round(match.similarity * 100);
@@ -242,18 +246,18 @@ function MatchCell({ match }: { match: MatchProvenance | null }) {
 
   return (
     <div
-      className="flex min-w-[104px] flex-col gap-1"
+      className="flex w-full flex-col gap-0.5"
       aria-label={`Closeness ${score} out of 100${
         alsoKeyword ? ", and a keyword match" : ""
       }`}
     >
-      <div className="flex items-center gap-2">
-        <span className="text-ink font-mono text-[11.5px] font-medium tabular-nums">
+      <div className="flex items-center gap-1.5">
+        <span className="text-ink font-mono text-[11px] font-medium tabular-nums">
           {score}
         </span>
         <span
           aria-hidden="true"
-          className="bg-stone relative h-1.5 w-14 overflow-hidden rounded-full"
+          className="bg-stone relative h-1.5 w-10 overflow-hidden rounded-full"
         >
           <span
             className="bg-primary block h-full rounded-full transition-all duration-300"
@@ -262,7 +266,7 @@ function MatchCell({ match }: { match: MatchProvenance | null }) {
         </span>
       </div>
       {alsoKeyword ? (
-        <span className="text-ink-3 text-[11px] font-medium">and keyword</span>
+        <span className="text-ink-3 text-[10px] font-medium leading-none">and keyword</span>
       ) : null}
     </div>
   );

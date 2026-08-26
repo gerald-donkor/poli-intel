@@ -51,23 +51,30 @@ export function classificationLabel(classification: Classification): string {
 export function ClassificationBadge({
   classification,
   className,
+  compact = false,
 }: {
   classification: Classification;
   className?: string;
+  compact?: boolean;
 }) {
   const presentation = PRESENTATION[classification];
 
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap",
+        "inline-flex w-fit items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap",
+        compact ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-[11.5px]",
         presentation.className,
         className,
       )}
     >
       <span
         aria-hidden="true"
-        className={cn("size-2 shrink-0 rounded-[1px] border-[1.5px]", presentation.glyphClassName)}
+        className={cn(
+          "shrink-0 rounded-[1px] border-[1.5px]",
+          compact ? "size-1.5" : "size-2",
+          presentation.glyphClassName,
+        )}
       />
       <span className="sr-only">Classification: </span>
       {presentation.label}
