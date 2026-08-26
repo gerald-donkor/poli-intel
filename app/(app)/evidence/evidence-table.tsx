@@ -83,30 +83,42 @@ export function EvidenceTable({
       <div className="bg-card border-line rounded-card grid grid-cols-1 overflow-hidden border laptop:grid-cols-[1fr_320px] desktop:grid-cols-[1fr_340px]">
         {/* Central Pane: Table is table-fixed, occupying 100% width with zero horizontal scrollbar. */}
         <div className="min-w-0 w-full overflow-hidden">
-          <Table className="w-full table-fixed">
+          <Table
+            className="w-full table-fixed"
+            containerClassName="overflow-hidden w-full"
+          >
+            <colgroup>
+              <col className="w-auto" />
+              {showMatch ? <col className="w-[75px]" /> : null}
+              <col className="hidden sm:table-column w-[70px]" />
+              <col className="w-[48px]" />
+              <col className="hidden md:table-column w-[65px]" />
+              <col className="hidden xl:table-column w-[105px]" />
+              <col className="hidden sm:table-column w-[80px]" />
+            </colgroup>
             <TableHeader className="bg-stone border-line border-b">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="text-ink-2 py-2.5 px-3 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
                   Title
                 </TableHead>
                 {showMatch ? (
-                  <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[90px]">
+                  <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[75px]">
                     Match
                   </TableHead>
                 ) : null}
-                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[75px]">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[70px]">
                   Type
                 </TableHead>
-                <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[52px]">
+                <TableHead className="text-ink-2 py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase text-center w-[48px]">
                   Year
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase md:table-cell w-[70px]">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase md:table-cell w-[65px]">
                   Country
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase xl:table-cell w-[115px]">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase xl:table-cell w-[105px]">
                   Impact area
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[125px]">
+                <TableHead className="text-ink-2 hidden py-2.5 px-2 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[80px]">
                   Classification
                 </TableHead>
               </TableRow>
@@ -139,7 +151,7 @@ export function EvidenceTable({
                         : "border-l-transparent hover:bg-stone/60",
                     )}
                   >
-                    <TableCell className="py-2.5 px-3 whitespace-normal">
+                    <TableCell className="py-2.5 px-3 whitespace-normal min-w-0">
                       {/* The keyboard path: every row is reachable and operable
                           without a pointer (WCAG 2.1 AA). */}
                       <button
@@ -150,35 +162,35 @@ export function EvidenceTable({
                         }}
                         className="text-ink w-full text-left text-[13px] font-medium focus-visible:outline-none"
                       >
-                        <span className="line-clamp-2 leading-snug">{item.title}</span>
+                        <span className="line-clamp-2 leading-snug break-words">{item.title}</span>
                         <span className="text-primary font-mono text-[11px] font-medium mt-0.5 block truncate">
                           {item.citationKey}
                         </span>
                       </button>
                     </TableCell>
                     {showMatch ? (
-                      <TableCell className="py-2.5 px-2 w-[90px] whitespace-normal">
+                      <TableCell className="py-2.5 px-2 w-[75px] whitespace-normal min-w-0">
                         <MatchCell match={item.match} />
                       </TableCell>
                     ) : null}
-                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] sm:table-cell w-[75px] truncate">
+                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] sm:table-cell w-[70px] truncate min-w-0">
                       {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
                     </TableCell>
-                    <TableCell className="text-ink-2 py-2.5 px-2 font-mono text-[11.5px] w-[52px]">
+                    <TableCell className="text-ink-2 py-2.5 px-2 font-mono text-[11.5px] text-center w-[48px] min-w-0">
                       {item.year ?? "—"}
                     </TableCell>
-                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] md:table-cell w-[70px] truncate">
+                    <TableCell className="text-ink-2 hidden py-2.5 px-2 text-[12.5px] md:table-cell w-[65px] truncate min-w-0">
                       {item.country ?? "—"}
                     </TableCell>
                     <TableCell
-                      className="text-ink-2 hidden py-2.5 px-2 text-[12px] xl:table-cell w-[115px] truncate"
+                      className="text-ink-2 hidden py-2.5 px-2 text-[12px] xl:table-cell w-[105px] truncate min-w-0"
                       title={item.impactArea ? IMPACT_AREA_LABELS[item.impactArea] : undefined}
                     >
                       {item.impactArea
                         ? IMPACT_AREA_LABELS[item.impactArea]
                         : "—"}
                     </TableCell>
-                    <TableCell className="hidden py-2.5 px-2 sm:table-cell w-[125px]">
+                    <TableCell className="hidden py-2.5 px-2 sm:table-cell w-[80px] min-w-0">
                       <ClassificationBadge
                         classification={item.classification}
                         compact

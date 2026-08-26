@@ -44,6 +44,12 @@ const PRESENTATION: Record<Classification, ClassificationPresentation> = {
   },
 };
 
+const COMPACT_LABELS: Record<Classification, string> = {
+  [Classification.public_published]: "Public",
+  [Classification.community_sourced]: "Community",
+  [Classification.unpublished_internal]: "Internal",
+};
+
 export function classificationLabel(classification: Classification): string {
   return PRESENTATION[classification].label;
 }
@@ -63,7 +69,7 @@ export function ClassificationBadge({
     <span
       className={cn(
         "inline-flex w-fit items-center gap-1.5 rounded-full border font-semibold whitespace-nowrap",
-        compact ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-[11.5px]",
+        compact ? "px-1.5 py-0.5 text-[11px]" : "px-2.5 py-1 text-[11.5px]",
         presentation.className,
         className,
       )}
@@ -77,7 +83,7 @@ export function ClassificationBadge({
         )}
       />
       <span className="sr-only">Classification: </span>
-      {presentation.label}
+      {compact ? COMPACT_LABELS[classification] : presentation.label}
       <span className="sr-only"> — {presentation.meaning}</span>
     </span>
   );
