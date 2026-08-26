@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -68,6 +69,7 @@ type Run =
   | { phase: "failed"; message: string };
 
 export function EvidenceUploadForm() {
+  const router = useRouter();
   const [run, setRun] = useState<Run>({ phase: "idle" });
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -114,6 +116,9 @@ export function EvidenceUploadForm() {
           extractedChars: outcome.extractedChars,
           chunkCount: outcome.chunkCount,
         });
+        // Re-read server components so the pending classification alert counter at the top
+        // immediately updates to include this new document.
+        router.refresh();
         return;
       }
 

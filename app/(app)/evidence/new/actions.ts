@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { canIngestEvidence, unauthorised } from "@/lib/auth/authorize";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
@@ -86,6 +88,10 @@ export async function createEvidenceRecordAction(
     };
   }
 
+  revalidatePath("/evidence");
+  revalidatePath("/evidence/new");
+  revalidatePath("/evidence/queue");
+
   return { ok: true, evidenceItemId: created.evidenceItemId };
 }
 
@@ -110,6 +116,10 @@ export async function discardEvidenceRecordAction(
   if (item.ingestedById !== staffUser.id) return { ok: false };
 
   await deleteEvidenceItem(evidenceItemId);
+
+  revalidatePath("/evidence");
+  revalidatePath("/evidence/new");
+  revalidatePath("/evidence/queue");
 
   return { ok: true };
 }
