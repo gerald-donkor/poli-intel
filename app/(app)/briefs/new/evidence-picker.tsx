@@ -45,6 +45,7 @@ export function EvidencePicker({
   matched,
   selectedIds,
   onToggle,
+  onSetSelected,
   disabled,
 }: {
   evidence: EvidenceListItem[];
@@ -52,6 +53,7 @@ export function EvidencePicker({
   matched: MatchedEvidenceItem[];
   selectedIds: string[];
   onToggle: (id: string) => void;
+  onSetSelected?: (ids: string[]) => void;
   disabled: boolean;
 }) {
   const [filter, setFilter] = useState("");
@@ -79,7 +81,54 @@ export function EvidencePicker({
     );
   }, [evidence, filter, matchedIds]);
 
+  const candidateIds = useMemo(() => {
+    return [
+      ...matched.map((match) => match.item.id),
+      ...visible.map((item) => item.id),
+    ];
+  }, [matched, visible]);
+
+  const targetIds = useMemo(
+    () => candidateIds.slice(0, GENERATION_EVIDENCE_CONTEXT_SIZE),
+    [candidateIds],
+  );
+
+  const totalAvailable = candidateIds.length;
+  const targetCount = targetIds.length;
+  const allTargetSelected =
+    targetCount > 0 && targetIds.every((id) => selected.has(id));
+  const isChecked = allTargetSelected;
+  const isIndeterminate = !allTargetSelected && selectedIds.length > 0;
+
   const atCap = selectedIds.length >= GENERATION_EVIDENCE_CONTEXT_SIZE;
+
+  const handleToggleAll = () => {
+    if (disabled || targetCount === 0) return;
+    if (isChecked) {
+      if (onSetSelected) {
+        onSetSelected([]);
+      } else {
+        selectedIds.forEach((id) => onToggle(id));
+      }
+    } else {
+      if (onSetSelected) {
+        onSetSelected(targetIds);
+      } else {
+        targetIds.forEach((id) => {
+          if (!selected.has(id)) onToggle(id);
+        });
+      }
+    }
+  };
+
+  const handleClearAll = () => {
+    if (disabled || selectedIds.length === 0) return;
+    if (onSetSelected) {
+      onSetSelected([]);
+    } else {
+      selectedIds.forEach((id) => onToggle(id));
+    }
+  };
 
   return (
     <fieldset
@@ -98,16 +147,6 @@ export function EvidencePicker({
         </p>
       </div>
 
-      <p
-        aria-live="polite"
-        className={cn(
-          "font-mono text-[11.5px]",
-          atCap ? "text-primary-ink font-medium" : "text-ink-3",
-        )}
-      >
-        {selectedIds.length} / {GENERATION_EVIDENCE_CONTEXT_SIZE} selected
-      </p>
-
       {evidence.length === 0 && matched.length === 0 ? (
         <p className="text-ink-3 border-line rounded-card border border-dashed p-4 text-[13px]">
           No evidence is eligible yet. An item becomes available here once a
@@ -116,6 +155,58 @@ export function EvidencePicker({
         </p>
       ) : (
         <>
+          <div className="border-line bg-paper flex min-h-11 flex-wrap items-center justify-between gap-2.5 rounded-card border px-3 py-2 tablet:min-h-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <label
+                htmlFor="master-evidence-select"
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 text-[12.5px] font-medium text-ink select-none",
+                  disabled || totalAvailable === 0
+                    ? "cursor-not-allowed opacity-50"
+                    : "hover:text-primary-ink transition-colors",
+                )}
+              >
+                <Checkbox
+                  id="master-evidence-select"
+                  checked={isChecked}
+                  indeterminate={isIndeterminate}
+                  disabled={disabled || totalAvailable === 0}
+                  onCheckedChange={handleToggleAll}
+                  aria-label={
+                    filter.trim().length > 0
+                      ? `Select visible evidence items up to ${GENERATION_EVIDENCE_CONTEXT_SIZE}`
+                      : `Select all evidence items up to ${GENERATION_EVIDENCE_CONTEXT_SIZE}`
+                  }
+                />
+                <span>
+                  {filter.trim().length > 0
+                    ? `Select visible (up to ${GENERATION_EVIDENCE_CONTEXT_SIZE})`
+                    : `Select all (up to ${GENERATION_EVIDENCE_CONTEXT_SIZE})`}
+                </span>
+              </label>
+
+              {selectedIds.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  disabled={disabled}
+                  className="text-ink-3 hover:text-ink hover:bg-stone focus-visible:ring-accent inline-flex h-7 cursor-pointer items-center rounded px-2 text-[11.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+
+            <p
+              aria-live="polite"
+              className={cn(
+                "font-mono text-[11.5px] tabular-nums",
+                atCap ? "text-primary-ink font-medium" : "text-ink-3",
+              )}
+            >
+              {selectedIds.length} / {GENERATION_EVIDENCE_CONTEXT_SIZE} selected
+            </p>
+          </div>
           {matched.length > 0 ? (
             <div className="flex flex-col gap-2">
               <h3 className="text-ink-3 text-[10.5px] font-semibold tracking-[0.06em] uppercase">

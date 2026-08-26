@@ -160,6 +160,12 @@ export function GenerateBriefForm({
     );
   };
 
+  const setSelectedEvidence = (ids: string[]) => {
+    form.setValue("evidenceItemIds", ids, {
+      shouldValidate: form.formState.isSubmitted,
+    });
+  };
+
   return (
     <form
       onSubmit={(event) => {
@@ -330,6 +336,7 @@ export function GenerateBriefForm({
             matched={prefill?.matched ?? []}
             selectedIds={selectedIds}
             onToggle={toggleEvidence}
+            onSetSelected={setSelectedEvidence}
             disabled={busy}
           />
           <FieldError errors={[form.formState.errors.evidenceItemIds]} />
