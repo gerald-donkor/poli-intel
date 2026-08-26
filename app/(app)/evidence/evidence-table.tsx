@@ -88,37 +88,37 @@ export function EvidenceTable({
             containerClassName="overflow-hidden w-full"
           >
             <colgroup>
-              <col className="w-auto min-w-[200px]" />
-              {showMatch ? <col className="w-[85px]" /> : null}
-              <col className="hidden sm:table-column w-[95px]" />
-              <col className="w-[55px]" />
-              <col className="hidden md:table-column w-[100px]" />
-              <col className="hidden xl:table-column w-[150px]" />
-              <col className="hidden sm:table-column w-[130px]" />
+              <col className="w-auto min-w-0" />
+              {showMatch ? <col className="w-[70px]" /> : null}
+              <col className="hidden sm:table-column w-[82px]" />
+              <col className="w-[44px]" />
+              <col className="hidden md:table-column w-[75px]" />
+              <col className="hidden xl:table-column w-[115px]" />
+              <col className="hidden sm:table-column w-[110px]" />
             </colgroup>
             <TableHeader className="bg-stone border-line border-b">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="text-ink-2 py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
+                <TableHead className="text-ink-2 py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase">
                   Title
                 </TableHead>
                 {showMatch ? (
-                  <TableHead className="text-ink-2 py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase w-[85px]">
+                  <TableHead className="text-ink-2 py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase w-[70px]">
                     Match
                   </TableHead>
                 ) : null}
-                <TableHead className="text-ink-2 hidden py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[95px]">
+                <TableHead className="text-ink-2 hidden py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase sm:table-cell w-[82px]">
                   Type
                 </TableHead>
-                <TableHead className="text-ink-2 py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase text-center w-[55px]">
+                <TableHead className="text-ink-2 py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase text-center w-[44px]">
                   Year
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase md:table-cell w-[100px]">
+                <TableHead className="text-ink-2 hidden py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase md:table-cell w-[75px]">
                   Country
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase xl:table-cell w-[150px]">
+                <TableHead className="text-ink-2 hidden py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase xl:table-cell w-[115px]">
                   Impact area
                 </TableHead>
-                <TableHead className="text-ink-2 hidden py-3 px-3.5 text-[11.5px] font-semibold tracking-[0.06em] uppercase sm:table-cell w-[130px]">
+                <TableHead className="text-ink-2 hidden py-3 px-2.5 text-[11px] font-semibold tracking-normal uppercase sm:table-cell w-[110px]">
                   Classification
                 </TableHead>
               </TableRow>
@@ -151,7 +151,7 @@ export function EvidenceTable({
                         : "border-l-transparent hover:bg-stone/60",
                     )}
                   >
-                    <TableCell className="py-3 px-3.5 whitespace-normal align-top min-w-0">
+                    <TableCell className="py-3 px-2.5 whitespace-normal align-top min-w-0">
                       {/* The keyboard path: every row is reachable and operable
                           without a pointer (WCAG 2.1 AA). */}
                       <button
@@ -169,27 +169,27 @@ export function EvidenceTable({
                       </button>
                     </TableCell>
                     {showMatch ? (
-                      <TableCell className="py-3 px-3.5 w-[85px] whitespace-normal align-top min-w-0">
+                      <TableCell className="py-3 px-2.5 w-[70px] whitespace-normal align-top min-w-0">
                         <MatchCell match={item.match} />
                       </TableCell>
                     ) : null}
-                    <TableCell className="text-ink-2 hidden py-3 px-3.5 text-[12.5px] sm:table-cell w-[95px] whitespace-normal break-words leading-tight align-top min-w-0">
+                    <TableCell className="text-ink-2 hidden py-3 px-2.5 text-[12px] sm:table-cell w-[82px] whitespace-normal break-words leading-tight align-top min-w-0">
                       {EVIDENCE_SOURCE_TYPE_LABELS[item.sourceType]}
                     </TableCell>
-                    <TableCell className="text-ink-2 py-3 px-3.5 font-mono text-[11.5px] text-center w-[55px] align-top min-w-0">
+                    <TableCell className="text-ink-2 py-3 px-2.5 font-mono text-[11.5px] text-center w-[44px] align-top min-w-0">
                       {item.year ?? "—"}
                     </TableCell>
-                    <TableCell className="text-ink-2 hidden py-3 px-3.5 text-[12.5px] md:table-cell w-[100px] whitespace-normal break-words leading-tight align-top min-w-0">
+                    <TableCell className="text-ink-2 hidden py-3 px-2.5 text-[12px] md:table-cell w-[75px] whitespace-normal break-words leading-tight align-top min-w-0">
                       {item.country ?? "—"}
                     </TableCell>
                     <TableCell
-                      className="text-ink-2 hidden py-3 px-3.5 text-[12.5px] xl:table-cell w-[150px] whitespace-normal break-words leading-tight align-top min-w-0"
+                      className="text-ink-2 hidden py-3 px-2.5 text-[12px] xl:table-cell w-[115px] whitespace-normal break-words leading-tight align-top min-w-0"
                     >
                       {item.impactArea
                         ? IMPACT_AREA_LABELS[item.impactArea]
                         : "—"}
                     </TableCell>
-                    <TableCell className="hidden py-3 px-3.5 sm:table-cell w-[130px] align-top min-w-0">
+                    <TableCell className="hidden py-3 px-2.5 sm:table-cell w-[110px] align-top min-w-0">
                       <ClassificationBadge
                         classification={item.classification}
                         compact
@@ -268,7 +268,7 @@ function MatchCell({ match }: { match: MatchProvenance | null }) {
         </span>
         <span
           aria-hidden="true"
-          className="bg-stone relative h-1.5 w-10 overflow-hidden rounded-full"
+          className="bg-stone relative h-1.5 w-7 overflow-hidden rounded-full"
         >
           <span
             className="bg-primary block h-full rounded-full transition-all duration-300"
