@@ -269,21 +269,39 @@ function SearchForm({
           </button>
         ) : null}
       </div>
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          name={EVIDENCE_SEARCH_PARAMS.query}
-          type="search"
-          value={value}
-          maxLength={EVIDENCE_SEARCH_MAX_QUERY_CHARS}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Words, or a description"
-          className="h-9 min-w-0 flex-1 text-[13px]"
-        />
-        <Button type="submit" className="h-9 shrink-0">
-          Search
-        </Button>
-      </div>
+      {idPrefix === "rail" ? (
+        <div className="flex flex-col gap-2">
+          <Input
+            id={id}
+            name={EVIDENCE_SEARCH_PARAMS.query}
+            type="search"
+            value={value}
+            maxLength={EVIDENCE_SEARCH_MAX_QUERY_CHARS}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Words, or a description"
+            className="h-9 w-full text-[13px]"
+          />
+          <Button type="submit" className="h-8.5 w-full text-[13px] font-medium">
+            Search
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input
+            id={id}
+            name={EVIDENCE_SEARCH_PARAMS.query}
+            type="search"
+            value={value}
+            maxLength={EVIDENCE_SEARCH_MAX_QUERY_CHARS}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder="Words, or a description"
+            className="h-9 min-w-0 flex-1 text-[13px]"
+          />
+          <Button type="submit" className="h-9 shrink-0">
+            Search
+          </Button>
+        </div>
+      )}
       <p className="text-ink-3 text-[12px]">
         Matches wording, and meaning where the evidence has been embedded.
       </p>
@@ -309,9 +327,7 @@ function FilterFields({
 
   return (
     <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0">
-      <legend className="text-ink-3 mb-1 text-[11.5px] font-semibold tracking-[0.06em] uppercase">
-        Filters
-      </legend>
+      <legend className="sr-only">Filters</legend>
 
       <FilterField
         id={`${idPrefix}-evidence-type`}
