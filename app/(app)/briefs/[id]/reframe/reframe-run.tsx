@@ -75,6 +75,7 @@ export function ReframeRunner({
   toTone,
   currentVersion,
   evidenceCount,
+  policyText,
 }: {
   briefId: string;
   /** Validated against the enum by the route before this ever renders. */
@@ -85,6 +86,7 @@ export function ReframeRunner({
   toTone: string;
   currentVersion: number;
   evidenceCount: number;
+  policyText?: string | null;
 }) {
   const router = useRouter();
   const [run, setRun] = useState<Run>({ phase: "confirm" });
@@ -191,6 +193,18 @@ export function ReframeRunner({
             <Detail label="Framing emphasis" value={toFramingEmphasis} />
             <Detail label="Tone" value={toTone} />
           </dl>
+
+          {policyText ? (
+            <div className="border-line flex flex-col gap-1.5 border-t pt-3">
+              <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                Policy document excerpt
+              </span>
+              <div className="border-accent border-l-2 bg-stone/40 text-ink-2 rounded-r-card max-h-36 overflow-y-auto p-3 font-serif text-[13px] leading-relaxed italic">
+                {policyText.slice(0, 360)}
+                {policyText.length > 360 ? "…" : ""}
+              </div>
+            </div>
+          ) : null}
 
           <p className="text-ink-3 max-w-[70ch] text-[12.5px] leading-[1.6]">
             The reframed draft is checked against the same evidence before you

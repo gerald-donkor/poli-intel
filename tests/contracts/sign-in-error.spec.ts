@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
-
-import { AuthError } from "next-auth";
+import { AuthError } from "@auth/core/errors";
 
 import { signInErrorCode } from "@/lib/auth/sign-in-error";
 

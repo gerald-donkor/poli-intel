@@ -92,11 +92,11 @@ export function AudienceSwitcher({
               <TabsTrigger
                 key={option.value}
                 value={option.value}
-                className="min-h-11 flex-none px-2 text-[12.5px] whitespace-normal tablet:min-h-8"
+                className="min-h-11 flex-none cursor-pointer gap-1.5 px-2.5 py-1.5 text-[12.5px] whitespace-normal tablet:min-h-8"
               >
-                {option.label}
+                <span>{option.label}</span>
                 {option.value === audience ? (
-                  <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                  <span className="border-line bg-stone text-ink-3 rounded-[3px] border px-1 py-0.5 text-[10px] font-semibold tracking-[0.06em] uppercase">
                     Current
                   </span>
                 ) : null}

@@ -1,4 +1,4 @@
-import { AuthError } from "next-auth";
+import { AuthError } from "@auth/core/errors";
 
 /**
  * Keep Auth.js' internal error details out of the browser. The sign-in page

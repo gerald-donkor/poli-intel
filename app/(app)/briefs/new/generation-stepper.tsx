@@ -47,6 +47,15 @@ export function GenerationStepper({
       aria-live="polite"
       className="bg-card border-line rounded-card flex flex-col gap-3 border p-4"
     >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+          Generation progress
+        </span>
+        <span className="text-ink-3 font-mono text-[11px] tabular-nums">
+          {percent}%
+        </span>
+      </div>
+
       <Progress value={percent} className="w-full" />
 
       <ol className="flex flex-col gap-2">
@@ -86,6 +95,8 @@ export function GenerationStepper({
                 <span className="sr-only">— complete</span>
               ) : active ? (
                 <span className="sr-only">— in progress</span>
+              ) : stalled ? (
+                <span className="sr-only">— paused</span>
               ) : null}
             </li>
           );

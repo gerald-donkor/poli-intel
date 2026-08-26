@@ -219,7 +219,7 @@ function EvidenceRow({
     <li>
       <label
         className={cn(
-          "rounded-card flex cursor-pointer items-start gap-3 border p-3 transition-colors duration-150",
+          "rounded-card flex min-h-11 cursor-pointer items-start gap-3 border p-3 transition-colors duration-150 tablet:min-h-0",
           isSelected
             ? "border-surface-tint-border bg-surface-tint"
             : "border-line bg-paper hover:border-sage",

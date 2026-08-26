@@ -131,6 +131,7 @@ export default async function BriefReframePage({
         toTone={profile.tone}
         currentVersion={brief.version}
         evidenceCount={brief.evidenceItemIds.length}
+        policyText={brief.policyText}
       />
     </>
   );
