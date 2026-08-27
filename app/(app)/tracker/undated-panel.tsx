@@ -1,12 +1,19 @@
 import Link from "next/link";
 
 import type { TrackerSignal } from "@/lib/db/tracker";
-import { TRACKER_UNDATED_LIMIT } from "@/lib/db/tracker";
 import { cn } from "@/lib/utils";
 
 import { GEOGRAPHY_LABELS, URGENCY_LABELS } from "../signals/labels";
-import { formatWindowDate, WINDOW_EYEBROW } from "./labels";
+import {
+  formatWindowDate,
+  TRACKER_UNDATED_LIMIT,
+  WINDOW_EYEBROW,
+  WINDOW_URGENCY_BORDER,
+} from "./labels";
+import { UndatedDrawer, UndatedSummaryCard } from "./undated-drawer";
 import { WindowDateControl } from "./window-date-control";
+
+export { UndatedDrawer, UndatedSummaryCard };
 
 /**
  * Signals nobody has recorded a closing date for.
@@ -57,37 +64,42 @@ export function UndatedPanel({
             {signals.map((signal) => (
               <li
                 key={signal.id}
-                className="bg-card border-line rounded-card flex flex-col gap-2 border p-4"
+                className={cn(
+                  "bg-card border-line rounded-card flex flex-col gap-2 border border-l-[3px] p-4 shadow-raised",
+                  WINDOW_URGENCY_BORDER[signal.urgency],
+                )}
               >
-                <span
-                  className={cn(
-                    "text-meta font-semibold tracking-[0.06em] uppercase",
-                    WINDOW_EYEBROW[signal.urgency],
-                  )}
-                >
-                  {URGENCY_LABELS[signal.urgency]}
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className={cn(
+                      "text-meta font-semibold tracking-[0.06em] uppercase",
+                      WINDOW_EYEBROW[signal.urgency],
+                    )}
+                  >
+                    {URGENCY_LABELS[signal.urgency]}
+                  </span>
+                  <span className="text-ink-3 text-[12px]">
+                    {GEOGRAPHY_LABELS[signal.geography]}
+                  </span>
+                </div>
 
                 <Link
                   href={`/signals/${signal.id}`}
-                  className="text-ink text-[15px] leading-snug font-semibold no-underline hover:underline"
+                  className="text-ink hover:text-primary text-[14.5px] leading-snug font-semibold no-underline hover:underline"
                 >
                   {signal.title}
                 </Link>
 
-                <span className="text-ink-3 text-[13px]">
-                  {GEOGRAPHY_LABELS[signal.geography]} · picked up{" "}
-                  <span className="font-mono tabular-nums">
-                    {formatWindowDate(signal.detectedAt)}
-                  </span>
+                <span className="text-ink-3 font-mono text-[12px] tabular-nums">
+                  Picked up {formatWindowDate(signal.detectedAt)}
                 </span>
 
                 {canSetWindow ? (
-                  <div className="mt-1">
+                  <div className="border-line mt-1 border-t pt-2.5">
                     <WindowDateControl signalId={signal.id} initialDate={null} />
                   </div>
                 ) : (
-                  <span className="text-ink-3 text-[13px]">
+                  <span className="text-ink-3 border-line mt-1 border-t pt-2 text-[12.5px]">
                     Recording a closing date is a Policy &amp; Advocacy Officer
                     or Programme Director task.
                   </span>

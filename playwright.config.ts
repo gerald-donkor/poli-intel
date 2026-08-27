@@ -30,6 +30,7 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI && targetPort === "3000",
     timeout: 120_000,
     env: {
+      NODE_OPTIONS: "",
       NODE_ENV: "test",
       AUTH_SECRET: "test-secret-do-not-use-in-production",
       AUTH_URL: baseURL,

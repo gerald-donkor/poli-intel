@@ -72,8 +72,8 @@ export function WindowDateControl({
   };
 
   return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <label htmlFor={inputId} className="text-ink-2 text-[13px] font-medium">
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <label htmlFor={inputId} className="text-ink-2 text-[12.5px] font-medium">
         Closing date
       </label>
 
@@ -84,34 +84,39 @@ export function WindowDateControl({
           value={value}
           disabled={pending}
           onChange={(event) => setValue(event.target.value)}
-          className="h-9 w-[168px] font-mono text-[13px] tabular-nums"
+          className="h-11 w-full font-mono text-[13px] tabular-nums tablet:h-8 tablet:w-[172px]"
         />
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending || value === ""}
-          onClick={() => submit(value === "" ? null : value)}
-        >
-          {pending ? "Saving…" : "Record"}
-        </Button>
-        {initialDate !== null ? (
+        <div className="flex w-full items-center gap-2 tablet:w-auto">
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() => submit(null)}
+            disabled={pending || value === ""}
+            onClick={() => submit(value === "" ? null : value)}
+            className="h-11 flex-1 cursor-pointer tablet:h-8 tablet:flex-initial"
           >
-            Clear
+            {pending ? "Saving…" : "Record"}
           </Button>
-        ) : null}
+          {initialDate !== null ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => submit(null)}
+              className="h-11 cursor-pointer tablet:h-8"
+            >
+              Clear
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {message ? (
         // Slate, never red — `destructive` is deliberately unmapped (§11.4).
         <p
           role="status"
-          className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3 py-2 text-[13px]"
+          aria-live="polite"
+          className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3 py-1.5 text-[12.5px]"
         >
           {message}
         </p>

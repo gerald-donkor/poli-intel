@@ -4,7 +4,10 @@ import { AudienceTypeBadge } from "@/components/audience-type-badge";
 import { PageHeader } from "@/components/page-header";
 import { canManageStakeholders } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
-import { listStakeholders, type StakeholderListItem } from "@/lib/db";
+import {
+  listStakeholders,
+  type StakeholderListItem,
+} from "@/lib/db/stakeholders";
 import type { AudienceTarget } from "@/lib/generated/prisma/enums";
 
 import { CreateStakeholderPanel } from "./create-panel";
@@ -112,31 +115,36 @@ function StakeholderCard({
   return (
     <Link
       href={`/stakeholders/${stakeholder.id}`}
-      className="bg-card border-line rounded-card shadow-raised hover:border-sage flex h-full min-w-0 flex-col gap-2 border p-4 no-underline transition-colors duration-150 hover:no-underline"
+      className="bg-card border-line rounded-card shadow-raised hover:border-sage focus-visible:ring-accent group flex h-full min-w-0 cursor-pointer flex-col gap-2.5 border p-4 no-underline transition-colors duration-150 hover:no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
-      <span className="text-ink text-[15px] leading-snug font-semibold break-words">
-        {stakeholder.name}
-      </span>
-      <span className="text-ink-3 text-[13px] break-words">
-        {[stakeholder.role, stakeholder.organisation]
-          .filter(Boolean)
-          .join(" · ") || "No organisation recorded"}
-      </span>
+      <div className="flex min-w-0 flex-col gap-1">
+        <span className="text-ink group-hover:text-primary text-[15px] leading-snug font-semibold break-words">
+          {stakeholder.name}
+        </span>
+        <span className="text-ink-3 text-[13px] leading-snug break-words">
+          {[stakeholder.role, stakeholder.organisation]
+            .filter(Boolean)
+            .join(" · ") || "No organisation recorded"}
+        </span>
+      </div>
 
       {stakeholder.audienceType ? (
-        <AudienceTypeBadge
-          audienceType={stakeholder.audienceType}
-          className="mt-1"
-        />
+        <div className="mt-1">
+          <AudienceTypeBadge audienceType={stakeholder.audienceType} />
+        </div>
       ) : null}
 
-      <span className="text-ink-3 mt-auto pt-2 font-mono text-[11.5px]">
-        <span className="tabular-nums">{stakeholder.shareCount}</span>{" "}
-        {stakeholder.shareCount === 1 ? "brief logged" : "briefs logged"}
-        {stakeholder.preferredLanguage
-          ? ` · ${stakeholder.preferredLanguage}`
-          : ""}
-      </span>
+      <div className="border-line text-ink-3 mt-auto flex items-center justify-between border-t pt-2.5 font-mono text-[11.5px] tabular-nums">
+        <span>
+          {stakeholder.shareCount}{" "}
+          {stakeholder.shareCount === 1 ? "brief logged" : "briefs logged"}
+        </span>
+        {stakeholder.preferredLanguage ? (
+          <span className="text-ink-2 bg-stone rounded px-1.5 py-0.5 text-[11px] font-medium">
+            {stakeholder.preferredLanguage}
+          </span>
+        ) : null}
+      </div>
     </Link>
   );
 }

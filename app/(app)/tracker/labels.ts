@@ -15,6 +15,9 @@ import type { TrackerBrief } from "@/lib/db/tracker";
  * signal's urgency, because it never is.
  */
 
+/** The undated list's presentation limit. */
+export const TRACKER_UNDATED_LIMIT = 40;
+
 /**
  * The urgency ramp as a calendar dot.
  *
@@ -32,6 +35,14 @@ export const WINDOW_DOT: Record<Urgency, string> = {
   [Urgency.near_term]: "bg-nearterm",
   [Urgency.horizon]: "bg-horizon",
   [Urgency.watch]: "bg-watch",
+};
+
+/** The 3px left-border twin for cards/rows along the warm→cool ramp. */
+export const WINDOW_URGENCY_BORDER: Record<Urgency, string> = {
+  [Urgency.immediate]: "border-l-immediate",
+  [Urgency.near_term]: "border-l-nearterm",
+  [Urgency.horizon]: "border-l-horizon",
+  [Urgency.watch]: "border-l-watch",
 };
 
 /** The dot's text-colour twin, for the eyebrow beside a table row's date. */

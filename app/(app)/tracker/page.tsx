@@ -8,7 +8,7 @@ import {
   getTrackerWindows,
   TRACKER_LOOKAHEAD_DAYS,
   TRACKER_LOOKBACK_DAYS,
-} from "@/lib/db";
+} from "@/lib/db/tracker";
 
 import { TrackerBoard } from "./tracker-board";
 import { UndatedPanel } from "./undated-panel";
@@ -64,10 +64,14 @@ export default async function TrackerPage() {
 
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-8 p-4 tablet:p-6 desktop:px-10">
         {dated.length === 0 ? (
-          <EmptyTrackerState hasUndated={undated.length > 0} />
+          <>
+            <EmptyTrackerState hasUndated={undated.length > 0} />
+            <UndatedPanel signals={undated} canSetWindow={maySetWindow} />
+          </>
         ) : (
           <TrackerBoard
             windows={dated}
+            undated={undated}
             canSetWindow={maySetWindow}
             // The month to land on: the soonest window that has not closed, or
             // the last recorded one if they all have. Chosen here because the
@@ -81,8 +85,6 @@ export default async function TrackerPage() {
             }
           />
         )}
-
-        <UndatedPanel signals={undated} canSetWindow={maySetWindow} />
       </div>
     </>
   );

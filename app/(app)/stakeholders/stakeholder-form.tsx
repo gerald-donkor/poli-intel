@@ -231,7 +231,7 @@ export function StakeholderForm({
           <Button
             type="submit"
             disabled={busy}
-            className="h-11 justify-center tablet:h-8"
+            className="h-11 cursor-pointer justify-center tablet:h-8"
           >
             {existing ? "Save changes" : "Add contact"}
           </Button>
