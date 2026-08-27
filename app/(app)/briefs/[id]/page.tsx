@@ -25,6 +25,7 @@ import {
 import { isPdfExportConfigured } from "@/lib/export/pandoc";
 import { FlagStatus } from "@/lib/generated/prisma/enums";
 import { isDriveExportConfigured } from "@/lib/google/drive-client";
+import { cn } from "@/lib/utils";
 
 import { BRIEF_STATUS_LABELS, formatGeneratedAt } from "../labels";
 import { AudienceSwitcher } from "./audience-switcher";
@@ -153,7 +154,13 @@ export default async function BriefPage({
           </>
         }
       >
-        <Link href="/briefs" className={buttonVariants({ variant: "outline" })}>
+        <Link
+          href="/briefs"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+          )}
+        >
           All briefs
         </Link>
         {mayExport ? (
@@ -165,7 +172,10 @@ export default async function BriefPage({
                   the mechanism (§16.8). */}
               <a
                 href={`/api/briefs/${brief.id}/export?format=docx`}
-                className={buttonVariants({ variant: "outline" })}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+                )}
               >
                 Download Word
               </a>
@@ -176,7 +186,10 @@ export default async function BriefPage({
               {pdfExportAvailable ? (
                 <a
                   href={`/api/briefs/${brief.id}/export?format=pdf`}
-                  className={buttonVariants({ variant: "outline" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline" }),
+                    "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+                  )}
                 >
                   Download PDF
                 </a>
@@ -187,7 +200,10 @@ export default async function BriefPage({
               {driveExportAvailable ? (
                 <a
                   href={`/api/briefs/${brief.id}/export?format=gdoc`}
-                  className={buttonVariants({ variant: "outline" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline" }),
+                    "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+                  )}
                 >
                   Send to Google Docs
                 </a>
@@ -211,7 +227,10 @@ export default async function BriefPage({
         {mayEdit ? (
           <Link
             href={`/briefs/${brief.id}/edit`}
-            className={buttonVariants({ variant: "default" })}
+            className={cn(
+              buttonVariants({ variant: "default" }),
+              "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+            )}
           >
             Edit
           </Link>

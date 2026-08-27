@@ -36,7 +36,7 @@ export type GuardFlagAttributes = {
 };
 
 const MARK_CLASS =
-  "animate-flag-mark-pulse border-b-2 border-b-watch-border cursor-pointer";
+  "animate-flag-mark-pulse border-b-2 border-b-watch-border cursor-pointer transition-colors duration-150 rounded-[2px] px-0.5 hover:bg-watch-surface/40 data-[active-flag=true]:bg-watch-surface/70 data-[active-flag=true]:border-b-watch";
 
 export const GuardFlag = Mark.create({
   name: GUARD_FLAG_MARK,

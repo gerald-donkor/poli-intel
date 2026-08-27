@@ -45,7 +45,12 @@ export function CiteControl({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm" disabled={disabled}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            className="min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8"
+          >
             Cite evidence
           </Button>
         }
@@ -66,7 +71,7 @@ export function CiteControl({
                     onInsert(item);
                     setOpen(false);
                   }}
-                  className="flex-col items-start gap-0.5"
+                  className="cursor-pointer flex-col items-start gap-0.5"
                 >
                   <span className="font-mono text-[11.5px]">
                     {item.citationKey}

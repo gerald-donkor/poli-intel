@@ -219,7 +219,7 @@ export function TranslationPanel({
                 variant="outline"
                 disabled={running}
                 onClick={() => void translate()}
-                className="h-11 justify-center tablet:h-8"
+                className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
               >
                 {running
                   ? "Translating key messages…"

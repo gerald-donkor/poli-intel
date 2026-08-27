@@ -57,7 +57,7 @@ export function EvidenceSheet({
         {item === null ? null : (
           <div className="flex flex-col gap-4 p-5">
             {/* Verbatim source material — the serif (§11.6). */}
-            <p className="border-accent text-ink text-quote font-serif border-l-2 pl-4 leading-snug">
+            <p className="border-accent text-ink text-quote font-serif border-l-2 pl-4 leading-snug break-words">
               {item.title}
             </p>
 
@@ -81,7 +81,7 @@ export function EvidenceSheet({
                 href={item.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[12.5px] font-medium"
+                className="text-primary hover:text-primary-hover cursor-pointer text-[12.5px] font-medium hover:underline"
               >
                 Open the source
               </a>

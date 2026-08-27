@@ -14,6 +14,7 @@ import {
 } from "@/lib/briefs/document";
 import { findBriefForEdit, isEditableStatus } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
+import { cn } from "@/lib/utils";
 
 import { BRIEF_STATUS_LABELS } from "../../labels";
 import { BriefEditor } from "./brief-editor";
@@ -111,7 +112,10 @@ export default async function BriefEditPage({
       >
         <Link
           href={`/briefs/${brief.id}`}
-          className={buttonVariants({ variant: "outline" })}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+          )}
         >
           Back to the brief
         </Link>
@@ -143,7 +147,10 @@ function NotAvailable({
       <PageHeader title={title} subtitle={body}>
         <Link
           href={`/briefs/${briefId}`}
-          className={buttonVariants({ variant: "outline" })}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "min-h-[44px] cursor-pointer tablet:min-h-0 tablet:h-8",
+          )}
         >
           Back to the brief
         </Link>

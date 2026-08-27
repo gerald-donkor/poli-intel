@@ -217,6 +217,21 @@ export function BriefEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, []);
 
+  // Sync active flag selection to inline document marks
+  useEffect(() => {
+    if (!documentRef.current) return;
+    const elements =
+      documentRef.current.querySelectorAll<HTMLElement>("[data-guard-flag]");
+    elements.forEach((el) => {
+      const id = el.getAttribute("data-guard-flag");
+      if (id === activeFlagId) {
+        el.setAttribute("data-active-flag", "true");
+      } else {
+        el.removeAttribute("data-active-flag");
+      }
+    });
+  }, [activeFlagId]);
+
   const retry = useCallback(() => {
     if (editor === null) return;
 
@@ -318,11 +333,15 @@ export function BriefEditor({
         </div>
 
         <div className="order-2 flex min-w-0 flex-col gap-4 laptop:order-2">
-          <div className="bg-card border-line rounded-card flex flex-wrap items-center gap-3 border p-3">
+          <div className="bg-card border-line rounded-card flex min-h-[58px] flex-wrap items-center gap-3 border p-3">
             <Sheet open={navOpen} onOpenChange={setNavOpen}>
               <SheetTrigger
                 render={
-                  <Button variant="outline" size="sm" className="desktop:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] cursor-pointer desktop:hidden tablet:min-h-0 tablet:h-8"
+                  >
                     Sections
                   </Button>
                 }

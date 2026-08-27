@@ -45,7 +45,7 @@ export function CitationList({
                 {index + 1}
               </span>
               <span className="flex min-w-0 flex-col gap-1">
-                <span className="border-accent text-ink text-quote font-serif border-l-2 pl-3 leading-snug">
+                <span className="border-accent text-ink text-quote font-serif border-l-2 pl-3 leading-snug break-words">
                   {item.title}
                 </span>
                 <span className="text-ink-3 pl-3 text-[12.5px]">
@@ -66,14 +66,14 @@ export function CitationList({
                       href={item.sourceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[12.5px] font-medium"
+                      className="text-primary hover:text-primary-hover cursor-pointer text-[12.5px] font-medium hover:underline"
                     >
                       Source
                     </a>
                   ) : null}
                   <Link
                     href={`/evidence?${EVIDENCE_SEARCH_PARAMS.query}=${encodeURIComponent(item.citationKey)}`}
-                    className="text-[12.5px] font-medium"
+                    className="text-primary hover:text-primary-hover cursor-pointer text-[12.5px] font-medium hover:underline"
                   >
                     In the library
                   </Link>

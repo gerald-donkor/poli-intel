@@ -18,15 +18,15 @@ export function BriefBody({ bodyText }: { bodyText: string }) {
 
   return (
     <article className="bg-card border-line rounded-card flex min-w-0 flex-col gap-5 border p-4 tablet:p-6 desktop:p-8">
-      <h2 className="text-ink text-h1 font-semibold">{title}</h2>
+      <h2 className="text-ink text-h1 font-semibold break-words">{title}</h2>
 
       {blocks.map((block) => (
-        <section key={block.offset} className="flex flex-col gap-2">
+        <section key={block.offset} className="flex min-w-0 flex-col gap-2">
           <h3
             className={
               block.body === ""
-                ? "text-ink-3 text-meta border-line border-b pb-1 font-semibold tracking-[0.06em] uppercase"
-                : "text-ink text-h3 font-semibold"
+                ? "text-ink-3 text-meta border-line border-b pb-1 font-semibold tracking-[0.06em] uppercase break-words"
+                : "text-ink text-h3 font-semibold break-words"
             }
           >
             {block.heading}
@@ -34,7 +34,9 @@ export function BriefBody({ bodyText }: { bodyText: string }) {
           {block.body === "" ? null : (
             <div className="text-ink-2 flex max-w-[70ch] flex-col gap-2 text-[14.5px] leading-[1.7]">
               {block.body.split("\n").map((line, index) => (
-                <p key={index}>{line}</p>
+                <p key={index} className="break-words">
+                  {line}
+                </p>
               ))}
             </div>
           )}

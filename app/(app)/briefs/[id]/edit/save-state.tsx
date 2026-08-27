@@ -50,7 +50,12 @@ export function SaveStateIndicator({
             The text stays on screen and the officer decides what to do with it —
             nothing here reloads the page out from under them. */}
         {conflict ? null : (
-          <Button variant="outline" size="sm" onClick={onRetry}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRetry}
+            className="h-7 cursor-pointer px-2.5 text-[12px]"
+          >
             Retry save
           </Button>
         )}

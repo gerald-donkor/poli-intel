@@ -35,7 +35,7 @@ export type CitationChipOptions = {
 };
 
 const CHIP_CLASS =
-  "inline-flex items-center gap-1.5 rounded-full bg-surface-tint border border-surface-tint-border px-2 py-0.5 text-[11px] font-semibold text-primary-ink align-baseline cursor-pointer";
+  "inline-flex items-center gap-1.5 rounded-full bg-surface-tint border border-surface-tint-border px-2 py-0.5 text-[11px] font-semibold text-primary-ink align-baseline cursor-pointer transition-colors duration-150 hover:bg-surface-tint/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 select-none";
 
 const DOT_VERIFIED = "inline-block size-1.5 rounded-full bg-primary";
 const DOT_PENDING =

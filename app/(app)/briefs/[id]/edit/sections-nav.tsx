@@ -44,7 +44,7 @@ export function SectionsNav({
                 type="button"
                 onClick={() => onSelect(entry)}
                 className={cn(
-                  "hover:bg-surface-tint hover:text-primary-ink w-full rounded-[3px] px-2 py-1 text-left text-[12.5px] leading-snug transition-colors duration-150",
+                  "hover:bg-surface-tint hover:text-primary-ink w-full cursor-pointer rounded-[3px] px-2 py-1.5 text-left text-[12.5px] leading-snug transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
                   entry.level === 1 && "text-ink font-semibold",
                   entry.level === 2 &&
                     "text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase",

@@ -125,7 +125,7 @@ export function FlagPanel({
                   <button
                     type="button"
                     onClick={() => onSelectFlag(flag.id)}
-                    className="text-watch-ink mt-2 cursor-pointer text-[12.5px] font-medium underline-offset-2 hover:underline"
+                    className="text-watch-ink mt-2 inline-flex cursor-pointer items-center text-[12.5px] font-medium underline-offset-2 hover:underline focus-visible:rounded-[2px] focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
                   >
                     Find this claim in the document
                   </button>
@@ -168,7 +168,7 @@ function FlagBody({
         {FLAG_REASON_LABELS[flag.reason]}
       </p>
       {/* Verbatim from the draft — quoted material, so the serif (§11.6). */}
-      <blockquote className="border-watch text-ink text-quote my-2 border-l-2 pl-4 font-serif">
+      <blockquote className="border-watch text-ink text-quote my-2 border-l-2 pl-4 font-serif break-words">
         {flag.claimText}
       </blockquote>
       <p className="text-watch-ink/90 text-[12.5px]">
@@ -202,7 +202,7 @@ function ClosedFlags({
 }) {
   return (
     <details className="bg-card border-line rounded-card border p-4">
-      <summary className="text-ink cursor-pointer text-[13px] font-semibold">
+      <summary className="text-ink cursor-pointer text-[13px] font-semibold select-none focus-visible:rounded-[2px] focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none">
         <span className="inline-flex items-center gap-2">
           <span
             aria-hidden="true"

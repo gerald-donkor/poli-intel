@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
+import { GuardFlagIcon } from "@/components/guard-flag-icon";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
@@ -140,7 +141,7 @@ export function ReviewPanel({
                   blockedByFlags ? "approve-blocked" : undefined
                 }
                 onClick={() => run("approve")}
-                className="h-11 justify-center tablet:h-8"
+                className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
               >
                 {pending === "approve"
                   ? "Recording…"
@@ -153,7 +154,7 @@ export function ReviewPanel({
               variant="outline"
               disabled={isPending || reason.trim().length < 3}
               onClick={() => run("send_back")}
-              className="h-11 justify-center tablet:h-8"
+              className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
             >
               {pending === "send_back"
                 ? "Recording…"
@@ -167,7 +168,7 @@ export function ReviewPanel({
                   variant="default"
                   disabled={isPending}
                   onClick={() => run("submit")}
-                  className="h-11 justify-center tablet:h-8"
+                  className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
                 >
                   {pending === "submit"
                     ? "Recording…"
@@ -178,7 +179,7 @@ export function ReviewPanel({
                   variant="outline"
                   disabled={isPending}
                   onClick={() => run("publish")}
-                  className="h-11 justify-center tablet:h-8"
+                  className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
                 >
                   {pending === "publish"
                     ? "Recording…"
@@ -192,12 +193,19 @@ export function ReviewPanel({
               control with no explanation is how a governance hold becomes a
               mystery (§9.5, hallucination-guard). */}
           {isDraft && blockedByFlags ? (
-            <p id="approve-blocked" className="text-watch-ink text-[12.5px]">
-              {openFlagCount}{" "}
-              {openFlagCount === 1 ? "claim still needs" : "claims still need"}{" "}
-              checking before this brief can be approved. They are in the panel
-              above.
-            </p>
+            <div
+              id="approve-blocked"
+              className="bg-watch-surface/70 border-watch-border text-watch-ink flex items-center gap-2 rounded-card border px-3 py-2 text-[12.5px] leading-snug"
+            >
+              <GuardFlagIcon className="size-3.5" />
+              <span>
+                {openFlagCount}{" "}
+                {openFlagCount === 1
+                  ? "claim still needs checking"
+                  : "claims still need checking"}{" "}
+                before this brief can be approved. They are in the panel above.
+              </span>
+            </div>
           ) : null}
 
           <p className="text-ink-3 text-[12.5px]">

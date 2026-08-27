@@ -104,7 +104,7 @@ export function FlagResolution({
               variant="default"
               disabled={isPending}
               onClick={() => run("resolved")}
-              className="h-11 justify-center tablet:h-8"
+              className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
             >
               Checked against a source
             </Button>
@@ -113,7 +113,7 @@ export function FlagResolution({
               variant="outline"
               disabled={isPending}
               onClick={() => run("dismissed")}
-              className="h-11 justify-center tablet:h-8"
+              className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
             >
               Let through without a check
             </Button>
@@ -124,7 +124,7 @@ export function FlagResolution({
             variant="outline"
             disabled={isPending}
             onClick={() => run("reopen")}
-            className="h-11 justify-center tablet:h-8"
+            className="min-h-[44px] cursor-pointer justify-center tablet:min-h-0 tablet:h-8"
           >
             Reopen this flag
           </Button>
