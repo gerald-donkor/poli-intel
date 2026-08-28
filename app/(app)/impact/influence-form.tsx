@@ -147,17 +147,17 @@ export function InfluenceForm({
         {formError ? (
           <p
             role="status"
-            className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3 py-2 text-[13px]"
+            className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3.5 py-2.5 text-[13px] leading-relaxed"
           >
             {formError}
           </p>
         ) : null}
 
-        <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-2">
-          <Field>
+        <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-3">
+          <Field className="min-w-0">
             <FieldLabel htmlFor="influence-brief">Brief</FieldLabel>
             <NativeSelect
-              className="w-full"
+              className="w-full cursor-pointer"
               id="influence-brief"
               disabled={busy}
               {...form.register("briefId")}
@@ -172,10 +172,10 @@ export function InfluenceForm({
             <FieldError errors={[form.formState.errors.briefId]} />
           </Field>
 
-          <Field>
+          <Field className="min-w-0">
             <FieldLabel htmlFor="influence-type">Kind of record</FieldLabel>
             <NativeSelect
-              className="w-full"
+              className="w-full cursor-pointer"
               id="influence-type"
               disabled={busy}
               {...eventTypeField}
@@ -190,12 +190,28 @@ export function InfluenceForm({
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            <FieldDescription>
-              {INFLUENCE_EVENT_TYPE_HINTS[eventType] ?? ""}
-            </FieldDescription>
             <FieldError errors={[form.formState.errors.eventType]} />
           </Field>
+
+          <Field className="min-w-0">
+            <FieldLabel htmlFor="influence-date">Date</FieldLabel>
+            <Input
+              id="influence-date"
+              type="date"
+              max={todayInUtc()}
+              disabled={busy}
+              className="bg-card cursor-pointer"
+              {...form.register("detectedAt")}
+            />
+            <FieldError errors={[form.formState.errors.detectedAt]} />
+          </Field>
         </div>
+
+        {INFLUENCE_EVENT_TYPE_HINTS[eventType] ? (
+          <p className="text-ink-3 -mt-1 text-[12px]">
+            {INFLUENCE_EVENT_TYPE_HINTS[eventType]}
+          </p>
+        ) : null}
 
         <Field>
           <FieldLabel htmlFor="influence-description">
@@ -217,7 +233,7 @@ export function InfluenceForm({
         </Field>
 
         <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-2">
-          <Field>
+          <Field className="min-w-0">
             <FieldLabel htmlFor="influence-source">
               Link to the document
             </FieldLabel>
@@ -237,7 +253,7 @@ export function InfluenceForm({
             <FieldError errors={[form.formState.errors.sourceDocument]} />
           </Field>
 
-          <Field>
+          <Field className="min-w-0">
             <FieldLabel htmlFor="influence-source-title">
               Document title
             </FieldLabel>
@@ -246,6 +262,7 @@ export function InfluenceForm({
               autoComplete="off"
               disabled={busy}
               className="bg-card"
+              placeholder="e.g. National REDD+ Strategy Review"
               {...form.register("sourceTitle")}
             />
             <FieldError errors={[form.formState.errors.sourceTitle]} />
@@ -260,7 +277,8 @@ export function InfluenceForm({
             id="influence-quote"
             rows={2}
             disabled={busy}
-            className="bg-card font-serif text-[15px] leading-[1.55]"
+            className="bg-card font-serif text-[14.5px] leading-[1.55]"
+            placeholder="“…verbatim excerpt from the citing document…”"
             {...form.register("quotedText")}
           />
           <FieldDescription>
@@ -271,26 +289,13 @@ export function InfluenceForm({
           <FieldError errors={[form.formState.errors.quotedText]} />
         </Field>
 
-        <Field className="tablet:max-w-[240px]">
-          <FieldLabel htmlFor="influence-date">Date</FieldLabel>
-          <Input
-            id="influence-date"
-            type="date"
-            max={todayInUtc()}
-            disabled={busy}
-            className="bg-card"
-            {...form.register("detectedAt")}
-          />
-          <FieldError errors={[form.formState.errors.detectedAt]} />
-        </Field>
-
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           <Button
             type="submit"
             disabled={busy}
-            className="h-11 justify-center tablet:h-8"
+            className="h-11 cursor-pointer justify-center px-5 font-medium tablet:h-9"
           >
-            Add to the record
+            {busy ? "Recording…" : "Add to the record"}
           </Button>
           {saved ? (
             <span role="status" className="text-ink-3 text-[13px]">

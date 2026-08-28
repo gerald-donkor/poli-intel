@@ -27,21 +27,30 @@ export function LogInfluencePanel({
   return (
     <section
       aria-labelledby="log-influence-heading"
-      className="bg-card border-line rounded-card flex flex-col gap-3 border p-4 tablet:p-5"
+      className="bg-card border-line rounded-card flex flex-col gap-3.5 border p-4 tablet:p-5 shadow-raised"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2
-          id="log-influence-heading"
-          className="text-ink text-[15px] font-semibold"
-        >
-          Add to the record
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2
+            id="log-influence-heading"
+            className="text-ink text-[15px] font-semibold tracking-[-0.01em]"
+          >
+            Add to the record
+          </h2>
+          {!open ? (
+            <p className="text-ink-3 max-w-[72ch] text-[13px] leading-relaxed">
+              Where a brief has been cited, quoted, or acted on — a policy document, a
+              legislative instrument, a company commitment, a dialogue outcome, or
+              national strategy text.
+            </p>
+          ) : null}
+        </div>
         <Button
           type="button"
           variant="outline"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="h-11 justify-center tablet:h-8"
+          className="h-11 cursor-pointer justify-center px-4 tablet:h-9"
         >
           {open ? "Close" : "Add a record"}
         </Button>
@@ -49,21 +58,16 @@ export function LogInfluencePanel({
 
       {open ? (
         briefs.length === 0 ? (
-          <p className="text-ink-3 max-w-[62ch] text-[13px]">
+          <p className="text-ink-3 max-w-[62ch] text-[13px] py-2">
             There are no briefs to record against yet. An influence record points
             at a brief, so the first step is a brief.
           </p>
         ) : (
-          <InfluenceForm briefs={briefs} onSaved={() => setOpen(false)} />
+          <div className="border-line border-t pt-3">
+            <InfluenceForm briefs={briefs} onSaved={() => setOpen(false)} />
+          </div>
         )
-      ) : (
-        <p className="text-ink-3 max-w-[62ch] text-[13px]">
-          Where a brief has been cited, quoted, or acted on — a policy document, a
-          legislative instrument, a company commitment, a dialogue outcome, or
-          national strategy text. Nothing is counted as influence until the
-          Programme Director confirms it.
-        </p>
-      )}
+      ) : null}
     </section>
   );
 }

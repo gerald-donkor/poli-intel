@@ -77,14 +77,81 @@ export default async function ImpactPage({
     readImpactMap(),
   ]);
 
+  const confirmedCount =
+    report !== null
+      ? report.events.length
+      : events.filter((e) => e.verified).length;
+
+  const unconfirmedCount =
+    report !== null
+      ? report.unverifiedCount
+      : events.filter((e) => !e.verified).length;
+
   return (
     <>
       <PageHeader
         title="Impact"
         subtitle="Where Tropenbos evidence has reached policy — records staff logged, leads the weekly search found, and the quarterly summary of what has been confirmed."
+        breadcrumbs={[{ label: "Impact" }]}
       />
 
-      <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-6 p-4 tablet:p-6">
+      <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-6 p-4 tablet:p-6 desktop:px-8">
+        {/* Donor-facing summary strip with real data-derived counts */}
+        <section
+          aria-label="Impact overview summary"
+          className="bg-card border-line rounded-card shadow-raised border p-4 tablet:p-5"
+        >
+          <div className="grid grid-cols-2 gap-4 tablet:grid-cols-4 tablet:gap-6 divide-y tablet:divide-y-0 tablet:divide-x divide-line">
+            <div className="flex flex-col gap-1">
+              <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                Confirmed records
+              </span>
+              <div className="text-primary font-mono text-[24px] tablet:text-[28px] font-semibold tabular-nums tracking-[-0.02em]">
+                {confirmedCount}
+              </div>
+              <p className="text-ink-3 text-[12px] leading-snug">
+                In {quarter.label}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1 pt-3 tablet:pt-0 tablet:pl-6">
+              <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                Awaiting confirmation
+              </span>
+              <div className="text-ink font-mono text-[24px] tablet:text-[28px] font-semibold tabular-nums tracking-[-0.02em]">
+                {unconfirmedCount}
+              </div>
+              <p className="text-ink-3 text-[12px] leading-snug">
+                {unconfirmedCount === 1 ? "Record" : "Records"} waiting for review
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1 pt-3 tablet:pt-0 tablet:pl-6">
+              <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                Briefs in network
+              </span>
+              <div className="text-ink font-mono text-[24px] tablet:text-[28px] font-semibold tabular-nums tracking-[-0.02em]">
+                {map.briefs.length}
+              </div>
+              <p className="text-ink-3 text-[12px] leading-snug">
+                Represented in paths
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1 pt-3 tablet:pt-0 tablet:pl-6">
+              <span className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">
+                Evidence cited
+              </span>
+              <div className="text-primary font-mono text-[24px] tablet:text-[28px] font-semibold tabular-nums tracking-[-0.02em]">
+                {map.evidence.length}
+              </div>
+              <p className="text-ink-3 text-[12px] leading-snug">
+                Items reaching policy
+              </p>
+            </div>
+          </div>
+        </section>
+
         <LogInfluencePanel briefs={briefs} defaultOpen={events.length === 0} />
 
         {report !== null ? (
@@ -99,13 +166,18 @@ export default async function ImpactPage({
           aria-labelledby="influence-record-heading"
           className="flex min-w-0 flex-col gap-3"
         >
-          <h2
-            id="influence-record-heading"
-            className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase"
-          >
-            The record{" "}
-            <span className="font-mono tabular-nums">({events.length})</span>
-          </h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              id="influence-record-heading"
+              className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase"
+            >
+              The record{" "}
+              <span className="font-mono tabular-nums text-ink">({events.length})</span>
+            </h2>
+            <span className="text-ink-3 font-mono text-[11.5px]">
+              Evidence → Brief → Outcome
+            </span>
+          </div>
 
           {events.length === 0 ? (
             <EmptyImpactState />

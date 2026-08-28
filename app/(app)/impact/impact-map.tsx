@@ -2,7 +2,7 @@
 
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import { useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { audienceLabel } from "@/lib/ai/audience-profiles";
 import { briefTypeLabel } from "@/lib/ai/brief-types";
@@ -86,8 +86,59 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const replayRef = useRef<HTMLButtonElement>(null);
+  const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
 
-  const lattice = buildLattice(map);
+  const lattice = useMemo(() => buildLattice(map), [map]);
+
+  const { activeNodeIds, activeLineKeys } = useMemo(() => {
+    if (!activeNodeId) return { activeNodeIds: null, activeLineKeys: null };
+
+    const nodeIds = new Set<string>([activeNodeId]);
+    const lineKeys = new Set<string>();
+
+    // If activeNode is evidence
+    for (const link of map.links) {
+      if (link.evidenceId === activeNodeId) {
+        nodeIds.add(link.briefId);
+        lineKeys.add(`${link.evidenceId}->${link.briefId}`);
+        for (const outcome of map.outcomes) {
+          if (outcome.briefId === link.briefId) {
+            nodeIds.add(outcome.id);
+            lineKeys.add(`${outcome.briefId}->${outcome.id}`);
+          }
+        }
+      }
+    }
+
+    // If activeNode is brief
+    for (const link of map.links) {
+      if (link.briefId === activeNodeId) {
+        nodeIds.add(link.evidenceId);
+        lineKeys.add(`${link.evidenceId}->${link.briefId}`);
+      }
+    }
+    for (const outcome of map.outcomes) {
+      if (outcome.briefId === activeNodeId) {
+        nodeIds.add(outcome.id);
+        lineKeys.add(`${outcome.briefId}->${outcome.id}`);
+      }
+    }
+
+    // If activeNode is outcome
+    const matchingOutcome = map.outcomes.find((o) => o.id === activeNodeId);
+    if (matchingOutcome) {
+      nodeIds.add(matchingOutcome.briefId);
+      lineKeys.add(`${matchingOutcome.briefId}->${matchingOutcome.id}`);
+      for (const link of map.links) {
+        if (link.briefId === matchingOutcome.briefId) {
+          nodeIds.add(link.evidenceId);
+          lineKeys.add(`${link.evidenceId}->${link.briefId}`);
+        }
+      }
+    }
+
+    return { activeNodeIds: nodeIds, activeLineKeys: lineKeys };
+  }, [activeNodeId, map]);
 
   useGSAP(
     (_context, contextSafe) => {
@@ -191,7 +242,7 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
   return (
     <section
       aria-labelledby="impact-map-heading"
-      className="bg-card border-line rounded-card flex min-w-0 flex-col gap-4 border p-4 tablet:p-5"
+      className="bg-card border-line rounded-card flex min-w-0 flex-col gap-4 border p-4 tablet:p-5 shadow-raised"
       ref={containerRef}
     >
       <header className="flex min-w-0 flex-col gap-2">
@@ -203,7 +254,7 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
             className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase"
           >
             {IMPACT_MAP_COPY.heading}{" "}
-            <span className="font-mono tabular-nums">
+            <span className="font-mono tabular-nums text-ink">
               ({lattice.lines.length})
             </span>
           </h3>
@@ -211,13 +262,13 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
           <button
             type="button"
             ref={replayRef}
-            className="border-line text-ink-2 bg-paper hover:border-accent focus-visible:ring-accent rounded-full border px-3 py-1 text-[13px] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+            className="border-line text-ink-2 bg-paper hover:border-accent hover:text-ink focus-visible:ring-accent cursor-pointer rounded-full border px-3.5 py-1 text-[13px] font-medium shadow-xs focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none transition-colors"
           >
             {IMPACT_MAP_COPY.replay}
           </button>
         </div>
 
-        <p className="text-ink-3 max-w-[72ch] text-[13px]">
+        <p className="text-ink-3 max-w-[72ch] text-[13px] leading-relaxed">
           {IMPACT_MAP_COPY.intro}
         </p>
 
@@ -269,7 +320,7 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
       {/* The one element in the product that does not reflow. It keeps its
           860px min-width and PANS INSIDE THIS CONTAINER; the page itself never
           scrolls horizontally (§11.15). Stacking the nodes is the wrong trade. */}
-      <div className="min-w-0 overflow-x-auto tablet:min-h-[460px]">
+      <div className="bg-paper/30 border-line rounded-card min-w-0 overflow-x-auto border tablet:min-h-[460px]">
         <svg
           role="img"
           aria-label={impactMapAriaLabel(
@@ -279,6 +330,15 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
           viewBox={`0 0 ${CANVAS_WIDTH} ${height}`}
           className="block h-auto w-full min-w-[860px]"
         >
+          {/* Subtle topographic contour rings behind paths */}
+          <g aria-hidden="true" className="pointer-events-none" opacity="0.35" fill="none" stroke="var(--color-line)">
+            <circle cx="-10" cy={height + 30} r="140" strokeWidth="1" />
+            <circle cx="-10" cy={height + 30} r="200" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx="-10" cy={height + 30} r="260" strokeWidth="1" />
+            <circle cx={CANVAS_WIDTH + 20} cy="30" r="120" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx={CANVAS_WIDTH + 20} cy="30" r="180" strokeWidth="1" />
+          </g>
+
           <ColumnHeading x={COLUMN_X[0]}>
             {IMPACT_MAP_COPY.columns.evidence}
           </ColumnHeading>
@@ -324,26 +384,41 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
           {/* Lines sit under the nodes, and are rendered in DRAW ORDER so the
               timeline's stagger follows the citation dates without re-sorting. */}
           <g fill="none" strokeWidth="1.5" strokeLinecap="round">
-            {lattice.lines.map((line) =>
-              line.verified ? (
+            {lattice.lines.map((line) => {
+              const isDimmed = activeLineKeys !== null && !activeLineKeys.has(line.key);
+              const lineOpacity = isDimmed ? 0.2 : 1;
+              const lineStrokeWidth = activeLineKeys?.has(line.key) ? 2 : 1.5;
+
+              return line.verified ? (
                 <path
                   key={line.key}
                   d={line.d}
                   data-impact-line="verified"
                   pathLength="1"
                   stroke="var(--color-accent)"
-                  style={{ strokeDasharray: 1, strokeDashoffset: 1 }}
+                  strokeWidth={lineStrokeWidth}
+                  style={{
+                    strokeDasharray: 1,
+                    strokeDashoffset: 1,
+                    opacity: lineOpacity,
+                    transition: "opacity 150ms ease-out, stroke-width 150ms ease-out",
+                  }}
                 />
               ) : (
                 <path
                   key={line.key}
                   d={line.d}
                   stroke="var(--color-sage)"
+                  strokeWidth={lineStrokeWidth}
                   strokeDasharray="4 3"
                   mask={`url(#${maskId(line.key)})`}
+                  style={{
+                    opacity: lineOpacity,
+                    transition: "opacity 150ms ease-out, stroke-width 150ms ease-out",
+                  }}
                 />
-              ),
-            )}
+              );
+            })}
           </g>
 
           {lattice.evidence.map((node) => (
@@ -355,6 +430,10 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
               primary={node.title}
               secondary={node.citationKey}
               secondaryMono
+              isDimmed={activeNodeIds !== null && !activeNodeIds.has(node.id)}
+              isActive={activeNodeId === node.id}
+              onActivate={() => setActiveNodeId(node.id)}
+              onDeactivate={() => setActiveNodeId(null)}
             />
           ))}
 
@@ -366,6 +445,10 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
               y={node.y}
               primary={node.title}
               secondary={`${briefTypeLabel(node.briefType)} · ${audienceLabel(node.audience)}`}
+              isDimmed={activeNodeIds !== null && !activeNodeIds.has(node.id)}
+              isActive={activeNodeId === node.id}
+              onActivate={() => setActiveNodeId(node.id)}
+              onDeactivate={() => setActiveNodeId(null)}
             />
           ))}
 
@@ -379,6 +462,10 @@ export function ImpactMap({ map }: { map: ImpactMap }) {
               secondary={
                 node.sourceTitle ?? formatInfluenceDate(node.detectedAt)
               }
+              isDimmed={activeNodeIds !== null && !activeNodeIds.has(node.id)}
+              isActive={activeNodeId === node.id}
+              onActivate={() => setActiveNodeId(node.id)}
+              onDeactivate={() => setActiveNodeId(null)}
             />
           ))}
         </svg>
@@ -421,6 +508,10 @@ function MapNode({
   primary,
   secondary,
   secondaryMono = false,
+  isDimmed = false,
+  isActive = false,
+  onActivate,
+  onDeactivate,
 }: {
   kind: "evidence" | "brief" | "outcome";
   x: number;
@@ -428,24 +519,55 @@ function MapNode({
   primary: string;
   secondary: string;
   secondaryMono?: boolean;
+  isDimmed?: boolean;
+  isActive?: boolean;
+  onActivate?: () => void;
+  onDeactivate?: () => void;
 }) {
+  const isBrief = kind === "brief";
+  const bgFill = isBrief ? "var(--color-surface-tint)" : "var(--color-card)";
+  const bgOpacity = isBrief ? "0.35" : "1";
+  const strokeColor = isActive
+    ? "var(--color-primary)"
+    : isBrief
+      ? "var(--color-surface-tint-border)"
+      : "var(--color-line)";
+  const strokeWidth = isActive ? 2 : 1;
+  const primaryFill = isBrief ? "var(--color-primary-ink)" : "var(--color-ink)";
+
   return (
-    <g data-impact-node={kind}>
+    <g
+      data-impact-node={kind}
+      tabIndex={0}
+      role="button"
+      aria-label={`${primary} — ${secondary}`}
+      onMouseEnter={onActivate}
+      onMouseLeave={onDeactivate}
+      onFocus={onActivate}
+      onBlur={onDeactivate}
+      className="cursor-pointer focus-visible:outline-none"
+      style={{
+        opacity: isDimmed ? 0.25 : 1,
+        transition: "opacity 150ms ease-out",
+      }}
+    >
       <title>{`${primary} — ${secondary}`}</title>
       <rect
         x={x}
         y={y}
         width={COLUMN_WIDTH}
         height={NODE_HEIGHT}
-        rx="8"
-        fill="var(--color-paper)"
-        stroke="var(--color-line)"
-        strokeWidth="1"
+        rx="6"
+        fill={bgFill}
+        fillOpacity={bgOpacity}
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
       />
       <text
         x={x + 12}
         y={y + 20}
-        className="fill-[var(--color-ink)] text-[12px] font-semibold"
+        fill={primaryFill}
+        className="text-[12px] font-semibold"
       >
         {clampText(primary, PRIMARY_CHARS)}
       </text>

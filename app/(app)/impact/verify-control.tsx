@@ -74,7 +74,7 @@ export function VerifyControl({
         variant="outline"
         disabled={pending || confirmed}
         onClick={confirm}
-        className="h-11 justify-center tablet:h-8 tablet:w-fit"
+        className="h-11 cursor-pointer justify-center px-4 tablet:h-9 tablet:w-fit"
       >
         {confirmed ? "Confirming…" : "Confirm this record"}
       </Button>
@@ -82,7 +82,7 @@ export function VerifyControl({
       {error ? (
         <p
           role="status"
-          className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3 py-2 text-[13px]"
+          className="bg-watch-surface border-watch-border text-watch-ink rounded-card border px-3.5 py-2 text-[13px] leading-relaxed"
         >
           {error}
         </p>
