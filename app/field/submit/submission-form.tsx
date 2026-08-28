@@ -7,6 +7,13 @@ import { useForm } from "react-hook-form";
 
 import { SyncStatusPill } from "@/components/field/sync-status-pill";
 import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
   enqueue,
   listQueued,
   queueAvailable,
@@ -223,7 +230,7 @@ export function SubmissionForm() {
         timer (§17.2).
       */}
       {waitingToSend > 0 ? (
-        <div className="bg-stone border-line rounded-card flex flex-col gap-2 border p-4">
+        <div className="bg-stone border-line rounded-card shadow-raised flex flex-col gap-2 border p-4">
           <SyncStatusPill
             state={needsSignIn ? "sign-in" : "queued"}
             className="self-start"
@@ -238,7 +245,7 @@ export function SubmissionForm() {
           </p>
           <Link
             href="/field/sent"
-            className="text-primary text-[14px] font-medium underline"
+            className="text-primary hover:text-primary-hover text-[14px] font-medium underline underline-offset-2 cursor-pointer"
           >
             See what is waiting
           </Link>
@@ -248,10 +255,10 @@ export function SubmissionForm() {
       {outcome.phase === "sent" ? (
         <div
           role="status"
-          className="bg-surface-tint border-surface-tint-border rounded-card flex flex-col gap-2 border p-4"
+          className="bg-surface-tint border-surface-tint-border rounded-card shadow-raised flex flex-col gap-2 border p-4"
         >
           <SyncStatusPill state="sent" className="self-start" />
-          <p className="text-surface-tint-ink text-[14px] leading-relaxed">
+          <p className="text-surface-tint-ink text-[14px] leading-relaxed font-medium">
             Thank you. Your update is with the office and someone will read it
             before it is used for anything.
           </p>
@@ -261,7 +268,7 @@ export function SubmissionForm() {
       {outcome.phase === "queued" ? (
         <div
           role="status"
-          className="bg-stone border-line rounded-card flex flex-col gap-2 border p-4"
+          className="bg-stone border-line rounded-card shadow-raised flex flex-col gap-2 border p-4"
         >
           <SyncStatusPill state="queued" className="self-start" />
           <p className="text-ink-2 text-[14px] leading-relaxed">
@@ -278,7 +285,7 @@ export function SubmissionForm() {
         */
         <div
           role="status"
-          className="bg-watch-surface border-watch-border rounded-card border p-4"
+          className="bg-watch-surface border-watch-border rounded-card shadow-raised border p-4"
         >
           <p className="text-watch-ink text-[14px] leading-relaxed">
             {outcome.message}
@@ -293,87 +300,95 @@ export function SubmissionForm() {
       >
         <input type="hidden" {...form.register("submissionKey")} />
 
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="field-title"
-            className="text-ink text-[15px] font-semibold"
-          >
-            What is this about?
-          </label>
-          <input
-            id="field-title"
-            type="text"
-            autoComplete="off"
-            className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px]"
-            {...form.register("title")}
-          />
-          <FieldMessage message={form.formState.errors.title?.message} />
-        </div>
+        <FieldGroup className="gap-5">
+          <Field data-invalid={!!form.formState.errors.title}>
+            <FieldLabel
+              htmlFor="field-title"
+              className="text-ink text-[15px] font-semibold"
+            >
+              What is this about?
+            </FieldLabel>
+            <input
+              id="field-title"
+              type="text"
+              autoComplete="off"
+              className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px] transition-colors focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent aria-invalid:border-watch aria-invalid:ring-2 aria-invalid:ring-watch/20"
+              aria-invalid={!!form.formState.errors.title}
+              {...form.register("title")}
+            />
+            <FieldError errors={[{ message: form.formState.errors.title?.message }]} />
+          </Field>
 
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="field-observation"
-            className="text-ink text-[15px] font-semibold"
-          >
-            What did you see?
-          </label>
-          <textarea
-            id="field-observation"
-            rows={8}
-            className="border-line bg-card rounded-input text-ink min-h-[160px] p-3 text-[16px] leading-relaxed"
-            {...form.register("observation")}
-          />
-          <p className="text-ink-3 text-[14px] leading-relaxed">
-            Write it in your own words. Say where it was and who was involved if
-            you can.
-          </p>
-          <FieldMessage message={form.formState.errors.observation?.message} />
-        </div>
+          <Field data-invalid={!!form.formState.errors.observation}>
+            <FieldLabel
+              htmlFor="field-observation"
+              className="text-ink text-[15px] font-semibold"
+            >
+              What did you see?
+            </FieldLabel>
+            <textarea
+              id="field-observation"
+              rows={7}
+              className="border-line bg-card rounded-input text-ink min-h-[160px] p-3 text-[16px] leading-relaxed transition-colors focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent aria-invalid:border-watch aria-invalid:ring-2 aria-invalid:ring-watch/20"
+              aria-invalid={!!form.formState.errors.observation}
+              {...form.register("observation")}
+            />
+            <FieldDescription className="text-ink-3 text-[14px] leading-relaxed">
+              Write it in your own words. Say where it was and who was involved if
+              you can.
+            </FieldDescription>
+            <FieldError errors={[{ message: form.formState.errors.observation?.message }]} />
+          </Field>
 
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="field-location"
-            className="text-ink text-[15px] font-semibold"
-          >
-            Where was it? <span className="text-ink-3">(optional)</span>
-          </label>
-          <input
-            id="field-location"
-            type="text"
-            autoComplete="off"
-            placeholder="Eastern edge of Juabeso-Bia"
-            className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px]"
-            {...form.register("locationNote")}
-          />
-          <FieldMessage message={form.formState.errors.locationNote?.message} />
-        </div>
+          <Field data-invalid={!!form.formState.errors.locationNote}>
+            <FieldLabel
+              htmlFor="field-location"
+              className="text-ink text-[15px] font-semibold"
+            >
+              Where was it? <span className="text-ink-3 font-normal">(optional)</span>
+            </FieldLabel>
+            <input
+              id="field-location"
+              type="text"
+              autoComplete="off"
+              placeholder="e.g. Eastern edge of Juabeso-Bia"
+              className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px] transition-colors focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent aria-invalid:border-watch aria-invalid:ring-2 aria-invalid:ring-watch/20"
+              aria-invalid={!!form.formState.errors.locationNote}
+              {...form.register("locationNote")}
+            />
+            <FieldError errors={[{ message: form.formState.errors.locationNote?.message }]} />
+          </Field>
 
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="field-observed-at"
-            className="text-ink text-[15px] font-semibold"
-          >
-            When did you see it? <span className="text-ink-3">(optional)</span>
-          </label>
-          <input
-            id="field-observed-at"
-            type="date"
-            max={observedAtMax()}
-            className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px]"
-            {...form.register("observedAt")}
-          />
-          <FieldMessage message={form.formState.errors.observedAt?.message} />
-        </div>
+          <Field data-invalid={!!form.formState.errors.observedAt}>
+            <FieldLabel
+              htmlFor="field-observed-at"
+              className="text-ink text-[15px] font-semibold"
+            >
+              When did you see it? <span className="text-ink-3 font-normal">(optional)</span>
+            </FieldLabel>
+            <input
+              id="field-observed-at"
+              type="date"
+              max={observedAtMax()}
+              className="border-line bg-card rounded-input text-ink min-h-[48px] px-3 text-[16px] transition-colors focus-visible:outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-accent aria-invalid:border-watch aria-invalid:ring-2 aria-invalid:ring-watch/20 cursor-pointer"
+              aria-invalid={!!form.formState.errors.observedAt}
+              {...form.register("observedAt")}
+            />
+            <FieldError errors={[{ message: form.formState.errors.observedAt?.message }]} />
+          </Field>
+        </FieldGroup>
 
         <button
           type="submit"
-          disabled={form.formState.isSubmitting}
-          className="bg-primary hover:bg-primary-hover rounded-card min-h-[48px] w-full px-4 text-[16px] font-semibold text-white disabled:opacity-60"
+          disabled={outcome.phase === "sending" || form.formState.isSubmitting}
+          className="bg-primary hover:bg-primary-hover active:bg-primary-hover rounded-card shadow-raised flex min-h-[48px] w-full items-center justify-center px-4 text-[16px] font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
-          {outcome.phase === "sending" ? "Sending…" : "Send this update"}
+          {outcome.phase === "sending" || form.formState.isSubmitting
+            ? "Sending…"
+            : "Send this update"}
         </button>
 
-        <p className="text-ink-3 text-[14px] leading-relaxed">
+        <p className="text-ink-3 text-center text-[14px] leading-relaxed">
           Your update goes to the office as it is. Nobody uses it for anything
           until a colleague there has read it.
         </p>
@@ -382,9 +397,3 @@ export function SubmissionForm() {
   );
 }
 
-/** Validation messages use the slate ramp, never red (§11.4). */
-function FieldMessage({ message }: { message?: string }) {
-  if (!message) return null;
-
-  return <p className="text-watch-ink text-[14px] leading-relaxed">{message}</p>;
-}

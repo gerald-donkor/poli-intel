@@ -15,8 +15,11 @@ export default async function FieldLayout({ children }: { children: ReactNode })
   await requireStaffUser();
 
   return (
-    <div className="bg-card border-line mx-auto flex min-h-full w-full max-w-[480px] flex-col border-x">
-      {children}
+    <div className="bg-paper flex min-h-screen justify-center">
+      <div className="bg-card border-line flex min-h-screen w-full max-w-[480px] flex-col border-x shadow-raised">
+        {children}
+      </div>
     </div>
   );
 }
+

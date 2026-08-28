@@ -90,7 +90,7 @@ export function PendingList() {
       {queued.map((item) => (
         <article
           key={item.submissionKey}
-          className="bg-stone border-line rounded-card flex flex-col gap-2 border p-4"
+          className="bg-stone border-line rounded-card shadow-raised flex flex-col gap-2 border p-4.5 transition-shadow"
         >
           <SyncStatusPill
             state={item.reason === "unauthorised" ? "sign-in" : "queued"}
@@ -109,3 +109,4 @@ export function PendingList() {
     </section>
   );
 }
+

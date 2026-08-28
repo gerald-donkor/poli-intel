@@ -31,7 +31,7 @@ export function SignalDigestCard({ signal }: { signal: FieldSignalCard }) {
   return (
     <article
       className={cn(
-        "bg-card border-line rounded-card border border-l-[3px] p-4",
+        "bg-card border-line rounded-card shadow-raised border border-l-[3px] p-4.5 transition-shadow",
         URGENCY_RULE_CLASS[signal.urgency],
       )}
     >
@@ -57,8 +57,10 @@ export function SignalDigestCard({ signal }: { signal: FieldSignalCard }) {
         {signal.summaryText}
       </p>
 
-      <p className="text-ink-3 mt-3 text-[14px]">
-        {signal.sourceName} · {plainDate(signal.detectedAt)}
+      <p className="text-ink-3 mt-3 text-[13px] leading-normal">
+        <span>{signal.sourceName}</span>
+        <span aria-hidden="true" className="mx-1.5 opacity-60">·</span>
+        <span>{plainDate(signal.detectedAt)}</span>
       </p>
     </article>
   );
@@ -66,7 +68,7 @@ export function SignalDigestCard({ signal }: { signal: FieldSignalCard }) {
 
 export function BriefDigestCard({ brief }: { brief: FieldBriefCard }) {
   return (
-    <article className="bg-card border-line rounded-card border p-4">
+    <article className="bg-card border-line rounded-card shadow-raised border p-4.5 transition-shadow">
       <p className="text-ink-3 text-[12px] font-semibold tracking-[0.06em] uppercase">
         From the office
       </p>
@@ -76,8 +78,11 @@ export function BriefDigestCard({ brief }: { brief: FieldBriefCard }) {
       </h3>
 
       <p className="text-ink-2 mt-2 text-[14px] leading-relaxed">
-        {BRIEF_STATUS_PLAIN_LABEL[brief.status]} · {plainDate(brief.updatedAt)}
+        <span>{BRIEF_STATUS_PLAIN_LABEL[brief.status]}</span>
+        <span aria-hidden="true" className="mx-1.5 opacity-60">·</span>
+        <span>{plainDate(brief.updatedAt)}</span>
       </p>
     </article>
   );
 }
+

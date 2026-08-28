@@ -41,25 +41,25 @@ export default async function FieldPage() {
     <>
       <FieldServiceWorker />
 
-      <header className="bg-primary flex flex-col gap-3 px-5 pt-6 pb-5">
+      <header className="bg-primary flex flex-col gap-3 px-5 pt-6 pb-5 text-white">
         <div className="flex items-center gap-2">
           <span
             aria-hidden="true"
-            className="border-surface-tint size-[18px] rounded-[2px] border-2"
+            className="border-surface-tint size-[18px] shrink-0 rounded-[2px] border-2"
           />
           <span className="text-surface-tint text-[13px] font-semibold tracking-[0.12em] uppercase">
             EviBrief
           </span>
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="text-h2 font-semibold text-white">This week</h1>
-          <p className="text-surface-tint text-[14px]">
-            Your weekly update from the office.
+          <h1 className="text-h2 font-semibold text-white tracking-tight">This week</h1>
+          <p className="text-surface-tint text-[14px] leading-relaxed">
+            Your weekly update from the office, saved for offline reading.
           </p>
         </div>
       </header>
 
-      <OfflineBanner savedAt={digest.generatedAt} />
+      <OfflineBanner savedAt={digest.generatedAt} showQueueSummary />
 
       <div className="flex flex-1 flex-col gap-5 px-5 py-5">
         {empty ? (
@@ -67,7 +67,7 @@ export default async function FieldPage() {
             The designed empty state, not a blank column (§17.6). It says what
             will appear and gives the one thing the officer can do right now.
           */
-          <div className="bg-card border-line rounded-card border p-4">
+          <div className="bg-card border-line rounded-card shadow-raised border p-5">
             <h2 className="text-ink text-[16px] font-semibold">
               Nothing new yet
             </h2>
@@ -103,16 +103,16 @@ export default async function FieldPage() {
       </div>
 
       {/* 48px tap targets, no icon-only controls (design-system.md, §11.12). */}
-      <footer className="border-line flex flex-col gap-3 border-t px-4 py-4">
+      <footer className="border-line bg-card flex flex-col gap-3 border-t px-5 py-4">
         <Link
           href="/field/submit"
-          className="bg-primary hover:bg-primary-hover rounded-card flex min-h-[48px] w-full items-center justify-center px-4 text-[16px] font-semibold text-white"
+          className="bg-primary hover:bg-primary-hover active:bg-primary-hover rounded-card shadow-raised flex min-h-[48px] w-full items-center justify-center px-4 text-[16px] font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
         >
           Send an update from the field
         </Link>
         <Link
           href="/field/sent"
-          className="border-line text-ink rounded-card flex min-h-[48px] w-full items-center justify-center border px-4 text-[16px] font-medium hover:underline"
+          className="border-line bg-card hover:bg-stone text-ink rounded-card flex min-h-[48px] w-full items-center justify-center border px-4 text-[16px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
         >
           Updates you have sent
         </Link>
@@ -123,3 +123,4 @@ export default async function FieldPage() {
     </>
   );
 }
+
