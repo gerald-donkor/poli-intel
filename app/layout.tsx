@@ -41,8 +41,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${sourceSerif.variable} ${plexMono.variable} h-full`}
+      suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <PostHogProvider config={analyticsConfig}>{children}</PostHogProvider>
       </body>
     </html>
