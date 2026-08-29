@@ -336,6 +336,12 @@ function envCategories() {
     "Production deployment preflight": [
       "EVIBRIEF_VERCEL_PRODUCTION_PLAN_ACK",
     ],
+    "Demo seed data": [
+      "SEED_DIRECTOR_EMAIL",
+      "SEED_POLICY_OFFICER_EMAIL",
+      "SEED_RESEARCH_OFFICER_EMAIL",
+      "SEED_FIELD_OFFICER_EMAIL",
+    ],
   };
 }
 
