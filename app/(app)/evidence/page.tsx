@@ -11,8 +11,12 @@ import {
   EVIDENCE_BROWSE_MAX_ITEMS,
   EVIDENCE_SEARCH_MAX_ITEMS,
 } from "@/lib/ai/config";
-import { canIngestEvidence } from "@/lib/auth/authorize";
+import {
+  canIngestEvidence,
+  canReviewEvidenceMatch,
+} from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
+import { getEvidenceMatcherFeedbackSummary } from "@/lib/db";
 import {
   countPendingClassification,
   listEvidenceFacets,
@@ -23,6 +27,7 @@ import {
   type SemanticStatus,
 } from "@/lib/evidence/search";
 
+import { EvidenceMatcherFeedback } from "./evidence-matcher-feedback";
 import { EvidenceTable } from "./evidence-table";
 import { EvidenceFilterBar, EvidenceFilterRail } from "./filter-rail";
 import {
@@ -51,13 +56,16 @@ export default async function EvidencePage({
   // "not set" individually, and unknown parameters are ignored.
   const search = parseEvidenceSearch(await searchParams);
 
-  const [outcome, pendingCount, facets] = await Promise.all([
+  const mayIngest = canIngestEvidence(staffUser.role);
+  const mayReview = canReviewEvidenceMatch(staffUser.role);
+
+  const [outcome, pendingCount, facets, matcherFeedback] = await Promise.all([
     searchEvidence(search),
     countPendingClassification(),
     listEvidenceFacets(),
+    mayReview ? getEvidenceMatcherFeedbackSummary() : Promise.resolve(null),
   ]);
 
-  const mayIngest = canIngestEvidence(staffUser.role);
   const searching = hasActiveSearch(search);
   const showMatch = search.query !== null;
 
@@ -78,6 +86,10 @@ export default async function EvidencePage({
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 p-4 tablet:p-6">
         {/* Governance surface: above the fold at every width, never hidden. */}
         <ClassificationPendingAlert pendingCount={pendingCount} />
+
+        {matcherFeedback ? (
+          <EvidenceMatcherFeedback summary={matcherFeedback} />
+        ) : null}
 
         <SemanticStatusAlert status={outcome.semantic} />
 

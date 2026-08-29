@@ -8,6 +8,7 @@ import { briefTypeLabel } from "@/lib/ai/brief-types";
 import {
   canGenerateBrief,
   canRequestEvidenceRematch,
+  canReviewEvidenceMatch,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { GENERATION_EVIDENCE_CONTEXT_SIZE } from "@/lib/briefs/generation-limits";
@@ -66,6 +67,7 @@ export default async function SignalDetailPage({
 
   // Presentation only. The action authorises its own caller server-side (§10.1).
   const mayRematch = canRequestEvidenceRematch(staffUser.role);
+  const mayReview = canReviewEvidenceMatch(staffUser.role);
 
   // Also presentation only: the generation surface refuses a role that may not
   // generate, and all three generation actions refuse again server-side.
@@ -209,6 +211,7 @@ export default async function SignalDetailPage({
               ineligibleMatchCount={signal.ineligibleMatchCount}
               runs={signal.matchRuns}
               canRematch={mayRematch}
+              canReview={mayReview}
             />
           </div>
 

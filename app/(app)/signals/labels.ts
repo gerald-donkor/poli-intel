@@ -1,5 +1,6 @@
 import {
   AudienceTarget,
+  EvidenceMatchAssessment,
   EvidenceMatchOutcome,
   Geography,
   ImpactArea,
@@ -140,6 +141,15 @@ export const MATCH_OUTCOME_LABELS: Record<EvidenceMatchOutcome, string> = {
   [EvidenceMatchOutcome.matched]: "Evidence matched",
   [EvidenceMatchOutcome.gap]: "No evidence above the threshold",
   [EvidenceMatchOutcome.failed]: "The match did not complete",
+};
+
+export const EVIDENCE_MATCH_ASSESSMENT_LABELS: Record<
+  EvidenceMatchAssessment,
+  string
+> = {
+  [EvidenceMatchAssessment.relevant]: "Relevant",
+  [EvidenceMatchAssessment.not_relevant]: "Not relevant",
+  [EvidenceMatchAssessment.uncertain]: "Uncertain",
 };
 
 /**

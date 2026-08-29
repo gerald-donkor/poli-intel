@@ -8,6 +8,8 @@ import {
 import { Prisma } from "@/lib/generated/prisma/client";
 import {
   Classification,
+  EvidenceMatchAssessment,
+  EvidenceSourceType,
   type EvidenceMatchOutcome,
 } from "@/lib/generated/prisma/enums";
 
@@ -291,3 +293,172 @@ export function recordEvidenceMatchRun(
     select: { id: true },
   });
 }
+
+export type RecordEvidenceMatchReviewInput = {
+  signalId: string;
+  evidenceItemId: string;
+  reviewerId: string;
+  assessment: EvidenceMatchAssessment;
+  note?: string | null;
+};
+
+export type RecordEvidenceMatchReviewResult =
+  | { ok: true; id: string; reviewedAt: Date }
+  | { ok: false; reason: "unknown_match" | "ineligible_classification" };
+
+/**
+ * Appends a staff quality review against a current, eligible evidence match.
+ *
+ * Transactionally confirms that (signalId, evidenceItemId) exists in the signal's
+ * current `SignalEvidenceMatch` set, and that the parent item remains `public_published`.
+ * Never throws ordinary race conditions; returns typed failure reasons without exposing
+ * evidence bodies or excerpts.
+ */
+export async function recordEvidenceMatchReview(
+  input: RecordEvidenceMatchReviewInput,
+): Promise<RecordEvidenceMatchReviewResult> {
+  return prisma.$transaction(async (tx) => {
+    const currentMatch = await tx.signalEvidenceMatch.findUnique({
+      where: {
+        signalId_evidenceItemId: {
+          signalId: input.signalId,
+          evidenceItemId: input.evidenceItemId,
+        },
+      },
+      select: {
+        evidenceItem: {
+          select: {
+            classification: true,
+          },
+        },
+      },
+    });
+
+    if (!currentMatch) {
+      return { ok: false, reason: "unknown_match" as const };
+    }
+
+    if (
+      currentMatch.evidenceItem.classification !==
+      Classification.public_published
+    ) {
+      return { ok: false, reason: "ineligible_classification" as const };
+    }
+
+    const trimmedNote = input.note?.trim() ?? null;
+    const boundedNote =
+      trimmedNote && trimmedNote.length > 0 ? trimmedNote.slice(0, 500) : null;
+
+    const review = await tx.evidenceMatchReview.create({
+      data: {
+        signalId: input.signalId,
+        evidenceItemId: input.evidenceItemId,
+        reviewerId: input.reviewerId,
+        assessment: input.assessment,
+        note: boundedNote,
+      },
+      select: { id: true, reviewedAt: true },
+    });
+
+    return {
+      ok: true,
+      id: review.id,
+      reviewedAt: review.reviewedAt,
+    };
+  });
+}
+
+export type SourceTypeFeedbackSummary = {
+  sourceType: EvidenceSourceType;
+  reviewedCount: number;
+  relevantCount: number;
+  /** Calculated only where reviewedCount > 0; null otherwise */
+  relevantPercentage: number | null;
+};
+
+export type EvidenceMatcherFeedbackSummary = {
+  totalReviewedCount: number;
+  totalRelevantCount: number;
+  overallRelevantPercentage: number | null;
+  bySourceType: SourceTypeFeedbackSummary[];
+};
+
+/**
+ * Aggregates latest staff quality reviews per (signal, evidence) pair, grouped by source type.
+ *
+ * Stored-data aggregate only: no AI calls, no causal inference, and no proof-of-impact claims.
+ */
+export async function getEvidenceMatcherFeedbackSummary(): Promise<EvidenceMatcherFeedbackSummary> {
+  const rows = await prisma.$queryRaw<
+    {
+      sourceType: EvidenceSourceType;
+      reviewedCount: number;
+      relevantCount: number;
+    }[]
+  >`
+    WITH latest_reviews AS (
+      SELECT DISTINCT ON (r.signal_id, r.evidence_item_id)
+        r.signal_id,
+        r.evidence_item_id,
+        r.assessment,
+        i.source_type
+      FROM evidence_match_review r
+      JOIN evidence_item i ON i.id = r.evidence_item_id
+      ORDER BY r.signal_id, r.evidence_item_id, r.reviewed_at DESC
+    )
+    SELECT
+      source_type AS "sourceType",
+      COUNT(*)::int AS "reviewedCount",
+      COUNT(*) FILTER (WHERE assessment = ${EvidenceMatchAssessment.relevant}::"evidence_match_assessment")::int AS "relevantCount"
+    FROM latest_reviews
+    GROUP BY source_type
+  `;
+
+  const countsBySource = new Map(
+    rows.map((r) => [
+      r.sourceType,
+      { reviewed: r.reviewedCount, relevant: r.relevantCount },
+    ]),
+  );
+
+  const allSourceTypes: EvidenceSourceType[] = [
+    EvidenceSourceType.field_data,
+    EvidenceSourceType.research,
+    EvidenceSourceType.literature,
+  ];
+
+  let totalReviewedCount = 0;
+  let totalRelevantCount = 0;
+
+  const bySourceType: SourceTypeFeedbackSummary[] = allSourceTypes.map(
+    (sourceType) => {
+      const counts = countsBySource.get(sourceType) ?? {
+        reviewed: 0,
+        relevant: 0,
+      };
+      totalReviewedCount += counts.reviewed;
+      totalRelevantCount += counts.relevant;
+
+      return {
+        sourceType,
+        reviewedCount: counts.reviewed,
+        relevantCount: counts.relevant,
+        relevantPercentage:
+          counts.reviewed > 0
+            ? Math.round((counts.relevant / counts.reviewed) * 100)
+            : null,
+      };
+    },
+  );
+
+  return {
+    totalReviewedCount,
+    totalRelevantCount,
+    overallRelevantPercentage:
+      totalReviewedCount > 0
+        ? Math.round((totalRelevantCount / totalReviewedCount) * 100)
+        : null,
+    bySourceType,
+  };
+}
+

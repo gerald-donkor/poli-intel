@@ -5,20 +5,30 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EVIDENCE_SEARCH_PARAMS } from "@/app/(app)/evidence/search-schema";
 import type {
   SignalEvidenceMatchView,
   SignalMatchRunView,
 } from "@/lib/db";
-import type { ImpactArea } from "@/lib/generated/prisma/enums";
+import {
+  EvidenceMatchAssessment,
+  type ImpactArea,
+} from "@/lib/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 
 import {
   describeMatchFailure,
+  EVIDENCE_MATCH_ASSESSMENT_LABELS,
+  formatSignalDate,
   formatSignalDateTime,
   IMPACT_AREA_LABELS,
 } from "../labels";
-import { requestEvidenceRematchAction } from "./actions";
+import {
+  requestEvidenceRematchAction,
+  reviewEvidenceMatchAction,
+} from "./actions";
 
 /**
  * What the Evidence Matcher found for this signal — and, when it found nothing,
@@ -48,6 +58,7 @@ export function MatchedEvidence({
   ineligibleMatchCount,
   runs,
   canRematch,
+  canReview = false,
 }: {
   signalId: string;
   impactArea: ImpactArea;
@@ -57,6 +68,8 @@ export function MatchedEvidence({
   runs: SignalMatchRunView[];
   /** Presentation only — the action authorises its own caller (§10.1). */
   canRematch: boolean;
+  /** Presentation only — the review action authorises server-side (§10.1). */
+  canReview?: boolean;
 }) {
   const latest = runs[0] ?? null;
 
@@ -78,7 +91,13 @@ export function MatchedEvidence({
           set standing, and it must still be readable underneath the notice. */}
       {latest === null ? <NotMatchedYet /> : null}
       {latest?.outcome === "failed" ? <MatchFailed run={latest} /> : null}
-      {matches.length > 0 ? <MatchList matches={matches} /> : null}
+      {matches.length > 0 ? (
+        <MatchList
+          signalId={signalId}
+          matches={matches}
+          canReview={canReview}
+        />
+      ) : null}
       {latest !== null && latest.outcome !== "failed" && matches.length === 0 ? (
         ineligibleMatchCount > 0 ? (
           <AllHeldBack />
@@ -125,13 +144,21 @@ function IneligibleNotice({ count }: { count: number }) {
   );
 }
 
-function MatchList({ matches }: { matches: SignalEvidenceMatchView[] }) {
+function MatchList({
+  signalId,
+  matches,
+  canReview,
+}: {
+  signalId: string;
+  matches: SignalEvidenceMatchView[];
+  canReview: boolean;
+}) {
   return (
     <ol className="flex flex-col gap-3.5">
       {matches.map((match) => (
         <li
           key={match.evidenceItemId}
-          className="border-line bg-card rounded-card flex flex-col gap-2.5 border p-4 shadow-2xs"
+          className="border-line bg-card rounded-card flex flex-col gap-3 border p-4 shadow-2xs"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -164,9 +191,193 @@ function MatchList({ matches }: { matches: SignalEvidenceMatchView[] }) {
               in the library.
             </p>
           )}
+
+          <MatchReviewSection
+            signalId={signalId}
+            match={match}
+            canReview={canReview}
+          />
         </li>
       ))}
     </ol>
+  );
+}
+
+function MatchReviewSection({
+  signalId,
+  match,
+  canReview,
+}: {
+  signalId: string;
+  match: SignalEvidenceMatchView;
+  canReview: boolean;
+}) {
+  const latestReview = match.latestReview;
+  const [selectedAssessment, setSelectedAssessment] =
+    useState<EvidenceMatchAssessment | null>(latestReview?.assessment ?? null);
+  const [note, setNote] = useState<string>(latestReview?.note ?? "");
+  const [status, setStatus] = useState<
+    { kind: "idle" } | { kind: "saved" } | { kind: "error"; message: string }
+  >({ kind: "idle" });
+  const [isPending, startTransition] = useTransition();
+
+  const handleSaveReview = () => {
+    if (!selectedAssessment) return;
+    setStatus({ kind: "idle" });
+
+    startTransition(async () => {
+      const result = await reviewEvidenceMatchAction({
+        signalId,
+        evidenceItemId: match.evidenceItemId,
+        assessment: selectedAssessment,
+        note: note.trim() ? note.trim() : null,
+      });
+
+      if (result.ok) {
+        setStatus({ kind: "saved" });
+      } else {
+        const message =
+          result.refusal.kind === "unauthorised"
+            ? result.refusal.message
+            : result.refusal.kind === "invalid"
+              ? (result.refusal.fieldErrors.form?.[0] ??
+                result.refusal.fieldErrors.assessment?.[0] ??
+                result.refusal.fieldErrors.note?.[0] ??
+                "Could not save review.")
+              : "Could not save review.";
+        setStatus({ kind: "error", message });
+      }
+    });
+  };
+
+  if (!canReview && !latestReview) {
+    return null;
+  }
+
+  return (
+    <div className="border-line/60 flex flex-col gap-2.5 border-t pt-3">
+      {latestReview ? (
+        <div className="bg-stone/50 border-line/70 rounded-md border p-2.5 text-[12px] flex flex-col gap-1 tablet:flex-row tablet:items-baseline tablet:justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-ink-3 text-[11px] font-semibold tracking-wider uppercase">
+              Staff assessment:
+            </span>
+            <span className="text-ink font-medium">
+              {EVIDENCE_MATCH_ASSESSMENT_LABELS[latestReview.assessment]}
+            </span>
+          </div>
+          <span className="text-ink-3 font-mono text-[11px]">
+            {latestReview.reviewerName} · {formatSignalDate(latestReview.reviewedAt)}
+          </span>
+        </div>
+      ) : null}
+
+      {latestReview?.note ? (
+        <p className="text-ink-2 bg-stone/30 border-line text-[12px] italic rounded border-l-2 p-2">
+          &ldquo;{latestReview.note}&rdquo;
+        </p>
+      ) : null}
+
+      {canReview ? (
+        <div className="flex flex-col gap-2 pt-0.5">
+          <div className="flex flex-col gap-0.5">
+            <h4 className="text-ink text-[12.5px] font-semibold">
+              Research review
+            </h4>
+            <p className="text-ink-3 text-[11.5px] leading-relaxed">
+              Record whether this match is useful for this signal. This is staff feedback on retrieval quality, not a brief decision.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <ToggleGroup
+              value={selectedAssessment ? [selectedAssessment] : []}
+              onValueChange={(val) => {
+                const next = val[val.length - 1] as
+                  | EvidenceMatchAssessment
+                  | undefined;
+                setSelectedAssessment(next ?? null);
+                setStatus({ kind: "idle" });
+              }}
+              variant="outline"
+              size="sm"
+              className="flex flex-wrap gap-1.5 justify-start"
+              aria-label="Assess match usefulness"
+            >
+              <ToggleGroupItem
+                value={EvidenceMatchAssessment.relevant}
+                aria-label="Relevant"
+                className="cursor-pointer px-3 font-medium min-h-[44px] tablet:min-h-[32px] data-[state=on]:bg-stone data-[state=on]:text-ink data-[state=on]:border-line"
+              >
+                Relevant
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value={EvidenceMatchAssessment.not_relevant}
+                aria-label="Not relevant"
+                className="cursor-pointer px-3 font-medium min-h-[44px] tablet:min-h-[32px] data-[state=on]:bg-stone data-[state=on]:text-ink data-[state=on]:border-line"
+              >
+                Not relevant
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value={EvidenceMatchAssessment.uncertain}
+                aria-label="Uncertain"
+                className="cursor-pointer px-3 font-medium min-h-[44px] tablet:min-h-[32px] data-[state=on]:bg-stone data-[state=on]:text-ink data-[state=on]:border-line"
+              >
+                Uncertain
+              </ToggleGroupItem>
+            </ToggleGroup>
+
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor={`review-note-${match.evidenceItemId}`}
+                className="text-ink-3 text-[11.5px] font-medium"
+              >
+                Optional reviewer note (max 500 characters)
+              </label>
+              <Textarea
+                id={`review-note-${match.evidenceItemId}`}
+                value={note}
+                onChange={(e) => {
+                  setNote(e.target.value);
+                  setStatus({ kind: "idle" });
+                }}
+                placeholder="e.g. Method addresses cocoa agroforestry but misses tree tenure specific to this landscape"
+                maxLength={500}
+                rows={2}
+                className="bg-paper resize-none text-[12.5px]"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <Button
+                type="button"
+                size="sm"
+                disabled={!selectedAssessment || isPending}
+                onClick={handleSaveReview}
+                className="cursor-pointer font-medium min-h-[44px] tablet:min-h-[32px]"
+              >
+                {isPending ? "Saving review…" : "Save review"}
+              </Button>
+
+              <div
+                aria-live="polite"
+                className="flex min-h-[20px] items-center text-[12px]"
+              >
+                {status.kind === "saved" ? (
+                  <span className="text-primary-ink font-medium">
+                    Review saved.
+                  </span>
+                ) : status.kind === "error" ? (
+                  <span className="text-watch-ink max-w-[42ch] font-medium">
+                    {status.message}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

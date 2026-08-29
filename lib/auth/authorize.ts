@@ -210,6 +210,20 @@ export function canRequestEvidenceRematch(role: StaffRole): boolean {
 }
 
 /**
+ * Review the quality of an Evidence Matcher result against a signal.
+ *
+ * Restricted to Research Officer and Programme Director (spec §5.2 Research Officer workflow).
+ * Distinct from `canRequestEvidenceRematch` because re-running retrieval and validating
+ * retrieval quality are different permissions.
+ */
+export function canReviewEvidenceMatch(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.research_officer
+  );
+}
+
+/**
  * See the impact record and log an influence event.
  *
  * `/impact` is the Programme Director's screen in spec §5.2's table, but the

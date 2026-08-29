@@ -10,6 +10,7 @@ import type {
   BriefAudience,
   BriefStatus,
   BriefType,
+  EvidenceMatchAssessment,
   EvidenceMatchOutcome,
   Geography,
   ImpactArea,
@@ -129,6 +130,15 @@ export async function listSignalBoard(): Promise<SignalBoardPage> {
   };
 }
 
+/** Latest staff quality review for a single matched item. */
+export type EvidenceMatchLatestReviewView = {
+  id: string;
+  assessment: EvidenceMatchAssessment;
+  note: string | null;
+  reviewedAt: string;
+  reviewerName: string;
+};
+
 /** One matched evidence item, as the detail panel renders it. */
 export type SignalEvidenceMatchView = {
   evidenceItemId: string;
@@ -147,6 +157,8 @@ export type SignalEvidenceMatchView = {
    * the chunk has since been re-extracted away.
    */
   excerpt: string | null;
+  /** Latest staff review for this (signal, evidence) pair. */
+  latestReview: EvidenceMatchLatestReviewView | null;
 };
 
 export type SignalMatchRunView = {
@@ -306,6 +318,41 @@ export async function findSignalDetail(
 
   const excerpts = await loadMatchExcerpts(matches);
 
+  const matchReviews =
+    matches.length > 0
+      ? await prisma.evidenceMatchReview.findMany({
+          where: {
+            signalId,
+            evidenceItemId: { in: matches.map((m) => m.evidenceItemId) },
+          },
+          orderBy: { reviewedAt: "desc" },
+          select: {
+            id: true,
+            evidenceItemId: true,
+            assessment: true,
+            note: true,
+            reviewedAt: true,
+            reviewer: { select: { name: true } },
+          },
+        })
+      : [];
+
+  const latestReviewsByEvidenceId = new Map<
+    string,
+    EvidenceMatchLatestReviewView
+  >();
+  for (const r of matchReviews) {
+    if (!latestReviewsByEvidenceId.has(r.evidenceItemId)) {
+      latestReviewsByEvidenceId.set(r.evidenceItemId, {
+        id: r.id,
+        assessment: r.assessment,
+        note: r.note,
+        reviewedAt: r.reviewedAt.toISOString(),
+        reviewerName: r.reviewer.name,
+      });
+    }
+  }
+
   return {
     id: signal.id,
     title: signal.title,
@@ -330,6 +377,8 @@ export async function findSignalDetail(
       rerankScore: match.rerankScore,
       excerpt:
         excerpts.get(`${match.evidenceItemId}:${match.chunkOrdinal}`) ?? null,
+      latestReview:
+        latestReviewsByEvidenceId.get(match.evidenceItemId) ?? null,
     })),
     ineligibleMatchCount: signal._count.evidenceMatches - matches.length,
     matchRuns: signal.matchRuns.map((run) => ({

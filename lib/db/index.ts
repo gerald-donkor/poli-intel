@@ -127,12 +127,18 @@ export {
 export {
   findEvidenceMatchCandidates,
   findSignalForMatching,
+  getEvidenceMatcherFeedbackSummary,
+  recordEvidenceMatchReview,
   recordEvidenceMatchRun,
   replaceSignalEvidenceMatches,
   type EvidenceMatchCandidate,
+  type EvidenceMatcherFeedbackSummary,
+  type RecordEvidenceMatchReviewInput,
+  type RecordEvidenceMatchReviewResult,
   type RecordEvidenceMatchRunInput,
   type SignalEvidenceMatchInput,
   type SignalForMatching,
+  type SourceTypeFeedbackSummary,
 } from "./evidence-matches";
 export {
   findSignalBriefPrefill,
@@ -141,6 +147,7 @@ export {
   loadSignalMatchScores,
   reclassifySignalUrgency,
   signalExists,
+  type EvidenceMatchLatestReviewView,
   type ReclassifySignalUrgencyResult,
   type SignalBoardCard,
   type SignalBoardPage,

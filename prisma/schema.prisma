@@ -288,6 +288,14 @@ enum EvidenceMatchOutcome {
   @@map("evidence_match_outcome")
 }
 
+enum EvidenceMatchAssessment {
+  relevant
+  not_relevant
+  uncertain
+
+  @@map("evidence_match_assessment")
+}
+
 // ---------------------------------------------------------------------------
 // Actors
 // ---------------------------------------------------------------------------
@@ -345,6 +353,7 @@ model StaffUser {
   stakeholderSharesLogged StakeholderBrief[]
   influenceEventsLogged   InfluenceEvent[]            @relation("InfluenceLoggedBy")
   influenceEventsVerified InfluenceEvent[]            @relation("InfluenceVerifiedBy")
+  evidenceMatchReviews    EvidenceMatchReview[]
   googleDriveGrant        GoogleDriveGrant?
 
   @@map("staff_user")
@@ -459,9 +468,10 @@ model PolicySignal {
 
   briefs            Brief[]
   briefGenerations  BriefGeneration[]
-  reclassifications SignalReclassification[]
-  evidenceMatches   SignalEvidenceMatch[]
-  matchRuns         EvidenceMatchRun[]
+  reclassifications    SignalReclassification[]
+  evidenceMatches      SignalEvidenceMatch[]
+  matchRuns            EvidenceMatchRun[]
+  evidenceMatchReviews EvidenceMatchReview[]
 
   @@index([status])
   @@index([urgency])
@@ -580,6 +590,28 @@ model SignalEvidenceMatch {
   @@map("signal_evidence_match")
 }
 
+/// Append-only staff assessment of one (signal, evidence item) match result.
+///
+/// Staff validation of retrieval usefulness (spec §3.5, §5.2 Research Officer workflow).
+/// Does not mutate SignalEvidenceMatch; preserves full history for longitudinal feedback.
+model EvidenceMatchReview {
+  id             String                   @id @default(uuid())
+  signalId       String                   @map("signal_id")
+  evidenceItemId String                   @map("evidence_item_id")
+  reviewerId     String                   @map("reviewer_id")
+  assessment     EvidenceMatchAssessment
+  note           String?
+  reviewedAt     DateTime                 @default(now()) @map("reviewed_at")
+
+  signal       PolicySignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  evidenceItem EvidenceItem @relation(fields: [evidenceItemId], references: [id], onDelete: Restrict)
+  reviewer     StaffUser    @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([signalId, evidenceItemId, reviewedAt])
+  @@index([evidenceItemId, reviewedAt])
+  @@map("evidence_match_review")
+}
+
 // ---------------------------------------------------------------------------
 // Evidence library
 // ---------------------------------------------------------------------------
@@ -637,6 +669,7 @@ model EvidenceItem {
   ingestionLogs         IngestionLog[]
   classificationChanges EvidenceClassificationChange[]
   signalMatches         SignalEvidenceMatch[]
+  matchReviews          EvidenceMatchReview[]
 
   @@index([classification])
   @@index([impactArea])

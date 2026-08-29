@@ -1,13 +1,24 @@
 "use server";
 
-import { canRequestEvidenceRematch, unauthorised } from "@/lib/auth/authorize";
+import { revalidatePath } from "next/cache";
+
+import {
+  canRequestEvidenceRematch,
+  canReviewEvidenceMatch,
+  unauthorised,
+} from "@/lib/auth/authorize";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
+import { recordEvidenceMatchReview } from "@/lib/db";
 import { sendSignalRematchRequested } from "@/lib/jobs/client";
 import { USAGE_EVENTS } from "@/lib/observability/events";
 import { captureUsage } from "@/lib/observability/posthog-server";
 
 import { requestRematchSchema, type RequestRematchInput } from "../schema";
+import {
+  reviewEvidenceMatchSchema,
+  type ReviewEvidenceMatchInput,
+} from "./schema";
 
 /**
  * Asking the Evidence Matcher to run again on this signal.
@@ -84,3 +95,92 @@ export async function requestEvidenceRematchAction(
 
   return { ok: true };
 }
+
+export type ReviewEvidenceMatchResult =
+  | { ok: true; id: string; reviewedAt: string }
+  | { ok: false; refusal: ActionRefusal };
+
+/**
+ * Record a Research Officer or Programme Director quality review against an evidence match.
+ *
+ * Mandatory order: resolve staff user -> authorise -> validate -> call data layer -> revalidate -> return typed result.
+ */
+export async function reviewEvidenceMatchAction(
+  input: ReviewEvidenceMatchInput,
+): Promise<ReviewEvidenceMatchResult> {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) {
+    return {
+      ok: false,
+      refusal: unauthorised("Sign in to review evidence matches."),
+    };
+  }
+
+  if (!canReviewEvidenceMatch(staffUser.role)) {
+    return {
+      ok: false,
+      refusal: unauthorised(
+        "Reviewing evidence match quality is restricted to Research Officers and the Programme Director.",
+      ),
+    };
+  }
+
+  const parsed = reviewEvidenceMatchSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      refusal: {
+        kind: "invalid",
+        fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+      },
+    };
+  }
+
+  const result = await recordEvidenceMatchReview({
+    signalId: parsed.data.signalId,
+    evidenceItemId: parsed.data.evidenceItemId,
+    reviewerId: staffUser.id,
+    assessment: parsed.data.assessment,
+    note: parsed.data.note,
+  });
+
+  if (!result.ok) {
+    if (result.reason === "unknown_match") {
+      return {
+        ok: false,
+        refusal: {
+          kind: "invalid",
+          fieldErrors: {
+            form: [
+              "This evidence match is no longer active for this signal. Please reload the page to see current matches.",
+            ],
+          },
+        },
+      };
+    }
+
+    return {
+      ok: false,
+      refusal: {
+        kind: "invalid",
+        fieldErrors: {
+          form: [
+            "This evidence item is no longer tagged public and published, and has been held from review. Open the classification queue (/evidence/queue) to manage it.",
+          ],
+        },
+      },
+    };
+  }
+
+  revalidatePath(`/signals/${parsed.data.signalId}`);
+  revalidatePath("/evidence");
+
+  return {
+    ok: true,
+    id: result.id,
+    reviewedAt: result.reviewedAt.toISOString(),
+  };
+}
+

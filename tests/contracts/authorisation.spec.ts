@@ -12,6 +12,7 @@ import {
   canManageStakeholders,
   canReclassifySignal,
   canRequestEvidenceRematch,
+  canReviewEvidenceMatch,
   canSetSignalWindow,
   canSubmitFieldObservation,
   canSubmitOrPublishBrief,
@@ -91,6 +92,10 @@ test.describe("Authorisation Predicates", () => {
     expectAllowed(canRequestEvidenceRematch, [
       StaffRole.programme_director,
       StaffRole.policy_advocacy_officer,
+      StaffRole.research_officer,
+    ]);
+    expectAllowed(canReviewEvidenceMatch, [
+      StaffRole.programme_director,
       StaffRole.research_officer,
     ]);
     expectAllowed(canManageStakeholders, [
