@@ -21,6 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { BriefOption } from "@/lib/db";
 import { InfluenceEventType } from "@/lib/generated/prisma/enums";
+import { TBI_PARTNER_COUNTRIES } from "@/lib/impact/network-partners";
 
 import { logInfluenceEventAction } from "./actions";
 import {
@@ -62,6 +63,9 @@ const emptyValues = (): LogInfluenceEventInput => ({
   sourceDocument: "",
   sourceTitle: "",
   quotedText: "",
+  hectaresImpacted: null,
+  peopleImpacted: null,
+  adaptedCountries: [],
   detectedAt: todayInUtc(),
 });
 
@@ -230,6 +234,35 @@ export function InfluenceForm({
             until the Programme Director confirms the record.
           </FieldDescription>
           <FieldError errors={[form.formState.errors.description]} />
+        </Field>
+
+        <div className="border-line grid min-w-0 grid-cols-1 gap-4 border-t pt-4 tablet:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="influence-hectares">Estimated landscape hectares</FieldLabel>
+            <Input id="influence-hectares" type="number" min="0" step="1" disabled={busy} className="bg-card" placeholder="Optional" {...form.register("hectaresImpacted", { setValueAs: (value) => value === "" ? null : Number(value) })} />
+            <FieldDescription>Record a defensible estimate only; it is included in annual totals after confirmation.</FieldDescription>
+            <FieldError errors={[form.formState.errors.hectaresImpacted]} />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="influence-people">Estimated people benefiting</FieldLabel>
+            <Input id="influence-people" type="number" min="0" step="1" disabled={busy} className="bg-card" placeholder="Optional" {...form.register("peopleImpacted", { setValueAs: (value) => value === "" ? null : Number(value) })} />
+            <FieldDescription>For example, smallholders with improved tenure or livelihood security.</FieldDescription>
+            <FieldError errors={[form.formState.errors.peopleImpacted]} />
+          </Field>
+        </div>
+
+        <Field>
+          <FieldLabel>Network knowledge exchange</FieldLabel>
+          <FieldDescription>Select partner programmes that adopted, piloted, or referenced this Ghana-developed approach.</FieldDescription>
+          <div className="mt-2 grid grid-cols-1 gap-2 tablet:grid-cols-3" role="group" aria-label="TBI partner country adaptations">
+            {TBI_PARTNER_COUNTRIES.map((partner) => (
+              <label key={partner.code} className="border-line bg-card flex min-h-11 cursor-pointer items-center gap-2 rounded-input border px-3 text-[13px] text-ink">
+                <input type="checkbox" value={partner.code} disabled={busy} className="cursor-pointer accent-primary" {...form.register("adaptedCountries")} />
+                {partner.country}
+              </label>
+            ))}
+          </div>
+          <FieldError errors={[form.formState.errors.adaptedCountries]} />
         </Field>
 
         <div className="grid min-w-0 grid-cols-1 gap-4 tablet:grid-cols-2">

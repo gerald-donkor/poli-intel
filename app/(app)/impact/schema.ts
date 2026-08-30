@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { InfluenceEventType } from "@/lib/generated/prisma/enums";
+import { TBI_PARTNER_COUNTRIES } from "@/lib/impact/network-partners";
 
 /**
  * The Impact Tracker's input shapes, shared by React Hook Form and the Server
@@ -77,6 +78,9 @@ export const logInfluenceEventSchema = z.object({
     INFLUENCE_QUOTE_MAX_CHARS,
     `Keep the quoted line under ${INFLUENCE_QUOTE_MAX_CHARS} characters.`,
   ),
+  hectaresImpacted: z.number().int().min(0).max(20_000_000).nullable().optional(),
+  peopleImpacted: z.number().int().min(0).max(5_000_000).nullable().optional(),
+  adaptedCountries: z.array(z.enum(TBI_PARTNER_COUNTRIES.map((partner) => partner.code) as [string, ...string[]])).max(9).optional(),
 
   /**
    * When it happened, to the day.

@@ -83,6 +83,9 @@ export async function logInfluenceEventAction(
     sourceDocument: parsed.data.sourceDocument?.trim() || null,
     sourceTitle: parsed.data.sourceTitle?.trim() || null,
     quotedText: parsed.data.quotedText?.trim() || null,
+    hectaresImpacted: parsed.data.hectaresImpacted ?? null,
+    peopleImpacted: parsed.data.peopleImpacted ?? null,
+    adaptedCountries: parsed.data.adaptedCountries ?? [],
     // Parsed as UTC midnight so the stored instant matches the day the person
     // chose, wherever the server happens to be.
     detectedAt: new Date(`${parsed.data.detectedAt}T00:00:00Z`),

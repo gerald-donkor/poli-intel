@@ -602,6 +602,9 @@ export type LogInfluenceEventInput = {
   sourceTitle: string | null;
   quotedText: string | null;
   detectedAt: Date;
+  hectaresImpacted: number | null;
+  peopleImpacted: number | null;
+  adaptedCountries: string[];
   loggedById: string;
 };
 
@@ -643,6 +646,9 @@ export async function logInfluenceEvent(
         detectedAt: input.detectedAt,
         description: input.description,
         quotedText: input.quotedText,
+        hectaresImpacted: input.hectaresImpacted,
+        peopleImpacted: input.peopleImpacted,
+        adaptedCountries: input.adaptedCountries,
         verified: false,
         loggedById: input.loggedById,
       },

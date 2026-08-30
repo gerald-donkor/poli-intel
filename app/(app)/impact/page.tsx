@@ -14,6 +14,7 @@ import {
   findQuarterlyNarrativeByQuarter,
   listInfluenceEvents,
   readImpactMap,
+  readAnnualStrategicReport,
   readQuarterlyImpactReport,
 } from "@/lib/db";
 import {
@@ -27,6 +28,7 @@ import { InfluenceEventRail } from "./event-rail";
 import { ImpactMap } from "./impact-map";
 import { LogInfluencePanel } from "./log-panel";
 import { QuarterlyReport } from "./quarterly-report";
+import { AnnualReport } from "./annual-report";
 
 export const metadata = {
   title: "Impact · EviBrief",
@@ -54,13 +56,13 @@ export const metadata = {
 export default async function ImpactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ quarter?: string }>;
+  searchParams: Promise<{ quarter?: string; view?: string; year?: string }>;
 }) {
   const staffUser = await requireStaffUser();
 
   if (!canViewImpact(staffUser.role)) return <ImpactNotForYourRole />;
 
-  const { quarter: requestedQuarter } = await searchParams;
+  const { quarter: requestedQuarter, view, year: requestedYear } = await searchParams;
 
   const now = new Date();
   // The previous quarter by default: that is the one a donor report is written
@@ -68,6 +70,21 @@ export default async function ImpactPage({
   const quarter =
     (requestedQuarter ? parseQuarterKey(requestedQuarter) : null) ??
     previousQuarter(quarterFor(now));
+
+  const requestedAnnualYear = Number(requestedYear);
+  const annualYear = Number.isInteger(requestedAnnualYear) && requestedAnnualYear >= 2000 && requestedAnnualYear <= 2100 ? requestedAnnualYear : now.getUTCFullYear();
+  const annualYears = Array.from({ length: 4 }, (_, index) => now.getUTCFullYear() - index);
+
+  if (view === "annual") {
+    const annualReport = await readAnnualStrategicReport({ year: annualYear });
+    return <>
+      <PageHeader title="Impact" subtitle="Where Tropenbos evidence has reached policy — confirmed annual contribution and knowledge exchange records." breadcrumbs={[{ label: "Impact" }]} />
+      <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-6 p-4 tablet:p-6 desktop:px-8">
+        <nav aria-label="Impact report view"><ul className="flex flex-wrap gap-2 p-0"><li><Link href={`/impact?quarter=${quarter.key}`} className="border-line text-ink-3 hover:border-sage hover:text-ink rounded-card cursor-pointer border px-3 py-1.5 text-[13px] font-medium no-underline">Quarterly review</Link></li><li><Link href={`/impact?view=annual&year=${annualYear}`} aria-current="page" className="border-primary bg-surface-tint text-primary-ink rounded-card cursor-pointer border px-3 py-1.5 text-[13px] font-medium no-underline">Annual strategic evaluation</Link></li></ul></nav>
+        <AnnualReport report={annualReport} years={annualYears.includes(annualYear) ? annualYears : [annualYear, ...annualYears]} />
+      </div>
+    </>;
+  }
 
   const [events, briefs, report, map, narrative] = await Promise.all([
     listInfluenceEvents(),
@@ -90,6 +107,7 @@ export default async function ImpactPage({
       />
 
       <div className="mx-auto flex w-full min-w-0 max-w-[1440px] flex-1 flex-col gap-6 p-4 tablet:p-6 desktop:px-8">
+        <nav aria-label="Impact report view"><ul className="flex flex-wrap gap-2 p-0"><li><Link href={`/impact?quarter=${quarter.key}`} aria-current="page" className="border-primary bg-surface-tint text-primary-ink rounded-card cursor-pointer border px-3 py-1.5 text-[13px] font-medium no-underline">Quarterly review</Link></li><li><Link href={`/impact?view=annual&year=${annualYear}`} className="border-line text-ink-3 hover:border-sage hover:text-ink rounded-card cursor-pointer border px-3 py-1.5 text-[13px] font-medium no-underline">Annual strategic evaluation</Link></li></ul></nav>
         {/* Donor-facing summary strip with real data-derived counts */}
         <section
           aria-label="Impact overview summary"

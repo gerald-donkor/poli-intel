@@ -253,6 +253,11 @@ export {
   type VerifyInfluenceEventResult,
 } from "./influence";
 export {
+  readAnnualStrategicReport,
+  type AnnualStrategicEvent,
+  type AnnualStrategicReport,
+} from "./annual-impact";
+export {
   findQuarterlyNarrativeByQuarter,
   upsertQuarterlyNarrative,
   type QuarterlyNarrativeView,
