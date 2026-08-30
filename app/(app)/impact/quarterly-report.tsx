@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { QuarterlyImpactReport } from "@/lib/db";
 import type { QuarterlyNarrativeView } from "@/lib/db";
 import type { Quarter } from "@/lib/impact/config";
+import { BriefAudience, BriefStatus, Urgency } from "@/lib/generated/prisma/enums";
 
 import {
   DETECTION_METHOD_LABELS,
@@ -11,6 +12,12 @@ import {
   INFLUENCE_EVENT_TYPE_ORDER,
 } from "./labels";
 import { NarrativeDialog } from "./narrative-dialog";
+import { ExportDonorReport } from "./export-donor-report";
+import {
+  BRIEF_AUDIENCE_LABELS,
+  BRIEF_STATUS_LABELS,
+  URGENCY_LABELS,
+} from "./scorecard-labels";
 
 /**
  * The quarterly report — ASSEMBLED, NOT GENERATED.
@@ -54,16 +61,19 @@ export function QuarterlyReport({
       className="bg-card border-line rounded-card flex min-w-0 flex-col gap-5 border p-4 tablet:p-6 shadow-raised"
     >
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2
-            id="quarterly-report-heading"
-            className="text-ink text-[16px] font-semibold tracking-[-0.01em]"
-          >
-            Quarterly report · {quarter.label}
-          </h2>
-          <span className="font-mono text-[11.5px] text-ink-3">
-            Assembled from stored records
-          </span>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h2
+              id="quarterly-report-heading"
+              className="text-ink text-[16px] font-semibold tracking-[-0.01em]"
+            >
+              Quarterly report · {quarter.label}
+            </h2>
+            <span className="font-mono text-[11.5px] text-ink-3">
+              Assembled from stored records
+            </span>
+          </div>
+          <ExportDonorReport quarter={quarter} report={report} narrative={narrative} />
         </div>
         <p className="text-ink-3 max-w-[72ch] text-[13px] leading-relaxed">
           Confirmed records only, assembled from what is stored. Nothing on this
@@ -92,6 +102,8 @@ export function QuarterlyReport({
       </div>
 
       <ReportSummary report={report} quarter={quarter} />
+
+      <OperationalScorecard report={report} />
 
       <QuarterlyNarrativeSection
         quarter={quarter}
@@ -189,6 +201,156 @@ export function QuarterlyReport({
       ) : null}
     </section>
   );
+}
+
+function OperationalScorecard({ report }: { report: QuarterlyImpactReport }) {
+  const { metrics } = report;
+  const urgencyClasses: Record<Urgency, string> = {
+    [Urgency.immediate]: "border-immediate-border bg-immediate-surface text-immediate-ink",
+    [Urgency.near_term]: "border-nearterm-border bg-nearterm-surface text-nearterm-ink",
+    [Urgency.horizon]: "border-surface-tint-border bg-surface-tint text-primary-ink",
+    [Urgency.watch]: "border-watch-border bg-watch-surface text-watch-ink",
+  };
+
+  return (
+    <section className="border-line flex min-w-0 flex-col gap-4 border-t pt-5" aria-labelledby="operational-scorecard-heading">
+      <div className="flex flex-col gap-1">
+        <h3 id="operational-scorecard-heading" className="text-ink text-[15px] font-semibold">
+          Operational &amp; strategic scorecard
+        </h3>
+        <p className="text-ink-3 max-w-[68ch] text-[13px] leading-relaxed">
+          Quarter-bounded indicators from stored records. They show activity and review quality; they do not establish causal policy influence.
+        </p>
+      </div>
+
+      <div className="grid min-w-0 grid-cols-1 gap-3 tablet:grid-cols-2 laptop:grid-cols-4">
+        <MetricCard
+          label="Median turnaround"
+          value={metrics.turnaroundHoursMedian === null ? "—" : `${formatMetricNumber(metrics.turnaroundHoursMedian)}h`}
+          detail={metrics.turnaroundHoursMedian === null ? "No completed signal-linked briefs" : "From signal detection to first review"}
+          target={metrics.turnaroundHoursMedian === null ? "Target: under 4h" : metrics.turnaroundHoursMedian < 4 ? "Target met · under 4h" : "Target: under 4h"}
+          achieved={metrics.turnaroundHoursMedian !== null && metrics.turnaroundHoursMedian < 4}
+        />
+        <MetricCard
+          label="Evidence match quality"
+          value={metrics.evidenceMatchQuality === null ? "—" : `${metrics.evidenceMatchQuality}%`}
+          detail={`${metrics.evidenceReviewsRelevant} relevant of ${metrics.evidenceReviewsTotal} staff assessments`}
+          target={metrics.evidenceMatchQuality === null ? "Benchmark: above 80%" : metrics.evidenceMatchQuality > 80 ? "Benchmark met · above 80%" : "Benchmark: above 80%"}
+          achieved={metrics.evidenceMatchQuality !== null && metrics.evidenceMatchQuality > 80}
+        />
+        <MetricCard
+          label="Immediate window capture"
+          value={metrics.policyWindowCaptureRate === null ? "—" : `${metrics.policyWindowCaptureRate}%`}
+          detail={`${metrics.immediateSignalsCaptured} of ${metrics.immediateSignalsTotal} Immediate signals reached review or beyond`}
+          target="Reviewed, submitted, or published"
+          achieved={metrics.policyWindowCaptureRate !== null && metrics.policyWindowCaptureRate > 0}
+        />
+        <MetricCard
+          label="Policy signals monitored"
+          value={metrics.signalsCount.toLocaleString("en-GB")}
+          detail="Detected in the selected quarter"
+          target="Across all urgency horizons"
+        />
+      </div>
+
+      <div className="grid min-w-0 grid-cols-1 gap-4 laptop:grid-cols-2">
+        <DistributionPanel
+          heading="Audience coverage"
+          description="Briefs active in this quarter, across the five core audiences."
+          values={[
+            BriefAudience.ghana_ministry_official,
+            BriefAudience.cocoa_company_sustainability,
+            BriefAudience.eu_regulator,
+            BriefAudience.donor_programme_officer,
+            BriefAudience.crema_community_governance,
+          ].map((audience) => ({ label: BRIEF_AUDIENCE_LABELS[audience], value: metrics.audienceDistribution[audience] }))}
+        />
+        <DistributionPanel
+          heading="Brief pipeline status"
+          description="Current status of briefs created or transitioned this quarter."
+          values={[
+            BriefStatus.draft,
+            BriefStatus.reviewed,
+            BriefStatus.submitted,
+            BriefStatus.published,
+          ].map((status) => ({ label: BRIEF_STATUS_LABELS[status], value: metrics.briefStatusCounts[status] }))}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-1.5" aria-label="Signal urgency distribution">
+        {([Urgency.immediate, Urgency.near_term, Urgency.horizon, Urgency.watch] as const).map((urgency) => (
+          <span key={urgency} className={`rounded-full border px-2.5 py-1 font-mono text-[11px] ${urgencyClasses[urgency]}`}>
+            {URGENCY_LABELS[urgency]} <span className="font-semibold tabular-nums">{metrics.urgencyCounts[urgency]}</span>
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  target,
+  achieved,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  target: string;
+  achieved?: boolean;
+}) {
+  return (
+    <section className="border-line bg-paper/50 rounded-card flex min-w-0 flex-col gap-2 border p-3.5">
+      <p className="text-ink-3 text-meta font-semibold tracking-[0.06em] uppercase">{label}</p>
+      <p className="text-ink font-mono text-[25px] font-semibold tabular-nums tracking-[-0.03em]">{value}</p>
+      <p className="text-ink-3 min-h-[2.5rem] text-[12px] leading-relaxed">{detail}</p>
+      <span className={achieved ? "border-surface-tint-border bg-surface-tint text-primary-ink w-fit rounded-full border px-2 py-0.5 text-[11px] font-medium" : "border-line bg-card text-ink-3 w-fit rounded-full border px-2 py-0.5 text-[11px] font-medium"}>
+        {target}
+      </span>
+    </section>
+  );
+}
+
+function DistributionPanel({
+  heading,
+  description,
+  values,
+}: {
+  heading: string;
+  description: string;
+  values: Array<{ label: string; value: number }>;
+}) {
+  const maximum = Math.max(1, ...values.map((item) => item.value));
+
+  return (
+    <section className="border-line bg-paper/40 rounded-card flex min-w-0 flex-col gap-3 border p-4">
+      <div className="flex flex-col gap-0.5">
+        <h4 className="text-ink text-[13.5px] font-semibold">{heading}</h4>
+        <p className="text-ink-3 text-[12px] leading-relaxed">{description}</p>
+      </div>
+      <ul className="flex list-none flex-col gap-2.5 p-0">
+        {values.map((item) => (
+          <li key={item.label} className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem] items-center gap-3">
+            <div className="min-w-0">
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <span className="text-ink-2 truncate text-[12px]">{item.label}</span>
+              </div>
+              <div className="bg-stone h-1.5 overflow-hidden rounded-full" aria-hidden="true">
+                <div className="bg-primary h-full rounded-full" style={{ width: `${(item.value / maximum) * 100}%` }} />
+              </div>
+            </div>
+            <span className="text-ink font-mono text-right text-[12px] font-semibold tabular-nums" aria-label={`${item.label}: ${item.value}`}>{item.value}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function formatMetricNumber(value: number) {
+  return value.toLocaleString("en-GB", { maximumFractionDigits: 1 });
 }
 
 function QuarterlyNarrativeSection({

@@ -12,6 +12,11 @@ import {
 } from "@/lib/generated/prisma/enums";
 import type { BriefAudience, BriefType } from "@/lib/generated/prisma/enums";
 import {
+  calculateQuarterlyOperationalMetrics,
+  type QuarterlyOperationalMetricInput,
+  type QuarterlyOperationalMetrics,
+} from "@/lib/impact/quarterly-metrics";
+import {
   findDuplicateInfluenceEvent,
   influenceSourceKey,
   type InfluenceDedupCandidate,
@@ -724,6 +729,18 @@ export type QuarterlyReportEvidence = {
   eventCount: number;
 };
 
+const COMPLETED_BRIEF_STATUSES = [
+  BriefStatus.reviewed,
+  BriefStatus.submitted,
+  BriefStatus.published,
+] as const;
+
+export {
+  calculateQuarterlyOperationalMetrics,
+  type QuarterlyOperationalMetricInput,
+  type QuarterlyOperationalMetrics,
+};
+
 export type QuarterlyImpactReport = {
   /** Verified events in the quarter, in the enum's declaration order by type. */
   events: QuarterlyReportEvent[];
@@ -734,6 +751,8 @@ export type QuarterlyImpactReport = {
   unverifiedCount: number;
   /** Which evidence the briefs behind those events cited — ids and titles. */
   evidence: QuarterlyReportEvidence[];
+  /** Stored operational data, calculated for the selected quarter only. */
+  metrics: QuarterlyOperationalMetrics;
 };
 
 /**
@@ -756,7 +775,7 @@ export async function readQuarterlyImpactReport({
 }): Promise<QuarterlyImpactReport> {
   const window = { gte: start, lt: end };
 
-  const [rows, unverifiedCount] = await Promise.all([
+  const [rows, unverifiedCount, signals, briefs, evidenceReviews] = await Promise.all([
     prisma.influenceEvent.findMany({
       where: { verified: true, detectedAt: window },
       orderBy: [{ eventType: "asc" }, { detectedAt: "asc" }],
@@ -786,6 +805,41 @@ export async function readQuarterlyImpactReport({
     prisma.influenceEvent.count({
       where: { verified: false, detectedAt: window },
     }),
+    prisma.policySignal.findMany({
+      where: { detectedAt: window },
+      select: {
+        urgency: true,
+        briefs: {
+          where: { status: { in: [...COMPLETED_BRIEF_STATUSES] } },
+          select: { id: true },
+        },
+      },
+    }),
+    prisma.brief.findMany({
+      where: {
+        OR: [
+          { createdAt: window },
+          { statusChanges: { some: { changedAt: window } } },
+        ],
+      },
+      select: {
+        status: true,
+        audience: true,
+        signal: { select: { detectedAt: true } },
+        statusChanges: {
+          where: {
+            changedAt: window,
+            newStatus: { in: [...COMPLETED_BRIEF_STATUSES] },
+          },
+          orderBy: { changedAt: "asc" },
+          select: { changedAt: true },
+        },
+      },
+    }),
+    prisma.evidenceMatchReview.findMany({
+      where: { reviewedAt: window },
+      select: { assessment: true },
+    }),
   ]);
 
   const events: QuarterlyReportEvent[] = rows.map((row) => ({
@@ -808,6 +862,19 @@ export async function readQuarterlyImpactReport({
     events,
     unverifiedCount,
     evidence: await readEvidenceBehind(events.map((event) => event.briefId)),
+    metrics: calculateQuarterlyOperationalMetrics({
+      signals: signals.map((signal) => ({
+        urgency: signal.urgency,
+        captured: signal.briefs.length > 0,
+      })),
+      briefs: briefs.map((brief) => ({
+        status: brief.status,
+        audience: brief.audience,
+        signalDetectedAt: brief.signal?.detectedAt ?? null,
+        completedAt: brief.statusChanges[0]?.changedAt ?? null,
+      })),
+      evidenceReviews,
+    }),
   };
 }
 
