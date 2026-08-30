@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
+  ChartNoAxesCombinedIcon,
   FileTextIcon,
   LandPlotIcon,
   LibraryIcon,
@@ -56,6 +57,7 @@ type Scored<T> = T & {
 
 type AppIcon =
   | typeof FileTextIcon
+  | typeof ChartNoAxesCombinedIcon
   | typeof LandPlotIcon
   | typeof LibraryIcon
   | typeof ListChecksIcon
@@ -64,6 +66,7 @@ type AppIcon =
   | typeof UsersIcon;
 
 const DESTINATION_ICONS: Record<string, AppIcon> = {
+  dashboard: ChartNoAxesCombinedIcon,
   signals: ListChecksIcon,
   briefs: FileTextIcon,
   tracker: MapPinnedIcon,

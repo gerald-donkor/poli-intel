@@ -7,6 +7,10 @@ import "server-only";
  */
 
 export { prisma } from "./client";
+export {
+  readExecutiveDashboardData,
+  type ExecutiveDashboardData,
+} from "./dashboard";
 export { checkEmbeddingDimensions, type EmbeddingCheck } from "./embedding";
 export {
   findStaffUserById,

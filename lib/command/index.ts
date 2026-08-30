@@ -29,6 +29,14 @@ export const COMMAND_EVIDENCE_LIMIT = 16;
 const DESTINATIONS: CommandDestination[] = [
   {
     kind: "destination",
+    id: "dashboard",
+    label: "Dashboard",
+    description: "Executive overview and approval queue",
+    href: "/dashboard",
+    shortcut: "G D",
+  },
+  {
+    kind: "destination",
     id: "signals",
     label: "Signals",
     description: "Policy developments awaiting review",

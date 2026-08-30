@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const protectedRoutes = [
+  "/dashboard",
   "/signals",
   "/evidence",
   "/briefs",

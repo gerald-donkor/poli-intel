@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 // control: every Server Action authorises its caller server-side
 // (AGENTS.md §10.1). Do not treat a hidden link as a permission check.
 const NAV_LINKS = [
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/signals", label: "Signals" },
   { href: "/briefs", label: "Briefs" },
   // Lifecycle order: a window is detected, a brief answers it, the tracker says

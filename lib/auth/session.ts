@@ -57,13 +57,16 @@ export const getCurrentStaffUser = cache(async (): Promise<StaffUser | null> => 
 
 /**
  * Where a signed-in person belongs. A Field Officer's surface is `/field`;
- * every other role starts on the daily-use Signals screen.
+ * the Programme Director begins with the executive dashboard, and other staff
+ * start on the daily-use Signals screen.
  *
  * This is routing, not access control — `/signals` still resolves the caller
  * itself, and every Server Action still authorises server-side (§10.1).
  */
 export function landingPathForRole(role: StaffRole): string {
-  return role === "field_officer" ? "/field" : "/signals";
+  if (role === "field_officer") return "/field";
+  if (role === "programme_director") return "/dashboard";
+  return "/signals";
 }
 
 /** Unauthenticated callers go to the sign-in screen. */
