@@ -354,9 +354,29 @@ model StaffUser {
   influenceEventsLogged   InfluenceEvent[]            @relation("InfluenceLoggedBy")
   influenceEventsVerified InfluenceEvent[]            @relation("InfluenceVerifiedBy")
   evidenceMatchReviews    EvidenceMatchReview[]
+  quarterlyNarratives     QuarterlyEvidenceNarrative[] @relation("StaffUserQuarterlyNarratives")
   googleDriveGrant        GoogleDriveGrant?
 
   @@map("staff_user")
+}
+
+/// A human-authored quarterly evaluation of what EviBrief helped achieve and
+/// where the next cycle needs attention. This is operational reflection, not
+/// generated reporting: no evidence body text or AI output belongs in this row.
+model QuarterlyEvidenceNarrative {
+  id                String   @id @default(uuid())
+  quarterKey        String   @unique @map("quarter_key") @db.VarChar(16)
+  authorId          String   @map("author_id")
+  wins              String   @db.Text
+  missedWindows     String   @map("missed_windows") @db.Text
+  evidenceGaps      String   @map("evidence_gaps") @db.Text
+  systemImprovement String   @map("system_improvement") @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  author StaffUser @relation("StaffUserQuarterlyNarratives", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@map("quarterly_evidence_narrative")
 }
 
 /// One staff member's Google Drive authorisation, held so that exporting a

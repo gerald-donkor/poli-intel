@@ -238,6 +238,12 @@ export {
   type VerifyInfluenceEventResult,
 } from "./influence";
 export {
+  findQuarterlyNarrativeByQuarter,
+  upsertQuarterlyNarrative,
+  type QuarterlyNarrativeView,
+  type UpsertQuarterlyNarrativeInput,
+} from "./quarterly-narrative";
+export {
   recordEmbeddingRun,
   recordIngestionFailure,
   recordIngestionSuccess,

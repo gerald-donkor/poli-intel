@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   canApproveOrRejectBrief,
+  canAuthorQuarterlyNarrative,
   canChangeEvidenceClassification,
   canDismissFlag,
   canEditBrief,
@@ -17,6 +18,7 @@ import {
   canSubmitFieldObservation,
   canSubmitOrPublishBrief,
   canVerifyInfluenceEvent,
+  canViewImpact,
 } from "@/lib/auth/authorize";
 import { StaffRole } from "@/lib/generated/prisma/enums";
 
@@ -105,6 +107,15 @@ test.describe("Authorisation Predicates", () => {
     expectAllowed(canLogInfluenceEvent, [
       StaffRole.programme_director,
       StaffRole.policy_advocacy_officer,
+    ]);
+    expectAllowed(canAuthorQuarterlyNarrative, [
+      StaffRole.programme_director,
+      StaffRole.policy_advocacy_officer,
+    ]);
+    expectAllowed(canViewImpact, [
+      StaffRole.programme_director,
+      StaffRole.policy_advocacy_officer,
+      StaffRole.research_officer,
     ]);
     expectAllowed(canVerifyInfluenceEvent, [StaffRole.programme_director]);
     expectAllowed(canGenerateImpactReport, [StaffRole.programme_director]);

@@ -5,18 +5,25 @@ import type { z } from "zod";
 
 import {
   canLogInfluenceEvent,
+  canAuthorQuarterlyNarrative,
   canVerifyInfluenceEvent,
   unauthorised,
 } from "@/lib/auth/authorize";
 import type { ActionRefusal } from "@/lib/auth/authorize";
 import { getCurrentStaffUser } from "@/lib/auth/session";
-import { logInfluenceEvent, verifyInfluenceEvent } from "@/lib/db";
+import {
+  logInfluenceEvent,
+  upsertQuarterlyNarrative,
+  verifyInfluenceEvent,
+} from "@/lib/db";
 
 import {
   logInfluenceEventSchema,
   verifyInfluenceEventSchema,
   type LogInfluenceEventInput,
   type VerifyInfluenceEventInput,
+  quarterlyNarrativeSchema,
+  type QuarterlyNarrativeInput,
 } from "./schema";
 
 /**
@@ -152,6 +159,34 @@ export async function verifyInfluenceEventAction(
     };
   }
 
+  revalidatePath("/impact");
+
+  return { ok: true };
+}
+
+export async function saveQuarterlyNarrativeAction(
+  input: QuarterlyNarrativeInput,
+): Promise<ImpactActionResult> {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) {
+    return { ok: false, refusal: unauthorised("Sign in to record a quarterly evaluation.") };
+  }
+
+  if (!canAuthorQuarterlyNarrative(staffUser.role)) {
+    return {
+      ok: false,
+      refusal: unauthorised(
+        "Only the Programme Director and Policy & Advocacy Officer can record a quarterly evaluation.",
+      ),
+    };
+  }
+
+  const parsed = quarterlyNarrativeSchema.safeParse(input);
+
+  if (!parsed.success) return { ok: false, refusal: toInvalid(parsed.error) };
+
+  await upsertQuarterlyNarrative({ ...parsed.data, authorId: staffUser.id });
   revalidatePath("/impact");
 
   return { ok: true };

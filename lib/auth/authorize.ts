@@ -245,6 +245,29 @@ export function canLogInfluenceEvent(role: StaffRole): boolean {
   );
 }
 
+/** Read the Impact Tracker, including staff-authored quarterly reflection. */
+export function canViewImpact(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer ||
+    role === StaffRole.research_officer
+  );
+}
+
+/**
+ * Record the quarterly evaluation narrative.
+ *
+ * This shares the operational ownership of the impact record without borrowing
+ * its name: the narrative is staff reflection rather than an influence claim,
+ * and the action still authorises independently before writing.
+ */
+export function canAuthorQuarterlyNarrative(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer
+  );
+}
+
 /**
  * Confirm an influence event — Programme Director only.
  *

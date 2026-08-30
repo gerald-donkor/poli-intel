@@ -3,13 +3,15 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import {
-  canGenerateImpactReport,
+  canAuthorQuarterlyNarrative,
   canLogInfluenceEvent,
   canVerifyInfluenceEvent,
+  canViewImpact,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import {
   listBriefOptionsForInfluence,
+  findQuarterlyNarrativeByQuarter,
   listInfluenceEvents,
   readImpactMap,
   readQuarterlyImpactReport,
@@ -56,9 +58,8 @@ export default async function ImpactPage({
 }) {
   const staffUser = await requireStaffUser();
 
-  if (!canLogInfluenceEvent(staffUser.role)) return <ImpactNotForYourRole />;
+  if (!canViewImpact(staffUser.role)) return <ImpactNotForYourRole />;
 
-  const showReport = canGenerateImpactReport(staffUser.role);
   const { quarter: requestedQuarter } = await searchParams;
 
   const now = new Date();
@@ -68,24 +69,17 @@ export default async function ImpactPage({
     (requestedQuarter ? parseQuarterKey(requestedQuarter) : null) ??
     previousQuarter(quarterFor(now));
 
-  const [events, briefs, report, map] = await Promise.all([
+  const [events, briefs, report, map, narrative] = await Promise.all([
     listInfluenceEvents(),
     listBriefOptionsForInfluence(),
-    showReport
-      ? readQuarterlyImpactReport({ start: quarter.start, end: quarter.end })
-      : Promise.resolve(null),
+    readQuarterlyImpactReport({ start: quarter.start, end: quarter.end }),
     readImpactMap(),
+    findQuarterlyNarrativeByQuarter(quarter.key),
   ]);
 
-  const confirmedCount =
-    report !== null
-      ? report.events.length
-      : events.filter((e) => e.verified).length;
+  const confirmedCount = report.events.length;
 
-  const unconfirmedCount =
-    report !== null
-      ? report.unverifiedCount
-      : events.filter((e) => !e.verified).length;
+  const unconfirmedCount = report.unverifiedCount;
 
   return (
     <>
@@ -152,15 +146,17 @@ export default async function ImpactPage({
           </div>
         </section>
 
-        <LogInfluencePanel briefs={briefs} defaultOpen={events.length === 0} />
-
-        {report !== null ? (
-          <QuarterlyReport
-            quarter={quarter}
-            quarters={recentQuarters(now)}
-            report={report}
-          />
+        {canLogInfluenceEvent(staffUser.role) ? (
+          <LogInfluencePanel briefs={briefs} defaultOpen={events.length === 0} />
         ) : null}
+
+        <QuarterlyReport
+          quarter={quarter}
+          quarters={recentQuarters(now)}
+          report={report}
+          narrative={narrative}
+          canAuthorNarrative={canAuthorQuarterlyNarrative(staffUser.role)}
+        />
 
         <section
           aria-labelledby="influence-record-heading"

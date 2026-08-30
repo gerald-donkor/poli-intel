@@ -107,3 +107,28 @@ export const verifyInfluenceEventSchema = z.object({ eventId: z.uuid() });
 export type VerifyInfluenceEventInput = z.infer<
   typeof verifyInfluenceEventSchema
 >;
+
+export const QUARTERLY_NARRATIVE_MAX_CHARS = 3000;
+
+const narrativeField = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} is required.`)
+    .max(
+      QUARTERLY_NARRATIVE_MAX_CHARS,
+      `Keep ${label.toLowerCase()} under ${QUARTERLY_NARRATIVE_MAX_CHARS} characters.`,
+    );
+
+/** Shape only; role permissions remain in the server-only action. */
+export const quarterlyNarrativeSchema = z.object({
+  quarterKey: z
+    .string()
+    .regex(/^\d{4}-Q[1-4]$/, "Use a quarter in the form YYYY-Q1 through YYYY-Q4."),
+  wins: narrativeField("Policy wins and influence"),
+  missedWindows: narrativeField("Missed windows"),
+  evidenceGaps: narrativeField("Evidence gaps"),
+  systemImprovement: narrativeField("System and workflow improvement"),
+});
+
+export type QuarterlyNarrativeInput = z.infer<typeof quarterlyNarrativeSchema>;

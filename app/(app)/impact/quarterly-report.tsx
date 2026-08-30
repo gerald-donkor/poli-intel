@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { QuarterlyImpactReport } from "@/lib/db";
+import type { QuarterlyNarrativeView } from "@/lib/db";
 import type { Quarter } from "@/lib/impact/config";
 
 import {
@@ -9,6 +10,7 @@ import {
   INFLUENCE_EVENT_TYPE_LABELS,
   INFLUENCE_EVENT_TYPE_ORDER,
 } from "./labels";
+import { NarrativeDialog } from "./narrative-dialog";
 
 /**
  * The quarterly report — ASSEMBLED, NOT GENERATED.
@@ -32,10 +34,14 @@ export function QuarterlyReport({
   quarter,
   quarters,
   report,
+  narrative,
+  canAuthorNarrative,
 }: {
   quarter: Quarter;
   quarters: Quarter[];
   report: QuarterlyImpactReport;
+  narrative: QuarterlyNarrativeView | null;
+  canAuthorNarrative: boolean;
 }) {
   const grouped = INFLUENCE_EVENT_TYPE_ORDER.map((eventType) => ({
     eventType,
@@ -86,6 +92,12 @@ export function QuarterlyReport({
       </div>
 
       <ReportSummary report={report} quarter={quarter} />
+
+      <QuarterlyNarrativeSection
+        quarter={quarter}
+        narrative={narrative}
+        canAuthor={canAuthorNarrative}
+      />
 
       {grouped.map((group) => (
         <section key={group.eventType} className="flex min-w-0 flex-col gap-2.5">
@@ -175,6 +187,80 @@ export function QuarterlyReport({
           </ul>
         </section>
       ) : null}
+    </section>
+  );
+}
+
+function QuarterlyNarrativeSection({
+  quarter,
+  narrative,
+  canAuthor,
+}: {
+  quarter: Quarter;
+  narrative: QuarterlyNarrativeView | null;
+  canAuthor: boolean;
+}) {
+  if (!narrative) {
+    return (
+      <section className="border-line bg-paper/40 rounded-card flex flex-col gap-3 border border-dashed p-4 tablet:flex-row tablet:items-end tablet:justify-between">
+        <div className="flex max-w-[66ch] flex-col gap-1.5">
+          <h3 className="text-ink text-[14px] font-semibold">
+            Quarterly evaluation narrative
+          </h3>
+          <p className="text-ink-3 text-[13px] leading-relaxed">
+            No staff evaluation has been recorded for {quarter.label} yet. This
+            reflection captures what worked, what was missed, and the evidence
+            priorities for the next cycle.
+          </p>
+        </div>
+        {canAuthor ? (
+          <NarrativeDialog quarterKey={quarter.key} narrative={null} />
+        ) : (
+          <p className="font-mono text-[11.5px] text-ink-3">
+            Read-only for this role
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  const cards = [
+    ["Policy Wins & Influence", "What succeeded this quarter.", narrative.wins],
+    ["Missed Windows", "Deadlines or opportunities that passed without engagement.", narrative.missedWindows],
+    ["Evidence Gaps (Ingestion Priorities)", "Knowledge gaps revealed during policy work.", narrative.evidenceGaps],
+    ["System & Workflow Improvements", "Concrete improvements for the next cycle.", narrative.systemImprovement],
+  ] as const;
+
+  return (
+    <section className="border-line flex min-w-0 flex-col gap-4 border-t pt-5" aria-labelledby="quarterly-narrative-heading">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h3 id="quarterly-narrative-heading" className="text-ink text-[15px] font-semibold">
+            Quarterly evaluation narrative
+          </h3>
+          <p className="text-ink-3 max-w-[68ch] text-[13px] leading-relaxed">
+            Staff-authored reflection for the next evidence and policy cycle.
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11.5px] text-ink-3">
+            <span>Last updated {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(narrative.updatedAt))} · {narrative.authorName}</span>
+            <span className="border-line bg-paper rounded-full border px-2 py-0.5 capitalize">{narrative.authorRole.replaceAll("_", " ")}</span>
+          </div>
+        </div>
+        {canAuthor ? (
+          <NarrativeDialog quarterKey={quarter.key} narrative={narrative} />
+        ) : null}
+      </div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 tablet:grid-cols-2">
+        {cards.map(([title, description, value]) => (
+          <section key={title} className="bg-paper/50 border-line rounded-card flex min-w-0 flex-col gap-2 border p-4">
+            <div className="flex flex-col gap-0.5">
+              <h4 className="text-ink text-[13.5px] font-semibold">{title}</h4>
+              <p className="text-ink-3 text-[12px] leading-relaxed">{description}</p>
+            </div>
+            <p className="text-ink-2 whitespace-pre-wrap text-[13px] leading-relaxed">{value}</p>
+          </section>
+        ))}
+      </div>
     </section>
   );
 }
