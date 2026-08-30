@@ -39,6 +39,7 @@ export interface ExecutiveDashboardData {
     authorEmail: string;
     citationsCount: number;
     openFlagsCount: number;
+    qaCompleted: boolean;
     canBeApproved: boolean;
   }>;
   urgentSignals: Array<{
@@ -133,6 +134,7 @@ export async function readExecutiveDashboardData(): Promise<ExecutiveDashboardDa
         briefType: true,
         audience: true,
         status: true,
+        currentVersion: true,
         createdAt: true,
         createdBy: { select: { name: true, email: true } },
         versions: {
@@ -144,6 +146,10 @@ export async function readExecutiveDashboardData(): Promise<ExecutiveDashboardDa
           },
         },
         _count: { select: { evidenceSet: true } },
+        qaReviews: {
+          where: { completedAt: { not: null } },
+          select: { briefVersion: true },
+        },
       },
     }),
     prisma.policySignal.findMany({
@@ -228,6 +234,9 @@ export async function readExecutiveDashboardData(): Promise<ExecutiveDashboardDa
         authorEmail: row.createdBy?.email ?? "Not recorded",
         citationsCount: row._count.evidenceSet,
         openFlagsCount,
+        qaCompleted: row.qaReviews.some(
+          (review) => review.briefVersion === row.currentVersion,
+        ),
         canBeApproved: row.status === BriefStatus.reviewed && openFlagsCount === 0,
       };
     }),

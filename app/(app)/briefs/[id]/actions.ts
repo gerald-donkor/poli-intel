@@ -11,6 +11,7 @@ import {
   canDismissFlag,
   canGenerateBrief,
   canManageStakeholders,
+  canReviewBriefQa,
   canSubmitOrPublishBrief,
   unauthorised,
 } from "@/lib/auth/authorize";
@@ -20,13 +21,16 @@ import { extractKeyMessages } from "@/lib/briefs/key-messages";
 import {
   changeBriefStatus,
   findBriefForTranslation,
+  findBriefQaTarget,
   findFlagForResolution,
   loadEvidenceForGenerationContext,
   recordBriefShare,
   resolveHallucinationFlag,
   saveTranslation,
+  saveBriefQaReview,
   type BriefTranslationView,
   type FlagForResolution,
+  type BriefQaReviewView,
 } from "@/lib/db";
 import { BriefStatus, FlagStatus } from "@/lib/generated/prisma/enums";
 import type { StaffUser } from "@/lib/generated/prisma/client";
@@ -42,6 +46,8 @@ import {
   type ChangeBriefStatusInput,
   type ReopenFlagInput,
   type ResolveFlagInput,
+  saveBriefQaReviewSchema,
+  type SaveBriefQaReviewInput,
 } from "./schema";
 
 /**
@@ -75,6 +81,62 @@ export type ResolveFlagActionResult =
 export type ChangeBriefStatusActionResult =
   | { ok: true; status: BriefStatus }
   | { ok: false; refusal: ActionRefusal };
+
+export type SaveBriefQaReviewActionResult =
+  | { ok: true; review: BriefQaReviewView }
+  | { ok: false; refusal: ActionRefusal };
+
+/**
+ * Record an independent five-dimension human QA review. This never calls AI or
+ * loads evidence text: it records a person's assessment of the stored brief.
+ */
+export async function saveBriefQaReviewAction(
+  input: SaveBriefQaReviewInput,
+): Promise<SaveBriefQaReviewActionResult> {
+  const staffUser = await getCurrentStaffUser();
+
+  if (!staffUser) {
+    return { ok: false, refusal: unauthorised("Sign in to record a QA review.") };
+  }
+
+  // Parse only the opaque id to load the object required for object-level
+  // authorisation. Full input validation follows authorisation.
+  const briefId = idSchema.safeParse(input.briefId);
+  if (!briefId.success) {
+    return { ok: false, refusal: unauthorised("That is not a brief you can review.") };
+  }
+
+  const brief = await findBriefQaTarget(briefId.data);
+  if (!brief || !canReviewBriefQa(staffUser.role, brief, staffUser.id)) {
+    return {
+      ok: false,
+      refusal: unauthorised(
+        "QA review is completed independently by a Research Officer or Programme Director who did not author this brief.",
+      ),
+    };
+  }
+
+  const parsed = saveBriefQaReviewSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, refusal: toInvalid(parsed.error) };
+
+  if (brief.status !== BriefStatus.draft && brief.status !== BriefStatus.reviewed) {
+    return {
+      ok: false,
+      refusal: { kind: "invalid", fieldErrors: { form: ["This brief is no longer available for QA review."] } },
+    };
+  }
+
+  const review = await saveBriefQaReview({
+    ...parsed.data,
+    briefVersion: brief.currentVersion,
+    reviewerId: staffUser.id,
+  });
+
+  revalidatePath(`/briefs/${brief.id}`);
+  revalidatePath("/dashboard");
+
+  return { ok: true, review };
+}
 
 export async function resolveFlagAction(
   input: ResolveFlagInput,

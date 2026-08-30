@@ -11,12 +11,14 @@ import {
   canExportBrief,
   canGenerateBrief,
   canManageStakeholders,
+  canReviewBriefQa,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { extractKeyMessages } from "@/lib/briefs/key-messages";
 import { TRANSLATION_LANGUAGE } from "@/lib/briefs/translation-limits";
 import {
   findBriefDetail,
+  findQaReviewForBrief,
   findLatestTranslationForBrief,
   isEditableStatus,
   listSharesForBrief,
@@ -33,6 +35,7 @@ import { BriefBody } from "./brief-body";
 import { CitationList } from "./citation-list";
 import { FlagPanel } from "./flag-panel";
 import { ReviewPanel } from "./review-panel";
+import { BriefQaPanel } from "./qa-panel";
 import { SharePanel } from "./share-panel";
 import { StatusHistory } from "./status-history";
 import { TranslationPanel } from "./translation-panel";
@@ -83,6 +86,11 @@ export default async function BriefPage({
   );
 
   const mayReview = canApproveOrRejectBrief(staffUser.role);
+  const mayCompleteQa = canReviewBriefQa(
+    staffUser.role,
+    { createdById: brief.createdById },
+    staffUser.id,
+  );
 
   // A reframe IS a generation, so it is the generation matrix — not the editing
   // one (decision 8). Presentation only, twice over: the route authorises and so
@@ -118,6 +126,8 @@ export default async function BriefPage({
   const [shares, contacts] = mayLogShare
     ? await Promise.all([listSharesForBrief(brief.id), listStakeholderOptions()])
     : [[], []];
+
+  const qaReview = await findQaReviewForBrief(brief.id, brief.version);
 
   // A translation IS a generation — it spends a free-tier request and produces
   // model prose — so it is the generation matrix, not the export one. Reading an
@@ -249,11 +259,18 @@ export default async function BriefPage({
               evidence={brief.evidence}
               canResolve={mayResolveFlags}
             />
+            <BriefQaPanel
+              briefId={brief.id}
+              review={qaReview}
+              canReview={mayCompleteQa}
+              unavailableReason="QA review is completed independently by a Research Officer or Programme Director who did not author this brief."
+            />
             {mayReview ? (
               <ReviewPanel
                 briefId={brief.id}
                 status={brief.status}
                 openFlagCount={openFlagCount}
+                qaCompleted={qaReview?.completedAt !== null && qaReview !== null}
               />
             ) : null}
             <StatusHistory events={brief.statusHistory} />

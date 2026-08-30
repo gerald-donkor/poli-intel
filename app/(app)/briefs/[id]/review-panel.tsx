@@ -37,10 +37,12 @@ export function ReviewPanel({
   briefId,
   status,
   openFlagCount,
+  qaCompleted,
 }: {
   briefId: string;
   status: BriefStatus;
   openFlagCount: number;
+  qaCompleted: boolean;
 }) {
   const router = useRouter();
   const reasonFieldId = useId();
@@ -100,6 +102,12 @@ export function ReviewPanel({
       >
         Your decision
       </h2>
+
+      <p className={qaCompleted ? "bg-surface-tint border-surface-tint-border text-primary-ink rounded-card border px-3 py-2 text-[12.5px]" : "bg-stone border-line text-ink-2 rounded-card border px-3 py-2 text-[12.5px]"}>
+        {qaCompleted
+          ? "Independent QA checklist completed for this version."
+          : "Independent QA checklist is still pending for this version."}
+      </p>
 
       {closed ? (
         <p className="text-ink-3 text-[13px]">

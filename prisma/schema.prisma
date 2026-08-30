@@ -347,6 +347,7 @@ model StaffUser {
   briefTranslationsRun    BriefTranslation[]
   evidenceIngested        EvidenceItem[]
   flagsResolved           HallucinationFlag[]
+  briefQaReviews         BriefQaReview[]
   briefStatusChanges      BriefStatusChange[]
   signalReclassifications SignalReclassification[]
   classificationChanges   EvidenceClassificationChange[]
@@ -763,6 +764,7 @@ model Brief {
   impactRuns       ImpactDetectionRun[]
   statusChanges    BriefStatusChange[]
   stakeholderShares StakeholderBrief[]
+  qaReviews         BriefQaReview[]
 
   @@index([status])
   @@index([signalId])
@@ -783,6 +785,35 @@ model BriefEvidence {
   @@id([briefId, evidenceItemId])
   @@index([evidenceItemId])
   @@map("brief_evidence")
+}
+
+/// A human QA record for one immutable brief version. It is deliberately a
+/// separate review surface from the hallucination guard: flags ask whether a
+/// particular claim is traceable, while this records a Research Officer's or
+/// Director's whole-brief assessment before a decision is taken.
+model BriefQaReview {
+  id            String   @id @default(uuid())
+  briefId       String   @map("brief_id")
+  briefVersion  Int      @map("brief_version")
+  reviewerId    String   @map("reviewer_id")
+
+  factualGroundingChecked      Boolean @default(false) @map("factual_grounding_checked")
+  landscapeSpecificityChecked  Boolean @default(false) @map("landscape_specificity_checked")
+  audienceFramingChecked       Boolean @default(false) @map("audience_framing_checked")
+  actionableAsksChecked        Boolean @default(false) @map("actionable_asks_checked")
+  crossCuttingThemesChecked    Boolean @default(false) @map("cross_cutting_themes_checked")
+  notes                        String?
+  completedAt                  DateTime? @map("completed_at")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+
+  brief    Brief     @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  reviewer StaffUser @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@unique([briefId, briefVersion, reviewerId])
+  @@index([briefId])
+  @@index([reviewerId])
+  @@map("brief_qa_review")
 }
 
 /// Every edit is versioned and no prior version is ever overwritten in place

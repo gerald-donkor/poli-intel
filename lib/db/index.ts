@@ -13,6 +13,14 @@ export {
 } from "./dashboard";
 export { checkEmbeddingDimensions, type EmbeddingCheck } from "./embedding";
 export {
+  findQaReviewForBrief,
+  findBriefQaTarget,
+  saveBriefQaReview,
+  type BriefQaTarget,
+  type BriefQaReviewView,
+  type SaveBriefQaReviewInput,
+} from "./brief-qa";
+export {
   findStaffUserById,
   findStaffUserByEmail,
   findStaffUserByWhatsappNumber,

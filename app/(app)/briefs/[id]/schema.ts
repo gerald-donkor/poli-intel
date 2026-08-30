@@ -70,3 +70,17 @@ export const changeBriefStatusSchema = z
   );
 
 export type ChangeBriefStatusInput = z.infer<typeof changeBriefStatusSchema>;
+
+export const BRIEF_QA_NOTES_MAX_CHARS = 2000;
+
+export const saveBriefQaReviewSchema = z.object({
+  briefId: z.uuid(),
+  factualGroundingChecked: z.boolean(),
+  landscapeSpecificityChecked: z.boolean(),
+  audienceFramingChecked: z.boolean(),
+  actionableAsksChecked: z.boolean(),
+  crossCuttingThemesChecked: z.boolean(),
+  notes: z.string().trim().max(BRIEF_QA_NOTES_MAX_CHARS).optional(),
+});
+
+export type SaveBriefQaReviewInput = z.infer<typeof saveBriefQaReviewSchema>;

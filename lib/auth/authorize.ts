@@ -145,6 +145,23 @@ export function canDismissFlag(
 }
 
 /**
+ * Complete the independent whole-brief QA checklist. Research Officers own
+ * factual review and a Programme Director may also review, but neither may
+ * attest to a brief they authored.
+ */
+export function canReviewBriefQa(
+  role: StaffRole,
+  brief: { createdById: string | null },
+  actorStaffUserId: string,
+): boolean {
+  const roleMayReview =
+    role === StaffRole.programme_director ||
+    role === StaffRole.research_officer;
+
+  return roleMayReview && brief.createdById !== actorStaffUserId;
+}
+
+/**
  * Move a signal to a different urgency on the board (§8.6, §10.3).
  *
  * The Policy & Advocacy Officer monitors signals (§10.3) and the Programme

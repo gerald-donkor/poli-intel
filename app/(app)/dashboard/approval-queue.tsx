@@ -34,6 +34,11 @@ export function ApprovalQueue({ items }: { items: ExecutiveDashboardData["approv
                 ) : (
                   <span className="bg-surface-tint border-surface-tint-border text-primary-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold">Citations reviewed</span>
                 )}
+                {brief.qaCompleted ? (
+                  <span className="bg-surface-tint border-surface-tint-border text-primary-ink inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold">QA checklist completed</span>
+                ) : (
+                  <span className="bg-stone border-line text-ink-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-medium">QA checklist pending</span>
+                )}
                 <span className="text-ink-3 font-mono text-[11.5px]">{brief.citationsCount} {brief.citationsCount === 1 ? "source" : "sources"}</span>
                 {brief.canBeApproved ? <span className="text-primary text-[11.5px] font-medium">Ready for Director review</span> : null}
                 <Link href={`/briefs/${brief.id}`} className={`${buttonVariants({ variant: "outline", size: "sm" })} ml-auto`}>
