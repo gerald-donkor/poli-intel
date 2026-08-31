@@ -16,6 +16,7 @@ import {
   EvidenceMatchAssessment,
   type ImpactArea,
 } from "@/lib/generated/prisma/enums";
+import type { ResearchGapView } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,6 +30,7 @@ import {
   requestEvidenceRematchAction,
   reviewEvidenceMatchAction,
 } from "./actions";
+import { ResearchGapControl } from "./research-gap-control";
 
 /**
  * What the Evidence Matcher found for this signal — and, when it found nothing,
@@ -54,6 +56,9 @@ import {
 export function MatchedEvidence({
   signalId,
   impactArea,
+  signalTitle,
+  researchGap,
+  canLogResearchGap = false,
   matches,
   ineligibleMatchCount,
   runs,
@@ -62,6 +67,8 @@ export function MatchedEvidence({
 }: {
   signalId: string;
   impactArea: ImpactArea;
+  signalTitle: string;
+  researchGap: ResearchGapView | null;
   matches: SignalEvidenceMatchView[];
   ineligibleMatchCount: number;
   /** Newest first. Empty means the matcher has never run for this signal. */
@@ -70,6 +77,7 @@ export function MatchedEvidence({
   canRematch: boolean;
   /** Presentation only — the review action authorises server-side (§10.1). */
   canReview?: boolean;
+  canLogResearchGap?: boolean;
 }) {
   const latest = runs[0] ?? null;
 
@@ -102,7 +110,7 @@ export function MatchedEvidence({
         ineligibleMatchCount > 0 ? (
           <AllHeldBack />
         ) : (
-          <MatchGap impactArea={impactArea} />
+          <MatchGap signalId={signalId} title={signalTitle} impactArea={impactArea} researchGap={researchGap} canLog={canLogResearchGap} />
         )
       ) : null}
 
@@ -419,7 +427,7 @@ function ScoreBar({ label, value }: { label: string; value: number | null }) {
  * actually holds in this impact area is a real link to a real filtered listing,
  * not a button labelled "record a research gap" with no table behind it.
  */
-function MatchGap({ impactArea }: { impactArea: ImpactArea }) {
+function MatchGap({ signalId, title, impactArea, researchGap, canLog }: { signalId: string; title: string; impactArea: ImpactArea; researchGap: ResearchGapView | null; canLog: boolean }) {
   return (
     <div className="bg-watch-surface border-watch-border text-watch-ink rounded-card flex flex-col items-start gap-3 border p-4">
       <div className="flex items-start gap-2.5">
@@ -445,12 +453,7 @@ function MatchGap({ impactArea }: { impactArea: ImpactArea }) {
         >
           See what the library holds on {IMPACT_AREA_LABELS[impactArea]}
         </Link>
-        <Link
-          href="/evidence/new"
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          Add evidence
-        </Link>
+        <ResearchGapControl signalId={signalId} title={title} impactArea={impactArea} existingGap={researchGap} canLog={canLog} />
       </div>
     </div>
   );

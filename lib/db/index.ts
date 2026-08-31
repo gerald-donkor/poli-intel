@@ -8,6 +8,18 @@ import "server-only";
 
 export { prisma } from "./client";
 export {
+  attachEvidenceToResearchGap,
+  countOpenResearchGaps,
+  createResearchGap,
+  findResearchGap,
+  findResearchGapForSignal,
+  listResearchGaps,
+  updateResearchGap,
+  type CreateResearchGapInput,
+  type ResearchGapView,
+  type UpdateResearchGapInput,
+} from "./research-gaps";
+export {
   readExecutiveDashboardData,
   type ExecutiveDashboardData,
 } from "./dashboard";

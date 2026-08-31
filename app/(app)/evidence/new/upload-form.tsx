@@ -68,7 +68,7 @@ type Run =
   | { phase: "done"; extractedChars: number; chunkCount: number }
   | { phase: "failed"; message: string };
 
-export function EvidenceUploadForm() {
+export function EvidenceUploadForm({ initialGap = null }: { initialGap?: { id: string; topic: string; impactArea: import("@/lib/generated/prisma/enums").ImpactArea } | null }) {
   const router = useRouter();
   const [run, setRun] = useState<Run>({ phase: "idle" });
   const [file, setFile] = useState<File | null>(null);
@@ -81,11 +81,12 @@ export function EvidenceUploadForm() {
     // `sourceType` is deliberately absent: it has no safe default, so the
     // select opens on an empty option and the schema rejects it until chosen.
     defaultValues: {
-      title: "",
+      researchGapId: initialGap?.id,
+      title: initialGap?.topic ?? "",
       authors: "",
       year: "",
       country: "",
-      impactArea: "",
+      impactArea: initialGap?.impactArea ?? "",
       citationKey: "",
       sourceUrl: "",
       sourceFileName: "",

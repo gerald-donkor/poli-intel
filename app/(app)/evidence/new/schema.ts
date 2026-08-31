@@ -27,6 +27,7 @@ import {
 const currentYear = new Date().getFullYear();
 
 export const evidenceMetadataSchema = z.object({
+  researchGapId: z.string().uuid().optional(),
   title: z
     .string()
     .trim()

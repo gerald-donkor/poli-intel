@@ -106,6 +106,20 @@ export function canIngestEvidence(role: StaffRole): boolean {
   );
 }
 
+/** Log a missing-evidence priority from a signal or staff review. */
+export function canLogResearchGap(role: StaffRole): boolean {
+  return (
+    role === StaffRole.programme_director ||
+    role === StaffRole.policy_advocacy_officer ||
+    role === StaffRole.research_officer
+  );
+}
+
+/** Move, prioritise, or resolve a research gap — Research owns the corpus. */
+export function canManageResearchGaps(role: StaffRole): boolean {
+  return role === StaffRole.programme_director || role === StaffRole.research_officer;
+}
+
 /**
  * Set or change an evidence item's classification (§10.8).
  *

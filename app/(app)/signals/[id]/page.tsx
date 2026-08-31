@@ -7,12 +7,13 @@ import { audienceLabel } from "@/lib/ai/audience-profiles";
 import { briefTypeLabel } from "@/lib/ai/brief-types";
 import {
   canGenerateBrief,
+  canLogResearchGap,
   canRequestEvidenceRematch,
   canReviewEvidenceMatch,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
 import { GENERATION_EVIDENCE_CONTEXT_SIZE } from "@/lib/briefs/generation-limits";
-import { findSignalDetail, type SignalDetail } from "@/lib/db";
+import { findResearchGapForSignal, findSignalDetail, type SignalDetail } from "@/lib/db";
 import { findRadarSourceByName } from "@/lib/radar/sources";
 import { cn } from "@/lib/utils";
 
@@ -61,13 +62,14 @@ export default async function SignalDetailPage({
   const staffUser = await requireStaffUser();
 
   const { id } = await params;
-  const signal = await findSignalDetail(id);
+  const [signal, researchGap] = await Promise.all([findSignalDetail(id), findResearchGapForSignal(id)]);
 
   if (!signal) notFound();
 
   // Presentation only. The action authorises its own caller server-side (§10.1).
   const mayRematch = canRequestEvidenceRematch(staffUser.role);
   const mayReview = canReviewEvidenceMatch(staffUser.role);
+  const mayLogResearchGap = canLogResearchGap(staffUser.role);
 
   // Also presentation only: the generation surface refuses a role that may not
   // generate, and all three generation actions refuse again server-side.
@@ -206,12 +208,15 @@ export default async function SignalDetailPage({
 
             <MatchedEvidence
               signalId={signal.id}
+              signalTitle={signal.title}
               impactArea={signal.impactArea}
+              researchGap={researchGap}
               matches={signal.matches}
               ineligibleMatchCount={signal.ineligibleMatchCount}
               runs={signal.matchRuns}
               canRematch={mayRematch}
               canReview={mayReview}
+              canLogResearchGap={mayLogResearchGap}
             />
           </div>
 

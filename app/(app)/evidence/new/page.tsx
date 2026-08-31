@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth/session";
 import { countPendingClassification } from "@/lib/db/evidence";
+import { findResearchGap } from "@/lib/db";
 import { StaffRole } from "@/lib/generated/prisma/enums";
 
 import { EvidenceUploadForm } from "./upload-form";
@@ -13,7 +14,7 @@ export const metadata = {
   title: "Add evidence · EviBrief",
 };
 
-export default async function NewEvidencePage() {
+export default async function NewEvidencePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   // Render-path gate. The metadata action and the upload router's middleware
   // both re-authorise server-side (AGENTS.md §10.1).
   const staffUser = await requireRole(
@@ -49,6 +50,9 @@ export default async function NewEvidencePage() {
     );
   }
 
+  const rawParams = await searchParams;
+  const gapId = typeof rawParams.gapId === "string" ? rawParams.gapId : null;
+  const gap = gapId ? await findResearchGap(gapId) : null;
   const pendingCount = await countPendingClassification();
 
   return (
@@ -71,7 +75,8 @@ export default async function NewEvidencePage() {
 
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 p-4 tablet:p-6">
         <ClassificationPendingAlert pendingCount={pendingCount} />
-        <EvidenceUploadForm />
+        {gap ? <div className="bg-surface-tint border-surface-tint-border rounded-card border p-3 text-[13px]"><strong className="text-primary-ink">Research gap context:</strong> {gap.topic}. This upload will be linked to the priority and held for classification as usual.</div> : null}
+        <EvidenceUploadForm initialGap={gap ? { id: gap.id, topic: gap.topic, impactArea: gap.impactArea } : null} />
       </div>
     </>
   );

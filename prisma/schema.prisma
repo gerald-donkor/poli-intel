@@ -296,6 +296,26 @@ enum EvidenceMatchAssessment {
   @@map("evidence_match_assessment")
 }
 
+/// A staff-owned record of a gap in the eligible evidence corpus. This is
+/// operational metadata, not evidence content and never enters the AI layer.
+enum ResearchGapStatus {
+  open
+  in_progress
+  resolved
+  dismissed
+
+  @@map("research_gap_status")
+}
+
+enum ResearchGapPriority {
+  urgent
+  high
+  medium
+  low
+
+  @@map("research_gap_priority")
+}
+
 // ---------------------------------------------------------------------------
 // Actors
 // ---------------------------------------------------------------------------
@@ -356,6 +376,8 @@ model StaffUser {
   influenceEventsVerified InfluenceEvent[]            @relation("InfluenceVerifiedBy")
   evidenceMatchReviews    EvidenceMatchReview[]
   quarterlyNarratives     QuarterlyEvidenceNarrative[] @relation("StaffUserQuarterlyNarratives")
+  researchGapsLogged      ResearchGap[]                @relation("ResearchGapLoggedBy")
+  researchGapsResolved    ResearchGap[]                @relation("ResearchGapResolvedBy")
   googleDriveGrant        GoogleDriveGrant?
 
   @@map("staff_user")
@@ -376,6 +398,7 @@ model QuarterlyEvidenceNarrative {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   author StaffUser @relation("StaffUserQuarterlyNarratives", fields: [authorId], references: [id], onDelete: Restrict)
+  researchGaps ResearchGap[]
 
   @@map("quarterly_evidence_narrative")
 }
@@ -493,6 +516,7 @@ model PolicySignal {
   evidenceMatches      SignalEvidenceMatch[]
   matchRuns            EvidenceMatchRun[]
   evidenceMatchReviews EvidenceMatchReview[]
+  researchGaps          ResearchGap[]
 
   @@index([status])
   @@index([urgency])
@@ -691,6 +715,7 @@ model EvidenceItem {
   classificationChanges EvidenceClassificationChange[]
   signalMatches         SignalEvidenceMatch[]
   matchReviews          EvidenceMatchReview[]
+  resolvedResearchGaps  ResearchGap[]
 
   @@index([classification])
   @@index([impactArea])
@@ -698,6 +723,40 @@ model EvidenceItem {
   @@index([country, year])
   @@index([ingestedById])
   @@map("evidence_item")
+}
+
+/// A traceable research or ingestion priority raised from a signal match gap or
+/// logged directly by an authorised staff member. The optional quarterly
+/// relation provides a deterministic audit link into staff-authored reviews.
+model ResearchGap {
+  id                     String              @id @default(uuid())
+  signalId               String?             @map("signal_id")
+  quarterlyNarrativeId   String?             @map("quarterly_narrative_id")
+  impactArea             ImpactArea          @map("impact_area")
+  topic                  String
+  description            String              @db.Text
+  priority               ResearchGapPriority @default(medium)
+  status                 ResearchGapStatus   @default(open)
+  loggedById             String              @map("logged_by_id")
+  resolvedById           String?             @map("resolved_by_id")
+  resolvedAt             DateTime?           @map("resolved_at")
+  resolutionNotes        String?             @map("resolution_notes") @db.Text
+  resolvedEvidenceItemId String?             @map("resolved_evidence_item_id")
+  createdAt              DateTime            @default(now()) @map("created_at")
+  updatedAt              DateTime            @updatedAt @map("updated_at")
+
+  signal             PolicySignal?              @relation(fields: [signalId], references: [id], onDelete: SetNull)
+  quarterlyNarrative QuarterlyEvidenceNarrative? @relation(fields: [quarterlyNarrativeId], references: [id], onDelete: SetNull)
+  loggedBy           StaffUser                   @relation("ResearchGapLoggedBy", fields: [loggedById], references: [id], onDelete: Restrict)
+  resolvedBy         StaffUser?                  @relation("ResearchGapResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedEvidenceItem EvidenceItem?             @relation(fields: [resolvedEvidenceItemId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([impactArea])
+  @@index([priority])
+  @@index([signalId])
+  @@index([quarterlyNarrativeId])
+  @@map("research_gap")
 }
 
 /// 512-token overlapping segments (spec §4.2). Chunk-level metadata lives here;

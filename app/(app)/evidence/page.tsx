@@ -16,7 +16,7 @@ import {
   canReviewEvidenceMatch,
 } from "@/lib/auth/authorize";
 import { requireStaffUser } from "@/lib/auth/session";
-import { getEvidenceMatcherFeedbackSummary } from "@/lib/db";
+import { countOpenResearchGaps, getEvidenceMatcherFeedbackSummary } from "@/lib/db";
 import {
   countPendingClassification,
   listEvidenceFacets,
@@ -59,11 +59,12 @@ export default async function EvidencePage({
   const mayIngest = canIngestEvidence(staffUser.role);
   const mayReview = canReviewEvidenceMatch(staffUser.role);
 
-  const [outcome, pendingCount, facets, matcherFeedback] = await Promise.all([
+  const [outcome, pendingCount, facets, matcherFeedback, openGapCount] = await Promise.all([
     searchEvidence(search),
     countPendingClassification(),
     listEvidenceFacets(),
     mayReview ? getEvidenceMatcherFeedbackSummary() : Promise.resolve(null),
+    countOpenResearchGaps(),
   ]);
 
   const searching = hasActiveSearch(search);
@@ -84,6 +85,11 @@ export default async function EvidencePage({
       </PageHeader>
 
       <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-4 p-4 tablet:p-6">
+        <nav aria-label="Evidence sections" className="flex flex-wrap gap-2">
+          <Link href="/evidence" className={buttonVariants({ variant: "outline", size: "sm" })}>Library</Link>
+          <Link href="/evidence/queue" className={buttonVariants({ variant: "outline", size: "sm" })}>Classification queue</Link>
+          <Link href="/evidence/gaps" className={buttonVariants({ variant: "outline", size: "sm" })}>Research gaps <span className="bg-stone ml-1 rounded-full px-1.5 font-mono text-[11px]">{openGapCount}</span></Link>
+        </nav>
         {/* Governance surface: above the fold at every width, never hidden. */}
         <ClassificationPendingAlert pendingCount={pendingCount} />
 

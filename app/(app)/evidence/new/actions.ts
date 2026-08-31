@@ -10,6 +10,7 @@ import {
   deleteEvidenceItem,
   findEvidenceItemForIngestion,
 } from "@/lib/db/evidence";
+import { attachEvidenceToResearchGap } from "@/lib/db";
 import type { EvidenceSourceType, ImpactArea } from "@/lib/generated/prisma/enums";
 
 import { evidenceMetadataSchema, type EvidenceMetadataInput } from "./schema";
@@ -88,9 +89,14 @@ export async function createEvidenceRecordAction(
     };
   }
 
+  if (values.researchGapId) {
+    await attachEvidenceToResearchGap(values.researchGapId, created.evidenceItemId);
+  }
+
   revalidatePath("/evidence");
   revalidatePath("/evidence/new");
   revalidatePath("/evidence/queue");
+  revalidatePath("/evidence/gaps");
 
   return { ok: true, evidenceItemId: created.evidenceItemId };
 }
